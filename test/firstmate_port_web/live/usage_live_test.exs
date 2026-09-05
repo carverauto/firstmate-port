@@ -49,6 +49,42 @@ defmodule FirstmatePortWeb.UsageLiveTest do
     assert html =~ "anthropic / direct"
   end
 
+  test "re-saving an account keeps its configured unit and window", %{conn: conn, user: user} do
+    {:ok, view, _html} = live(conn, ~p"/usage")
+
+    view
+    |> form("#usage-form", %{
+      "account" => %{
+        "provider" => "anthropic",
+        "label" => "crew",
+        "unit" => "tokens",
+        "window" => "weekly",
+        "allowance" => "500"
+      }
+    })
+    |> render_submit()
+
+    view
+    |> form("#usage-form", %{
+      "account" => %{
+        "provider" => "anthropic",
+        "label" => "crew",
+        "unit" => "",
+        "window" => "",
+        "used" => "42"
+      }
+    })
+    |> render_submit()
+
+    {:ok, accounts} = UsageAccount.list(FirstmatePort.Tenancy.opts(user))
+    [row] = Enum.filter(accounts, &(&1.label == "crew"))
+
+    assert row.used == 42.0
+    assert row.allowance == 500.0
+    assert row.unit == :tokens
+    assert row.window == :weekly
+  end
+
   test "anonymous visitors go to login", %{conn: _conn} do
     assert {:error, {:redirect, %{to: "/login"}}} = live(build_conn(), ~p"/usage")
   end

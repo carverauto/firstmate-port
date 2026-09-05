@@ -3,6 +3,7 @@ defmodule FirstmatePortWeb.SteerController do
   use FirstmatePortWeb, :controller
 
   plug :put_layout, html: {FirstmatePortWeb.Layouts, :marketing}
+  plug :describe_for_crawlers
 
   def landing(conn, _params) do
     render(conn, :landing, page_title: "fm-steer")
@@ -22,5 +23,13 @@ defmodule FirstmatePortWeb.SteerController do
 
   def doc_usage(conn, _params) do
     render(conn, :doc_usage, page_title: "usage and billing")
+  end
+
+  defp describe_for_crawlers(conn, _opts) do
+    assign(
+      conn,
+      :page_description,
+      "fm-steer routes fleet tasks to the right worker and tracks token spend per account."
+    )
   end
 end

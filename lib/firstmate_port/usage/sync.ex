@@ -104,4 +104,6 @@ defmodule FirstmatePort.Usage.Sync do
       :error -> nil
     end
   end
+
+  defp to_float(_), do: nil
 end

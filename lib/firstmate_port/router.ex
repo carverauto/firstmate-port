@@ -401,7 +401,8 @@ defmodule FirstmatePort.Router do
       "might",
       "several",
       "various",
-      "trade-?off",
+      "trade-off",
+      "tradeoff",
       "design",
       "proposal"
     ]) or String.length(text) > 400
@@ -495,12 +496,24 @@ defmodule FirstmatePort.Router do
     ])
   end
 
+  # A pattern only counts where it starts a word: "review" must not fire
+  # inside "preview", nor "ops" inside "loops". Suffixes still match, so
+  # "reviewing" and "deployed" keep their kinds.
   defp match_any?(text, patterns) do
-    Enum.any?(patterns, fn
-      "trade-?off" -> String.contains?(text, "trade-off") or String.contains?(text, "tradeoff")
-      p -> String.contains?(text, p)
+    Enum.any?(patterns, fn pattern ->
+      text
+      |> :binary.matches(pattern)
+      |> Enum.any?(fn {at, _len} -> word_start?(text, pattern, at) end)
     end)
   end
+
+  defp word_start?(_text, _pattern, 0), do: true
+
+  defp word_start?(text, pattern, at) do
+    not word_char?(:binary.first(pattern)) or not word_char?(:binary.at(text, at - 1))
+  end
+
+  defp word_char?(c), do: c in ?a..?z or c in ?0..?9 or c == ?_
 
   @doc """
   Run the bundled eval set through `route/2` and report mismatches.

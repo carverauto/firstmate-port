@@ -1,35 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta
-      name="description"
-      content="fm-steer routes fleet tasks to the right worker and tracks token spend per account."
-    />
-    <.live_title default="fm-steer">
-      {assigns[:page_title]}
-    </.live_title>
-    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
-  </head>
-  <body>
-    <div class="mkt">
-      <header class="mkt-top">
-        <.link navigate={~p"/steer"} class="brand">firstmate <span>fm-steer</span></.link>
-        <nav class="nav" aria-label="Site">
-          <.link navigate={~p"/steer#routing"}>Routing</.link>
-          <.link navigate={~p"/steer#usage"}>Usage</.link>
-          <.link navigate={~p"/steer/docs"}>Docs</.link>
-          <.link navigate={~p"/login"}>Sign in</.link>
-        </nav>
-      </header>
-      <main>
-        {@inner_content}
-      </main>
-      <footer class="mkt-foot">
-        <span>firstmate-port, the companion portal for firstmate</span>
-        <.link navigate={~p"/steer/docs"}>Docs</.link>
-      </footer>
-    </div>
-  </body>
-</html>
+<div class="mkt">
+  <header class="mkt-top">
+    <.link navigate={~p"/steer"} class="brand">firstmate <span>fm-steer</span></.link>
+    <nav class="nav" aria-label="Site">
+      <.link navigate={~p"/steer#routing"}>Routing</.link>
+      <.link navigate={~p"/steer#usage"}>Usage</.link>
+      <.link navigate={~p"/steer/docs"}>Docs</.link>
+      <.link navigate={~p"/login"}>Sign in</.link>
+    </nav>
+  </header>
+  <main>
+    {@inner_content}
+  </main>
+  <footer class="mkt-foot">
+    <span>firstmate-port, the companion portal for firstmate</span>
+    <.link navigate={~p"/steer/docs"}>Docs</.link>
+  </footer>
+</div>

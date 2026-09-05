@@ -38,6 +38,24 @@ defmodule FirstmatePort.RouterTest do
     assert Router.classify("someone leaked the api token in a public log").risk == :high
   end
 
+  test "kind words do not fire inside longer unrelated words" do
+    assert Router.classify("implement a preview pane for the diagram html").kind == :code
+    assert Router.classify("explain how the retry loops work in the fanout job").kind == :chat
+    assert Router.classify("compare the latest props and stops in the ui").kind == :research
+
+    assert Router.classify("review this pull request").kind == :review
+    assert Router.classify("reviewing the pull request for races").kind == :review
+    assert Router.classify("the ops runbook needs a restart step").kind == :ops
+  end
+
+  test "a preview feature is not hard-routed to the code-review model" do
+    got = Router.route("implement a preview pane for the diagram html")
+
+    assert got.harness == "codex"
+    assert got.model == "harness-default"
+    refute got.model_source == "fleet_hard_route"
+  end
+
   test "a credential that only modifies another noun does not raise risk" do
     assert Router.classify("fix the memory leak in the token bucket cache").risk == :low
     assert Router.classify("implement the usage page that exposes token counts").risk == :low

@@ -157,6 +157,7 @@ defmodule FirstmatePortWeb.UsageLive do
             <label>
               Unit
               <select name="account[unit]">
+                <option value="">unchanged</option>
                 <option value="usd">usd</option>
                 <option value="tokens">tokens</option>
                 <option value="credits">credits</option>
@@ -169,6 +170,7 @@ defmodule FirstmatePortWeb.UsageLive do
             <label>
               Window
               <select name="account[window]">
+                <option value="">unchanged</option>
                 <option value="monthly">monthly</option>
                 <option value="weekly">weekly</option>
                 <option value="daily">daily</option>

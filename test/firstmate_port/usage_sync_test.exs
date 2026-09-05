@@ -86,6 +86,30 @@ defmodule FirstmatePort.Usage.SyncTest do
     end
   end
 
+  test "a non-scalar provider reading is reported, not raised" do
+    {:ok, account} =
+      UsageAccount.record(
+        %{provider: "openrouter", label: "k5", allowance: 50.0, used: 5.0},
+        FirstmatePort.Tenancy.opts(actor())
+      )
+
+    http = fn {_url, _headers} ->
+      {:ok, %{"data" => %{"limit" => %{"monthly" => 200}, "usage" => ["40.0"]}}}
+    end
+
+    System.put_env("OPENROUTER_API_KEY", "test-key")
+
+    try do
+      result = Sync.sync_account(account, FirstmatePort.Tenancy.opts(actor()), http: http)
+
+      assert result.synced? == false
+      assert result.account.used == 5.0
+      assert result.account.allowance == 50.0
+    after
+      System.delete_env("OPENROUTER_API_KEY")
+    end
+  end
+
   test "sync reports provider failures instead of raising" do
     {:ok, account} =
       UsageAccount.record(

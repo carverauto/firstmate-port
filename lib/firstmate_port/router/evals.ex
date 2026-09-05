@@ -123,6 +123,19 @@ defmodule FirstmatePort.Router.Evals do
       expect_effort: "high"
     },
     %{
+      name: "preview pane feature",
+      description: "implement a preview pane for the diagram html",
+      expect_harness: "codex",
+      expect_effort: "medium",
+      expect_model: "harness-default"
+    },
+    %{
+      name: "explain retry loops",
+      description: "explain how the retry loops work in the discord fanout job",
+      expect_harness: "grok",
+      expect_effort: "low"
+    },
+    %{
       name: "ambiguous investigation",
       description:
         "figure out why the fleet rolls are flaky on farm01; the cause is unknown, " <>

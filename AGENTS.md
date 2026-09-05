@@ -12,7 +12,7 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 
 ## Boundaries
 
-- `fm-steer` is the captain CLI. Device-code against this API. It must not import or dial NATS. New CLI surface is thin HTTP only: no ranking, quota math, or provider keys in Go (`cmd/fm-steer/main.go` is the only Go).
+- `fm-steer` is the captain CLI. Device-code against this API. It must not import or dial NATS. New CLI surface is thin HTTP only: no ranking, quota math, or provider keys in Go (`cmd/fm-steer/main.go` is the only Go on this surface; `cmd/nats-tail`, `cmd/discord-inbound` and `cmd/discord-interactions` belong to the extract worker, do not extend them here).
 - The portal owns task routing (`FirstmatePort.Router`, `POST /api/route`) and the usage ledger (`FirstmatePort.Portal.UsageAccount`, `/api/usage`, `/usage`). Code review hard-routes to Codex with GPT-6-Astra (`Matrix.hard_route/1`).
 - When routing misfires, add the scrubbed task to `FirstmatePort.Router.Evals` first; `mix test` keeps the set green.
 - Attribute tenancy on shared Postgres and one NATS account. Streams are `<tenant>.steer` / `<tenant>.inbound`. Seed tenant `local` as an example. The API is the tenant wall and the only JetStream client.

@@ -25,6 +25,21 @@ defmodule FirstmatePortWeb.SteerControllerTest do
     assert conn |> get(~p"/steer/docs/usage") |> html_response(200) =~ "spend priority"
   end
 
+  test "steer pages are one HTML document, with the pitch in head", %{conn: conn} do
+    for path <- ["/steer", "/steer/docs", "/steer/docs/routing"] do
+      html = conn |> get(path) |> html_response(200)
+
+      assert length(String.split(html, "<html")) == 2, "#{path} nests more than one document"
+      assert length(String.split(html, "<body")) == 2, "#{path} nests more than one body"
+    end
+
+    [head, _body] =
+      "/steer" |> then(&get(conn, &1)) |> html_response(200) |> String.split("<body", parts: 2)
+
+    assert head =~ ~s(name="description")
+    assert head =~ "routes fleet tasks to the right worker"
+  end
+
   test "docs pages render real HTML, not markdown source", %{conn: conn} do
     routing = conn |> get(~p"/steer/docs/routing") |> html_response(200)
 
