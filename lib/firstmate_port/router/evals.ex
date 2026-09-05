@@ -136,6 +136,12 @@ defmodule FirstmatePort.Router.Evals do
       expect_effort: "high"
     },
     %{
+      name: "hotfix a crash",
+      description: "hotfix the crash in the router",
+      expect_harness: "codex",
+      expect_effort: "medium"
+    },
+    %{
       name: "suspend a job",
       description: "suspend the discord fanout job",
       expect_harness: "grok",

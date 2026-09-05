@@ -18,6 +18,10 @@ defmodule FirstmatePort.Portal.UsageSnapshot do
   postgres do
     table "usage_snapshots"
     repo FirstmatePort.Repo
+
+    custom_indexes do
+      index [:tenant_slug, :usage_account_id, :inserted_at]
+    end
   end
 
   code_interface do

@@ -343,13 +343,17 @@ func usageRun(args []string) {
 			}
 		}
 	}
+	if *asJSON {
+		var ledger json.RawMessage
+		if err := getJSON(c.Instance+"/api/usage", c.Token, &ledger); err != nil {
+			log.Fatal(err)
+		}
+		printJSON(ledger)
+		return
+	}
 	var out usageResponse
 	if err := getJSON(c.Instance+"/api/usage", c.Token, &out); err != nil {
 		log.Fatal(err)
-	}
-	if *asJSON {
-		printJSON(out)
-		return
 	}
 	fmt.Printf("%-12s %-20s %12s %12s %12s %-6s %8s\n", "provider", "label", "allowance", "used", "remaining", "status", "runway")
 	for _, a := range out.Data {

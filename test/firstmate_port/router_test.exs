@@ -70,6 +70,17 @@ defmodule FirstmatePort.RouterTest do
     assert Router.classify("add a prefix to the changelog entries").kind == :docs
   end
 
+  test "a prefixed code verb keeps the code lane" do
+    for text <- ["hotfix the crash in the router", "quickfix the parser"] do
+      assert Router.classify(text).kind == :code, "#{text} lost its code kind"
+    end
+
+    got = Router.route("hotfix the crash in the router")
+
+    assert got.harness == "codex"
+    assert got.effort == "medium"
+  end
+
   test "a prefixed ops verb keeps its kind, blast radius and checkpoint" do
     for text <- ["redeploy the api gateway", "undeploy the canary", "autoscale the workers"] do
       assert Router.classify(text).kind == :ops, "#{text} lost its ops kind"

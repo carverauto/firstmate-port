@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -229,4 +230,59 @@ func TestGetJSONFailsOnNonJSONSuccess(t *testing.T) {
 	if err == nil {
 		t.Fatal("HTTP 200 with an HTML body was reported as success")
 	}
+}
+
+func TestUsageJSONPassesLedgerThrough(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"tenant": "local",
+			"data": []map[string]any{
+				{"id": "acct-1", "provider": "openrouter", "label": "captain",
+					"allowance": 100.0, "used": 25.0, "remaining": 75.0, "status": "ok",
+					"pct_used": 0.25, "spend_priority": 10, "reset_at": "2026-10-01T00:00:00Z",
+					"last_synced_at": "2026-09-05T00:00:00Z"},
+			},
+		})
+	}))
+	defer srv.Close()
+	if err := writeCreds(srv.URL, "jwt", "local"); err != nil {
+		t.Fatal(err)
+	}
+
+	out := captureStdout(t, func() { usageRun([]string{"--instance", srv.URL, "--json"}) })
+
+	var got struct {
+		Data []map[string]any `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("--json did not emit JSON: %v (%s)", err, out)
+	}
+	if len(got.Data) != 1 {
+		t.Fatalf("data %v", got.Data)
+	}
+	for _, key := range []string{"id", "spend_priority", "pct_used", "reset_at", "last_synced_at"} {
+		if _, ok := got.Data[0][key]; !ok {
+			t.Errorf("--json dropped %q from the portal ledger", key)
+		}
+	}
+}
+
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	orig := os.Stdout
+	os.Stdout = w
+	defer func() { os.Stdout = orig }()
+	fn()
+	_ = w.Close()
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(raw)
 }
