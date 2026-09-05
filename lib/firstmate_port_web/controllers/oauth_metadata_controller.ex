@@ -5,6 +5,10 @@ defmodule FirstmatePortWeb.OAuthMetadataController do
   Endpoints are read from the provider's own discovery document. They are never
   built by appending a vendor's URL layout to the issuer: those paths differ per
   provider, and guessing them hands MCP clients a document that points nowhere.
+
+  Authorization-server discovery returns HTTP 503 with `oidc_not_configured`
+  until provider configuration is available. Protected-resource discovery
+  omits `authorization_servers` when no issuer is configured.
   """
 
   use FirstmatePortWeb, :controller

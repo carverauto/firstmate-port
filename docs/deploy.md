@@ -46,6 +46,11 @@ mix phx.server
 ## Sign-in
 
 Two modes, same image. Neither is a build flag; both are environment.
+`DEV_AUTH` remains an alias for `LOCAL_AUTH`; `LOCAL_AUTH` takes precedence.
+Set `LOCAL_AUTH=false` to disable local sign-in and bootstrap creation.
+For Compose, set auth and OIDC settings in the portal service
+`environment` in `docker-compose.override.yml`; `.env` alone only supplies
+variables interpolated by the Compose files.
 [`diagrams/auth-runtime-modes.html`](diagrams/auth-runtime-modes.html) draws
 both, plus the supervision path that keeps a failed provider from stopping the
 node.
@@ -64,25 +69,36 @@ restart cannot rotate a password out from under you.
 | Kubernetes | `firstmate-admin` secret, created by `deploy/bootstrap-secrets.sh` | `kubectl -n firstmate get secret firstmate-admin -o jsonpath='{.data.password}' \| base64 -d` |
 
 Set `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` to choose them
-yourself. A generated password is printed once and is not recoverable from the
-database afterwards.
+yourself before the first boot. In Kubernetes, the Deployment requires both
+keys in `firstmate-admin` and waits until the secret exists; it does not fall
+back to a generated password. Set `ADMIN_EMAIL` when running
+`deploy/bootstrap-secrets.sh` to choose the secret's email, or create the secret
+yourself with `email` and `password` keys. Read its email with
+`kubectl -n firstmate get secret firstmate-admin -o jsonpath='{.data.email}' | base64 -d`.
+Changing the password environment variable or secret later does not reset an
+existing account's password. A generated Compose password is printed once and
+is not recoverable from the database afterwards.
 
 **OIDC** (`OIDC_ISSUER` plus `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET`) adds a
 "Continue with identity provider" button. Any OpenID Connect provider works —
 Keycloak, Dex, Google, Okta, Entra — because every endpoint is read from the
 issuer's discovery document. There is no per-vendor adapter to write. Put the
 client credentials in a `firstmate-oidc` secret; `deploy/examples` has a worked
-provider setup.
+provider setup. The callback defaults to `PUBLIC_URL` plus
+`/auth/oidc/callback`, or the request URL when `PUBLIC_URL` is unset;
+`OIDC_REDIRECT_URI` overrides it. Register that callback with your provider.
 
 Anyone your provider authenticates may sign in. `ALLOWED_EMAIL_DOMAIN` is an
 optional extra restriction for sites that want one; it is unset by default and
 never gates the local account.
 
-OIDC is optional and fails soft. An unset, misconfigured, or unreachable issuer
-logs and leaves OIDC disabled: `/healthz`, the endpoint, and local sign-in stay
-up, and the login page says the provider is unreachable rather than pretending
-it is unconfigured. Missing OIDC settings and a missing OS CA bundle are both
-survivable; neither takes the node down.
+OIDC is optional and fails soft. Incomplete settings leave OIDC disabled. A
+configured provider without a loaded discovery document is shown as unreachable;
+its sign-in button appears only once discovery is ready. Transient load errors
+retry with backoff. An exception that kills the provider leaves it stopped;
+correct the configuration or trust store and restart the portal to retry.
+`/healthz`, the endpoint, and local sign-in (when enabled) stay up. Missing OIDC
+settings and a missing OS CA bundle do not take the node down.
 
 On an image with no CA bundle, point `OIDC_CACERTFILE` (or `SSL_CERT_FILE`) at a
 PEM file. The portal falls back to the bundle it ships at `priv/ssl/cacert.pem`,

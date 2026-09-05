@@ -260,7 +260,7 @@
       "id": "bootstrap-creds",
       "from": "bootstrap",
       "to": "creds",
-      "label": "prints once",
+      "label": "logs generated password",
       "variant": "security",
       "fromSide": "left",
       "toSide": "right",
@@ -279,7 +279,7 @@
       "id": "supervisor-oidc",
       "from": "supervisor",
       "to": "oidc_sup",
-      "label": "starts, never restarts",
+      "label": "starts supervisor",
       "variant": "dashed",
       "fromSide": "right",
       "toSide": "left"
@@ -320,7 +320,7 @@
   "cards": [
     {
       "dot": "emerald",
-      "title": "Local account \u2014 always available",
+      "title": "Local account \u2014 enabled by default",
       "items": [
         "One admin created on first boot, never rewritten",
         "Password generated and printed once, or set by env",
@@ -341,7 +341,7 @@
       "title": "Fail-soft \u2014 the node survives",
       "items": [
         "ueberauth_oidcc :issuers stays empty on purpose",
-        "A provider that cannot load config is left dead",
+        "Provider exceptions leave the worker stopped",
         "/healthz and local sign-in keep serving"
       ]
     }

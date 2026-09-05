@@ -3,8 +3,8 @@ defmodule FirstmatePort.Accounts.Password do
   Password hashing for the local sign-in account.
 
   PBKDF2-HMAC-SHA512 from OTP's `:crypto`, so local sign-in needs no additional
-  dependency and no second auth stack: it produces a hash that the existing
-  Guardian session flow consumes, nothing more.
+  dependency. The controller verifies the password before issuing a Guardian
+  session; Guardian does not consume the password hash.
 
   Stored as `pbkdf2-sha512$<iterations>$<salt>$<hash>`, so the work factor
   travels with the hash and can be raised later without invalidating anyone.

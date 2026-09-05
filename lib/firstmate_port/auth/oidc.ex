@@ -11,8 +11,9 @@ defmodule FirstmatePort.Auth.OIDC do
 
     * no issuer configured — the portal serves local sign-in when it is enabled,
       and otherwise says sign-in is not configured;
-    * issuer configured but unreachable — the provider process dies, the portal
-      keeps serving, and sign-in falls back the same way.
+    * issuer configured but unavailable — the portal keeps serving, and sign-in
+      falls back the same way. See `FirstmatePort.Auth.OIDC.Supervisor` for
+      provider failure and retry semantics.
 
   `FirstmatePort.Auth.OIDC.Supervisor` owns the provider process; see its
   moduledoc for why this app, and not `ueberauth_oidcc`, starts it.

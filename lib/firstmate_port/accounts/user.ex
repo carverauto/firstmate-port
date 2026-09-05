@@ -117,8 +117,8 @@ defmodule FirstmatePort.Accounts.User do
       sensitive? true
     end
 
-    # Set only for the local sign-in account. Humans who arrive through an
-    # identity provider never have one.
+    # OIDC does not assign a password; bootstrap can add one to an existing
+    # account with the configured email.
     attribute :hashed_password, :string do
       sensitive? true
     end

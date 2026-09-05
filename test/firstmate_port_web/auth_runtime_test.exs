@@ -178,6 +178,39 @@ defmodule FirstmatePortWeb.AuthRuntimeTest do
       assert get_session(conn, :guardian_token)
     end
 
+    test "the generated first-boot password signs in and is printed only once", %{conn: conn} do
+      Logger.put_module_level(Bootstrap, :info)
+      on_exit(fn -> Logger.delete_module_level(Bootstrap) end)
+      original_email = System.get_env("BOOTSTRAP_ADMIN_EMAIL")
+      original_password = System.get_env("BOOTSTRAP_ADMIN_PASSWORD")
+      System.put_env("BOOTSTRAP_ADMIN_EMAIL", "generated@example.test")
+      System.delete_env("BOOTSTRAP_ADMIN_PASSWORD")
+
+      on_exit(fn ->
+        for {key, value} <- [
+              {"BOOTSTRAP_ADMIN_EMAIL", original_email},
+              {"BOOTSTRAP_ADMIN_PASSWORD", original_password}
+            ] do
+          if value, do: System.put_env(key, value), else: System.delete_env(key)
+        end
+      end)
+
+      log = ExUnit.CaptureLog.capture_log([level: :info], fn -> Bootstrap.ensure_admin!() end)
+      assert log =~ "generated@example.test"
+      assert [_, password] = Regex.run(~r/password: ([A-Za-z0-9_-]+)/, log)
+
+      signed_in =
+        post(conn, ~p"/auth/local", %{"email" => "generated@example.test", "password" => password})
+
+      assert redirected_to(signed_in) == "/"
+      assert get_session(signed_in, :guardian_token)
+
+      second_log = ExUnit.CaptureLog.capture_log([level: :info], fn -> Bootstrap.ensure_admin!() end)
+      refute second_log =~ password
+      {:ok, user} = User.get_by_email("generated@example.test", authorize?: false)
+      assert User.valid_password?(user, password)
+    end
+
     test "a second boot does not rotate the password" do
       System.put_env("BOOTSTRAP_ADMIN_EMAIL", "stable@example.test")
       System.put_env("BOOTSTRAP_ADMIN_PASSWORD", "first-password")

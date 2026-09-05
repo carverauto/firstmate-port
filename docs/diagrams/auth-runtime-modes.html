@@ -5038,9 +5038,9 @@
         <path data-edge-from="auth" data-edge-to="users" data-edge-label="verify password" data-edge-key="2" data-edge-id="auth-users" data-composition-points="625,343;625,379;740,379;740,415" d="M 625 343 L 625 371 Q 625 379 633 379 L 732 379 Q 740 379 740 387 L 740 415" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         <path data-edge-from="auth" data-edge-to="guardian" data-edge-label="issue session" data-edge-key="3" data-edge-id="auth-guardian" data-composition-points="720,314;830,314" d="M 720 314 L 830 314" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="bootstrap" data-edge-to="users" data-edge-label="creates once" data-edge-key="4" data-edge-id="bootstrap-users" data-composition-points="540,444;640,444" d="M 540 444 L 640 444" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="bootstrap" data-edge-to="creds" data-edge-label="prints once" data-edge-key="5" data-edge-id="bootstrap-creds" data-composition-points="330,444;306,444;306,462;274,462;274,446;250,446" d="M 330 444 L 314 444 Q 306 444 306 452 L 306 454 Q 306 462 298 462 L 282 462 Q 274 462 274 454 L 274 454 Q 274 446 266 446 L 250 446" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="bootstrap" data-edge-to="creds" data-edge-label="logs generated password" data-edge-key="5" data-edge-id="bootstrap-creds" data-composition-points="330,444;306,444;306,462;274,462;274,446;250,446" d="M 330 444 L 314 444 Q 306 444 306 452 L 306 454 Q 306 462 298 462 L 282 462 Q 274 462 274 454 L 274 454 Q 274 446 266 446 L 250 446" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
         <path data-edge-from="creds" data-edge-to="visitor" data-edge-label="operator reads" data-edge-key="6" data-edge-id="creds-visitor" data-composition-points="145,415;145,379;105,379;105,343" d="M 145 415 L 145 387 Q 145 379 137 379 L 113 379 Q 105 379 105 371 L 105 343" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="supervisor" data-edge-to="oidc_sup" data-edge-label="starts, never restarts" data-edge-key="7" data-edge-id="supervisor-oidc" data-composition-points="240,112;400,112" d="M 240 112 L 400 112" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="supervisor" data-edge-to="oidc_sup" data-edge-label="starts supervisor" data-edge-key="7" data-edge-id="supervisor-oidc" data-composition-points="240,112;400,112" d="M 240 112 L 400 112" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="supervisor" data-edge-to="endpoint" data-edge-key="8" data-edge-id="supervisor-endpoint" data-composition-points="140,148;140,185" d="M 140 148 L 140 185" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="oidc_sup" data-edge-to="idp" data-edge-label="loads discovery" data-edge-key="9" data-edge-id="oidc-discovery" data-composition-points="600,119;720,119" d="M 600 119 L 720 119" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="oidc_sup" data-edge-to="login" data-edge-label="ready? gates the button" data-edge-key="10" data-edge-id="oidc-ready" data-composition-points="400,126;325,126;325,285" d="M 400 126 L 333 126 Q 325 126 325 134 L 325 285" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
@@ -5199,17 +5199,17 @@
           <rect x="556.2" y="424" width="67.6" height="14" rx="3" class="c-mask"/>
           <text x="590" y="434" class="t-muted" font-size="8" text-anchor="middle">creates once</text>
         </g>
-        <g data-detail="context" data-edge-from="bootstrap" data-edge-to="creds" data-edge-label="prints once" data-edge-key="5" data-edge-id="bootstrap-creds">
-          <rect x="274.6" y="398" width="62.8" height="14" rx="3" class="c-mask"/>
-          <text x="306" y="408" class="t-security" font-size="8" text-anchor="middle">prints once</text>
+        <g data-detail="context" data-edge-from="bootstrap" data-edge-to="creds" data-edge-label="logs generated password" data-edge-key="5" data-edge-id="bootstrap-creds">
+          <rect x="245.8" y="398" width="120.39999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="306" y="408" class="t-security" font-size="8" text-anchor="middle">logs generated password</text>
         </g>
         <g data-detail="context" data-edge-from="creds" data-edge-to="visitor" data-edge-label="operator reads" data-edge-key="6" data-edge-id="creds-visitor">
           <rect x="86.4" y="359" width="77.2" height="14" rx="3" class="c-mask"/>
           <text x="125" y="369" class="t-messagebus" font-size="8" text-anchor="middle">operator reads</text>
         </g>
-        <g data-detail="context" data-edge-from="supervisor" data-edge-to="oidc_sup" data-edge-label="starts, never restarts" data-edge-key="7" data-edge-id="supervisor-oidc">
-          <rect x="262.2" y="92" width="115.6" height="14" rx="3" class="c-mask"/>
-          <text x="320" y="102" class="t-messagebus" font-size="8" text-anchor="middle">starts, never restarts</text>
+        <g data-detail="context" data-edge-from="supervisor" data-edge-to="oidc_sup" data-edge-label="starts supervisor" data-edge-key="7" data-edge-id="supervisor-oidc">
+          <rect x="274.2" y="92" width="91.6" height="14" rx="3" class="c-mask"/>
+          <text x="320" y="102" class="t-messagebus" font-size="8" text-anchor="middle">starts supervisor</text>
         </g>
 
         <g data-detail="context" data-edge-from="oidc_sup" data-edge-to="idp" data-edge-label="loads discovery" data-edge-key="9" data-edge-id="oidc-discovery">
@@ -5448,7 +5448,7 @@
       <div class="card">
         <div class="card-header">
           <div class="card-dot emerald"></div>
-          <h3>Local account — always available</h3>
+          <h3>Local account — enabled by default</h3>
         </div>
         <ul>
           <li>&bull; One admin created on first boot, never rewritten</li>
@@ -5476,7 +5476,7 @@
         </div>
         <ul>
           <li>&bull; ueberauth_oidcc :issuers stays empty on purpose</li>
-          <li>&bull; A provider that cannot load config is left dead</li>
+          <li>&bull; Provider exceptions leave the worker stopped</li>
           <li>&bull; /healthz and local sign-in keep serving</li>
         </ul>
       </div>

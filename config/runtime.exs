@@ -24,9 +24,7 @@ end
 # works in compose works in Kubernetes. Test stays hermetic: it must not pick up
 # an issuer from a developer's shell.
 if config_env() != :test do
-  # Local sign-in: an email form gated by ALLOWED_EMAIL_DOMAIN, with no identity
-  # provider. This is the minimal supported runtime, not a dev-only shortcut, so
-  # LOCAL_AUTH is the name to use. DEV_AUTH is the older spelling and still works.
+  # Runtime auth settings and compatibility names: docs/deploy.md, "Sign-in".
   local_auth? = System.get_env("LOCAL_AUTH") || System.get_env("DEV_AUTH")
 
   oidc_issuer = System.get_env("OIDC_ISSUER")
