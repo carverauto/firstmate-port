@@ -168,6 +168,17 @@ pkg_tar(
     strip_prefix = "priv/ssl",
 )
 
+# Re-root the Mix release tar under /app. Layering :release directly
+# extracts bin/ and lib/ at the filesystem root, replacing Debian's /bin
+# (/bin/sh gone) and /lib (glibc gone). Pattern from serviceradar
+# elixir_release_rootfs.
+pkg_tar(
+    name = "portal_release_layer",
+    extension = "tar.gz",
+    package_dir = "/app",
+    deps = [":release"],
+)
+
 oci_image(
     name = "portal_image",
     base = "@debian_bookworm_slim",
@@ -179,7 +190,7 @@ oci_image(
     },
     exposed_ports = ["4000/tcp"],
     tars = [
-        ":release",
+        ":portal_release_layer",
         ":portal_entrypoint_layer",
         ":portal_cacert_layer",
     ],
