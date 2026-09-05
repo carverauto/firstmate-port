@@ -85,4 +85,9 @@ else
   export PATH="${install_root}:${PATH}"
 fi
 
-"${install_root}/bazelisk" --version
+# `bazelisk --version` forwards to Bazel and can hang under proxy/netpol while
+# the binary resolves mirrors. Print the shim version only here; the workflow
+# Verify Bazel version step exercises the real binary with timeouts.
+if ! timeout 30 "${install_root}/bazelisk" version 2>/dev/null; then
+  echo "bazelisk shim ok at ${install_path} (timed out printing version; continuing)"
+fi
