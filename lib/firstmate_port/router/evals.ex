@@ -130,6 +130,12 @@ defmodule FirstmatePort.Router.Evals do
       expect_model: "harness-default"
     },
     %{
+      name: "redeploy keeps its ops lane",
+      description: "redeploy the api gateway",
+      expect_harness: "claude",
+      expect_effort: "high"
+    },
+    %{
       name: "explain retry loops",
       description: "explain how the retry loops work in the discord fanout job",
       expect_harness: "grok",

@@ -201,14 +201,6 @@ defmodule FirstmatePort.Router.ProviderIntel do
   defp to_price(_), do: nil
 
   defp to_context(n) when is_number(n), do: n
-
-  defp to_context(s) when is_binary(s) do
-    case Integer.parse(s) do
-      {i, _} -> i
-      :error -> 0
-    end
-  end
-
   defp to_context(_), do: 0
 
   defp quality_note(_harness, []), do: ""

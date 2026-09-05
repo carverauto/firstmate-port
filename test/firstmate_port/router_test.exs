@@ -48,6 +48,22 @@ defmodule FirstmatePort.RouterTest do
     assert Router.classify("the ops runbook needs a restart step").kind == :ops
   end
 
+  test "a prefixed ops verb keeps its kind, blast radius and checkpoint" do
+    for text <- ["redeploy the api gateway", "undeploy the canary", "autoscale the workers"] do
+      assert Router.classify(text).kind == :ops, "#{text} lost its ops kind"
+    end
+
+    for text <- ["redeploy the api gateway", "undeploy the canary"] do
+      assert Router.classify(text).blast_radius == :high, "#{text} lost its blast radius"
+    end
+
+    got = Router.route("redeploy the api gateway")
+
+    assert got.harness == "claude"
+    assert got.effort == "high"
+    assert got.checkpoint == "human-review"
+  end
+
   test "a preview feature is not hard-routed to the code-review model" do
     got = Router.route("implement a preview pane for the diagram html")
 

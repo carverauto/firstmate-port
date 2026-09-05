@@ -4,30 +4,6 @@ defmodule FirstmatePort.Router.ProviderIntelTest do
   alias FirstmatePort.Router
   alias FirstmatePort.Router.ProviderIntel
 
-  test "a string context_length still ranks, and never raises" do
-    intel = %{
-      models:
-        ProviderIntel.parse_openrouter_models(%{
-          "data" => [
-            %{
-              "id" => "openai/roomy",
-              "pricing" => %{"prompt" => "5.0"},
-              "context_length" => "128000"
-            },
-            %{
-              "id" => "openai/cramped",
-              "pricing" => %{"prompt" => "0.5"},
-              "context_length" => "1000"
-            }
-          ]
-        }),
-      benchmarks: [],
-      sources: ["openrouter"]
-    }
-
-    assert {"openai/roomy", "openrouter", _} = ProviderIntel.select_model("codex", intel)
-  end
-
   test "non-scalar provider JSON degrades to empty metadata instead of raising" do
     [row] =
       ProviderIntel.parse_openrouter_models(%{

@@ -86,6 +86,28 @@ defmodule FirstmatePort.Usage.SyncTest do
     end
   end
 
+  test "reading an account's snapshots is bounded to recent samples" do
+    {:ok, account} =
+      UsageAccount.record(
+        %{provider: "openrouter", label: "k6"},
+        FirstmatePort.Tenancy.opts(actor())
+      )
+
+    for i <- 1..70 do
+      {:ok, _} =
+        UsageSnapshot.record(
+          %{usage_account_id: account.id, used: i * 1.0},
+          FirstmatePort.Tenancy.opts(actor())
+        )
+    end
+
+    {:ok, snaps} = UsageSnapshot.for_account(account.id, FirstmatePort.Tenancy.opts(actor()))
+
+    assert length(snaps) == 60
+    assert Enum.any?(snaps, &(&1.used == 70.0))
+    refute Enum.any?(snaps, &(&1.used == 1.0))
+  end
+
   test "a non-scalar provider reading is reported, not raised" do
     {:ok, account} =
       UsageAccount.record(

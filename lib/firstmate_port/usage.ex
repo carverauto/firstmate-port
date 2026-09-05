@@ -50,11 +50,18 @@ defmodule FirstmatePort.Usage do
     end
   end
 
-  @doc "Average daily consumption between the oldest and newest snapshot."
+  @doc """
+  Average daily consumption across the current billing window.
+
+  `used` falls back to zero when a window resets, so samples at or before
+  the last drop belong to a spent window and would understate burn. Only
+  the run since that drop counts.
+  """
   def daily_burn(snapshots) do
     ordered =
       snapshots
       |> Enum.sort_by(&as_unix(inserted_at(&1)))
+      |> since_last_reset()
 
     case {List.first(ordered), List.last(ordered)} do
       {nil, _} ->
@@ -95,6 +102,18 @@ defmodule FirstmatePort.Usage do
       source: account.source,
       last_synced_at: account.last_synced_at
     }
+  end
+
+  defp since_last_reset(ordered) do
+    ordered
+    |> Enum.reduce([], fn
+      snap, [prev | _] = acc ->
+        if (used_of(snap) || 0) < (used_of(prev) || 0), do: [snap], else: [snap | acc]
+
+      snap, [] ->
+        [snap]
+    end)
+    |> Enum.reverse()
   end
 
   defp inserted_at(%{inserted_at: at}), do: at
