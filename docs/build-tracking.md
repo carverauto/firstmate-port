@@ -29,9 +29,25 @@ examples below use `https://app.buildbuddy.io` as the default host.
 
 ### Compose (Docker secret)
 
-Save the org key in `.local-secrets/buildbuddy_org_api_key` (an ignored
-directory), with permissions restricted to its owner. The file should
-contain only the key. Set `BUILDBUDDY_HOST` in `.env` if needed, along with
+Save only the org key in `.local-secrets/buildbuddy_org_api_key` (an ignored
+directory). The portal image runs as UID 1000. On Linux with rootful Docker
+and no user-namespace remapping, give that UID ownership and owner-only
+read access before starting the portal:
+
+```sh
+sudo chown 1000 .local-secrets/buildbuddy_org_api_key
+sudo chmod 0400 .local-secrets/buildbuddy_org_api_key
+```
+
+Apply these permissions again when replacing the key file. With rootless
+Docker or user-namespace remapping, use the host UID mapped to container
+UID 1000 instead. The mounted file must be readable by the container's
+UID 1000; a root-owned file with mode 0600 prevents the portal from starting.
+Compose uses a bind mount for file-backed secrets and ignores secret
+`uid`, `gid`, and `mode` settings, so set ownership and permissions on the
+host file itself. See [Docker's secret documentation](https://docs.docker.com/reference/compose-file/services/#secrets).
+
+Set `BUILDBUDDY_HOST` in `.env` if needed, along with
 the independent `KUBERNETES_TRACKING_ENABLED` and
 `DOCKER_TRACKING_ENABLED` switches.
 
