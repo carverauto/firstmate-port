@@ -32,13 +32,6 @@ jobs:
           NO_PROXY: localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local,carverauto.buildbuddy.io,registry.carverauto.dev,ghcr.io
         run: ./scripts/install-bazelisk.sh
 
-      - name: Persist Smokescreen proxy for Bazel fetches
-        run: |
-          {
-            echo "HTTP_PROXY=http://smokescreen.egress.svc.cluster.local:4750"
-            echo "HTTPS_PROXY=http://smokescreen.egress.svc.cluster.local:4750"
-            echo "NO_PROXY=localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local,carverauto.buildbuddy.io,registry.carverauto.dev,ghcr.io"
-          } >> "$GITHUB_ENV"
       - name: Verify Bazel version
         run: |
           set -euo pipefail
@@ -67,7 +60,7 @@ jobs:
       - name: Build multi-arch fm-steer
         run: |
           set -euo pipefail
-          bazel --output_base=/tmp/fm-fm-port/bazel build --config=remote \
+          env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel build --config=remote \
             //:fm-steer_linux_amd64 \
             //:fm-steer_linux_arm64 \
             //:fm-steer_darwin_amd64 \
@@ -89,7 +82,7 @@ jobs:
             pair="${spec#*:}"
             os="${pair%%:*}"
             arch="${pair##*:}"
-            src="$(bazel --output_base=/tmp/fm-fm-port/bazel cquery --config=remote --output=files "//:fm-steer_${suffix}")"
+            src="$(env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel cquery --config=remote --output=files "//:fm-steer_${suffix}")"
             cp "${src}" "dist/fm-steer_${ver}_${os}_${arch}"
           done
           (cd dist && sha256sum fm-steer_* > SHA256SUMS)

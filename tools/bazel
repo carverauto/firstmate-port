@@ -2,4 +2,38 @@
 # Local Bazel isolation for the fm/fm-port lane.
 # Never pass --config=ci from a laptop.
 set -euo pipefail
-exec bazel --output_base=/tmp/fm-fm-port/bazel "$@"
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+OUTPUT_BASE="${FM_PORT_OUTPUT_BASE:-/tmp/fm-fm-port/bazel}"
+SELF="${ROOT}/tools/bazel"
+
+resolve_bazel() {
+  local candidate
+  # Prefer bazelisk, then bazel — skip this wrapper if it appears on PATH.
+  while IFS= read -r candidate; do
+    [ -n "${candidate}" ] || continue
+    candidate="$(readlink -f "${candidate}" 2>/dev/null || echo "${candidate}")"
+    if [ "${candidate}" = "$(readlink -f "${SELF}" 2>/dev/null || echo "${SELF}")" ]; then
+      continue
+    fi
+    if [ -x "${candidate}" ]; then
+      printf '%s\n' "${candidate}"
+      return 0
+    fi
+  done < <(type -aP bazelisk bazel 2>/dev/null || true)
+  return 1
+}
+
+BAZEL="$(resolve_bazel)" || {
+  echo "tools/bazel: no bazelisk/bazel on PATH (other than this wrapper)" >&2
+  exit 127
+}
+
+# If the caller already passed --output_base, don't prepend another.
+for arg in "$@"; do
+  if [ "${arg}" = "--output_base" ] || [[ "${arg}" == --output_base=* ]]; then
+    exec "${BAZEL}" "$@"
+  fi
+done
+
+exec "${BAZEL}" --output_base="${OUTPUT_BASE}" "$@"

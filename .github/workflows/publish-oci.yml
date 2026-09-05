@@ -43,13 +43,6 @@ jobs:
           NO_PROXY: localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local,carverauto.buildbuddy.io,registry.carverauto.dev,ghcr.io
         run: ./scripts/install-bazelisk.sh
 
-      - name: Persist Smokescreen proxy for Bazel fetches
-        run: |
-          {
-            echo "HTTP_PROXY=http://smokescreen.egress.svc.cluster.local:4750"
-            echo "HTTPS_PROXY=http://smokescreen.egress.svc.cluster.local:4750"
-            echo "NO_PROXY=localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local,carverauto.buildbuddy.io,registry.carverauto.dev,ghcr.io"
-          } >> "$GITHUB_ENV"
       - name: Verify Bazel version
         run: |
           set -euo pipefail
@@ -97,12 +90,12 @@ jobs:
           tag="sha-$(git rev-parse --short HEAD)"
           echo "IMAGE_REPO=${repo}" >> "${GITHUB_ENV}"
           echo "IMAGE_TAG=${tag}" >> "${GITHUB_ENV}"
-          bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${tag}"
+          env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${tag}"
           if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
-            bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${REF_NAME}"
+            env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${REF_NAME}"
           fi
           if [ -n "${EXTRA_TAG}" ]; then
-            bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
+            env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
           fi
       - name: Push fm-steer image
         env:
@@ -114,12 +107,12 @@ jobs:
           tag="sha-$(git rev-parse --short HEAD)"
           echo "STEER_IMAGE_REPO=${repo}" >> "${GITHUB_ENV}"
           echo "STEER_IMAGE_TAG=${tag}" >> "${GITHUB_ENV}"
-          bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${tag}"
+          env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${tag}"
           if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
-            bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${REF_NAME}"
+            env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${REF_NAME}"
           fi
           if [ -n "${EXTRA_TAG}" ]; then
-            bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
+            env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
           fi
       - name: Verify pushed manifests
         run: |
