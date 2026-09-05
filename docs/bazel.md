@@ -24,7 +24,7 @@ After `mix.lock` changes, regenerate `third_party/hex`.
 
 ## CI and OCI
 
-`buildbuddy.yaml` is the BazelCI workflow (self-hosted pool, `--config=ci` on the runner only). GitHub Actions `.github/workflows/bazel.yml` builds Go targets; `.github/workflows/publish-oci.yml` pushes Harbor images via `//:portal_image_push`. Write the BuildBuddy API key into gitignored `.bazelrc.remote` from a secret, never commit it.
+`buildbuddy.yaml` is gitignored (site-specific BazelCI). GitHub Actions `.github/workflows/bazel.yml` builds Go targets; `.github/workflows/publish-oci.yml` pushes Harbor images via `//:portal_image_push`. Write the BuildBuddy API key into gitignored `.bazelrc.remote` from a secret, never commit it. `--config=ci` belongs on a runner only.
 
 ```sh
 # Publish (Harbor is the internal registry; ghcr.io is a later public mirror)

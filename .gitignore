@@ -1,44 +1,66 @@
-# The directory Mix will write compiled artifacts to.
-/_build/
-
-# If you run "mix test --cover", coverage assets end up here.
-/cover/
-
-# The directory Mix downloads your dependencies sources to.
-/deps/
-
-# Where 3rd-party dependencies like ExDoc output generated docs.
-/doc/
-
-# Ignore .fetch files in case you like to edit your project deps locally.
+# Mix / Phoenix
+# No trailing slash on _build and deps: a symlink of that name would otherwise
+# be staged by `git add -A`.
+/_build
+/cover
+/deps
+/doc
 /.fetch
-
-# If the VM crashes, it generates a dump, let's ignore it too.
 erl_crash.dump
-
-# Also ignore archive artifacts (built via "mix archive.build").
+.elixir_ls/
 *.ez
-
-# Temporary files, for example, from tests.
-/tmp/
-
-# Ignore package tarball (built via "mix hex.build").
+/tmp
 firstmate_port-*.tar
-
-# Ignore assets that are produced by build tools.
-/priv/static/assets/
-
-# Ignore digested assets cache.
+/priv/static/assets
 /priv/static/cache_manifest.json
 
-# In case you use Node.js/npm, you want to ignore these.
-npm-debug.log
+# Node
+npm-debug.log*
 /assets/node_modules/
+node_modules/
+
 # Secrets and local overrides
 .env
+.env.test
+*.pem
+*.key
+*.crt
+.local-secrets/
 docker-compose.override.yml
-.bazelrc.remote
+docker-compose.local.yml
+docker-compose.*.local.yml
 
-# Bazel
-/bazel-*
+# IDE / agent local
+.idea/
+.vscode/
+.DS_Store
+.claude/
+.beads/
+.gemini/
+.codex/
+.venv/
+__pycache__/
+*.py[cod]
+*.log
+
+# Go
+*.test
+*.out
+coverage.txt
+.gobuildcache/
+.gocache/
+.gomodcache/
+
+# Bazel local/remote rc, caches. GitHub Actions writes .bazelrc.remote from a secret.
+.bazelrc.local
+.bazelrc.remote
 /.bazelrc.user
+.bazel_output/
+/bazel-*
+third_party/bazel-repo-cache/
+third_party/bazel-disk-cache/
+third_party/distdir/*
+!third_party/distdir/README.md
+
+# BazelCI workflow is site-specific; do not check it in.
+buildbuddy.yaml
