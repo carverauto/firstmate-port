@@ -61,6 +61,7 @@ defmodule FirstmatePort.Portal.DockerBuild do
         :outcome
       ]
 
+      validate {FirstmatePort.Validations.TrackingEnabled, track: :docker}
       change FirstmatePort.Changes.AssignPublicId
       validate {FirstmatePort.Validations.HttpsUrl, attribute: :pr_url, required?: false}
       validate {FirstmatePort.Validations.HttpsUrl, attribute: :issue_url, required?: false}

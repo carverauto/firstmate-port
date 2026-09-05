@@ -12,8 +12,6 @@ hidden entirely; the portal never renders an empty placeholder for it.
 | Docker     | `?tab=docker` | `DOCKER_TRACKING_ENABLED=true` |
 | BuildBuddy | `?tab=buildbuddy` | `BUILDBUDDY_ORG_API_KEY=<org key>` (plus optional `BUILDBUDDY_HOST`) |
 
-`?tab=rolls` still resolves to the Kubernetes tab for old links.
-
 Recorded facts stay generic: cluster/namespace/image/helm for Kubernetes,
 registry repository/tag/digest for Docker (push to `ghcr.io` when you
 mention an image), invocation id/host/status for BuildBuddy. There is no
@@ -29,17 +27,25 @@ examples below use `https://app.buildbuddy.io` as the default host.
 2. Treat the key as a secret. It is never committed and never logged; the
    app only sends it as the `x-buildbuddy-api-key` header.
 
-### Compose (Docker env)
+### Compose (Docker secret)
 
-Add to your `.env` (see `.env.example`):
+Save the org key in `.local-secrets/buildbuddy_org_api_key` (an ignored
+directory), with permissions restricted to its owner. The file should
+contain only the key. Set `BUILDBUDDY_HOST` in `.env` if needed, along with
+the independent `KUBERNETES_TRACKING_ENABLED` and
+`DOCKER_TRACKING_ENABLED` switches.
+
+Start or recreate the portal with the secret override:
 
 ```sh
-BUILDBUDDY_HOST=https://app.buildbuddy.io
-BUILDBUDDY_ORG_API_KEY=<paste the org key>
+docker compose -f docker-compose.yml -f docker-compose.buildbuddy.yml up -d --build
 ```
 
-Restart the portal container. The presence of the key enables the
-BuildBuddy plate; removing it hides the plate again.
+The override mounts the file at `/run/secrets/buildbuddy_org_api_key`;
+the app reads it through `BUILDBUDDY_ORG_API_KEY_FILE`. To use another
+source file, set that variable in `.env`. The default Compose stack
+requires no secret and leaves BuildBuddy tracking disabled. To disable
+it again, recreate the portal using only `docker-compose.yml`.
 
 ### Kubernetes (firstmate namespace)
 
@@ -59,7 +65,7 @@ to opt into the other plates.
 ## Recording
 
 All writes need an agent token (`Authorization: Bearer <agent token>`).
-Record only what you choose to track.
+Disabled tracks reject writes through both HTTP and MCP.
 
 ```sh
 # Kubernetes roll (POST /api/rolls)
@@ -72,11 +78,10 @@ curl -X POST "$PUBLIC_URL/api/docker-builds" -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"repository":"ghcr.io/example/app","tag":"sha-abc123","status":"success"}'
 
-# BuildBuddy invocation: a bare copied URL is enough; the portal splits
-# host and invocation id for you (POST /api/buildbuddy-invocations)
+# BuildBuddy invocation (POST /api/buildbuddy-invocations)
 curl -X POST "$PUBLIC_URL/api/buildbuddy-invocations" -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"buildbuddy_url":"https://app.buildbuddy.io/invocation/abc-123","status":"SUCCESS"}'
+  -d '{"invocation_id":"abc-123","status":"SUCCESS"}'
 ```
 
 The same writes are available as MCP tools: `post_roll` / `list_rolls`,
@@ -86,7 +91,7 @@ The same writes are available as MCP tools: `post_roll` / `list_rolls`,
 ## Querying BuildBuddy from Elixir
 
 `FirstmatePort.BuildBuddy` (Req-based) calls
-`POST {host}/rpc/BuildBuddyService/GetInvocation` and `SearchInvocation`
+`POST {host}/rpc/BuildBuddyService/GetInvocation`
 with proto3 JSON whenever the org key is present:
 
 ```elixir
@@ -99,13 +104,10 @@ BuildBuddy.configured?()
 inv.status      #=> "SUCCESS"
 inv.commit_sha  #=> "deadbeef"
 inv.url         #=> "https://app.buildbuddy.io/invocation/abc-123"
-
-{:ok, recent} = BuildBuddy.recent_invocations(repo_url: "https://github.com/example/app", count: 10)
 ```
 
 Without a key every lookup returns `{:error, :unconfigured}`; without a
-host, `{:error, :no_host}`. Pass `host:` per call to query a host other
-than `BUILDBUDDY_HOST`.
+host, `{:error, :no_host}`. API calls use `BUILDBUDDY_HOST`.
 
 Note: the GitHub poll copies a BuildBuddy invocation URL from check runs
 onto `github_items.buildbuddy_url`. That is a copied link, not an API

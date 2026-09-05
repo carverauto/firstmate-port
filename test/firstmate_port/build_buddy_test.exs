@@ -31,24 +31,11 @@ defmodule FirstmatePort.BuildBuddyTest do
     assert BuildBuddy.invocation_url("abc-123") == @host <> "/invocation/abc-123"
   end
 
-  test "invocation_url accepts an explicit host and is nil without one" do
-    assert BuildBuddy.invocation_url("abc", "https://other.example/") ==
-             "https://other.example/invocation/abc"
-
+  test "invocation_url is nil without a host or id" do
     Application.put_env(:firstmate_port, :build_tracking, buildbuddy_api_key: @key)
     assert BuildBuddy.invocation_url("abc") == nil
     assert BuildBuddy.invocation_url("") == nil
     assert BuildBuddy.invocation_url(nil) == nil
-  end
-
-  test "parse_invocation_url splits host and id" do
-    assert BuildBuddy.parse_invocation_url(@host <> "/invocation/abc-123") ==
-             {:ok, %{host: @host, invocation_id: "abc-123"}}
-
-    assert :error = BuildBuddy.parse_invocation_url("https://github.com/org/repo/pull/1")
-    assert :error = BuildBuddy.parse_invocation_url(@host <> "/invocation/")
-    assert :error = BuildBuddy.parse_invocation_url("not a url")
-    assert :error = BuildBuddy.parse_invocation_url(nil)
   end
 
   test "get_invocation refuses without a key or host" do
@@ -111,22 +98,4 @@ defmodule FirstmatePort.BuildBuddyTest do
     refute message =~ @key
   end
 
-  test "recent_invocations returns newest-first normalized rows" do
-    Req.Test.stub(BuildBuddySearchStub, fn conn ->
-      assert conn.request_path == "/rpc/BuildBuddyService/SearchInvocation"
-
-      Req.Test.json(conn, %{
-        "invocation" => [%{"invocationId" => "one"}, %{"invocationId" => "two"}]
-      })
-    end)
-
-    assert {:ok, [first, second]} =
-             BuildBuddy.recent_invocations(
-               count: 2,
-               req_options: [plug: {Req.Test, BuildBuddySearchStub}]
-             )
-
-    assert first.invocation_id == "one"
-    assert second.invocation_id == "two"
-  end
 end

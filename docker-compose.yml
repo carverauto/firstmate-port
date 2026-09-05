@@ -51,6 +51,9 @@ services:
       NATS_HOST: nats
       NATS_PORT: "4222"
       NATS_REPLICAS: "1"
+      KUBERNETES_TRACKING_ENABLED: ${KUBERNETES_TRACKING_ENABLED:-false}
+      DOCKER_TRACKING_ENABLED: ${DOCKER_TRACKING_ENABLED:-false}
+      BUILDBUDDY_HOST: ${BUILDBUDDY_HOST:-https://app.buildbuddy.io}
     ports:
       - "4000:4000"
 

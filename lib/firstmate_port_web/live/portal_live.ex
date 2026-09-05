@@ -50,12 +50,7 @@ defmodule FirstmatePortWeb.PortalLive do
 
   @impl true
   def handle_params(params, _uri, socket) do
-    tab =
-      case params["tab"] do
-        nil -> "all"
-        "rolls" -> "kubernetes"
-        other -> other
-      end
+    tab = params["tab"] || "all"
 
     {:noreply, assign(socket, :filter, tab)}
   end

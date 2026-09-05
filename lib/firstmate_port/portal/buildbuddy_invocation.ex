@@ -62,6 +62,7 @@ defmodule FirstmatePort.Portal.BuildBuddyInvocation do
         :outcome
       ]
 
+      validate {FirstmatePort.Validations.TrackingEnabled, track: :buildbuddy}
       change FirstmatePort.Changes.AssignPublicId
       validate {FirstmatePort.Validations.HttpsUrl, attribute: :buildbuddy_url, required?: false}
       validate {FirstmatePort.Validations.HttpsUrl, attribute: :pr_url, required?: false}

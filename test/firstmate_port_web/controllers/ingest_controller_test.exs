@@ -1,9 +1,19 @@
 defmodule FirstmatePortWeb.Api.IngestControllerTest do
-  use FirstmatePortWeb.ConnCase, async: true
+  use FirstmatePortWeb.ConnCase, async: false
 
   alias FirstmatePort.Accounts.User
 
   setup do
+    original = Application.get_env(:firstmate_port, :build_tracking, [])
+
+    Application.put_env(:firstmate_port, :build_tracking,
+      kubernetes_enabled: true,
+      docker_enabled: true,
+      buildbuddy_api_key: "test-key"
+    )
+
+    on_exit(fn -> Application.put_env(:firstmate_port, :build_tracking, original) end)
+
     token = "fmh_test_" <> Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
 
     {:ok, agent} =
@@ -89,18 +99,29 @@ defmodule FirstmatePortWeb.Api.IngestControllerTest do
     assert String.contains?(url, "/docker-builds/")
   end
 
-  test "agent can record a buildbuddy invocation from a bare URL", %{conn: conn, token: token} do
+  test "agent can record a buildbuddy invocation from an invocation id", %{conn: conn, token: token} do
     conn =
       conn
       |> put_req_header("authorization", "Bearer " <> token)
       |> post(~p"/api/buildbuddy-invocations", %{
-        "buildbuddy_url" => "https://bb.example.com/invocation/abc-123",
+        "invocation_id" => "abc-123",
         "status" => "SUCCESS"
       })
 
     assert %{"id" => id, "invocation_id" => "abc-123", "url" => url} = json_response(conn, 200)
     assert id
     assert String.contains?(url, "/buildbuddy-invocations/")
+  end
+
+  test "a BuildBuddy URL alone is rejected", %{conn: conn, token: token} do
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer " <> token)
+      |> post(~p"/api/buildbuddy-invocations", %{
+        "buildbuddy_url" => "https://bb.example.com/invocation/abc-123"
+      })
+
+    assert conn.status in [400, 422]
   end
 
   test "rejects a roll whose PR URL is not full https", %{conn: conn, token: token} do

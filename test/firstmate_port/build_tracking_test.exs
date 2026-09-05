@@ -14,6 +14,30 @@ defmodule FirstmatePort.BuildTrackingTest do
     Application.put_env(:firstmate_port, :build_tracking, config)
   end
 
+  test "record actions reject each disabled track independently" do
+    tracks = [
+      {FirstmatePort.Portal.Roll, :kubernetes_enabled, false,
+       %{cluster: "prod", namespace: "web", status: :success, image_tag: "sha-abc"}},
+      {FirstmatePort.Portal.DockerBuild, :docker_enabled, false,
+       %{repository: "ghcr.io/example/app", tag: "sha-abc", status: :success}},
+      {FirstmatePort.Portal.BuildBuddyInvocation, :buildbuddy_api_key, nil,
+       %{invocation_id: "abc-123"}}
+    ]
+
+    for {resource, flag, disabled, attrs} <- tracks do
+      put(
+        Keyword.put(
+          [kubernetes_enabled: true, docker_enabled: true, buildbuddy_api_key: "test-key"],
+          flag,
+          disabled
+        )
+      )
+
+      assert {:error, error} = resource.record(attrs, tenant: "local", authorize?: false)
+      assert Exception.message(error) =~ "tracking is disabled"
+    end
+  end
+
   test "all plates hidden by default" do
     put(kubernetes_enabled: false, docker_enabled: false, buildbuddy_api_key: nil)
 

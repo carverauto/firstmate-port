@@ -62,6 +62,7 @@ defmodule FirstmatePort.Portal.Roll do
         :outcome
       ]
 
+      validate {FirstmatePort.Validations.TrackingEnabled, track: :kubernetes}
       change FirstmatePort.Changes.AssignPublicId
       validate {FirstmatePort.Validations.HttpsUrl, attribute: :pr_url, required?: false}
       validate {FirstmatePort.Validations.HttpsUrl, attribute: :issue_url, required?: false}

@@ -85,11 +85,9 @@ defmodule FirstmatePortWeb.Api.IngestController do
   end
 
   def create_buildbuddy_invocation(conn, params) do
-    {invocation_id, host} = invocation_identity(params)
-
     record(conn, BuildBuddyInvocation, :record, %{
-      invocation_id: invocation_id,
-      host: host,
+      invocation_id: params["invocation_id"],
+      host: BuildBuddy.host() || "",
       status: params["status"] || "",
       commit_sha: params["commit_sha"] || "",
       branch: params["branch"] || "",
@@ -99,22 +97,6 @@ defmodule FirstmatePortWeb.Api.IngestController do
       outcome: params["outcome"] || ""
     })
   end
-
-  # Callers may POST just a copied invocation URL; split it into the
-  # invocation id and host the API client needs.
-  defp invocation_identity(%{"invocation_id" => id} = params)
-       when is_binary(id) and id != "" do
-    {id, params["host"] || ""}
-  end
-
-  defp invocation_identity(%{"buildbuddy_url" => url} = params) when is_binary(url) do
-    case BuildBuddy.parse_invocation_url(url) do
-      {:ok, %{host: host, invocation_id: id}} -> {id, params["host"] || host}
-      :error -> {params["invocation_id"], params["host"] || ""}
-    end
-  end
-
-  defp invocation_identity(params), do: {params["invocation_id"], params["host"] || ""}
 
   def create_no_mistakes(conn, params) do
     record(conn, NoMistakesRun, :record, %{

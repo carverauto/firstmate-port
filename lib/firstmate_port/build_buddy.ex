@@ -7,8 +7,7 @@ defmodule FirstmatePort.BuildBuddy do
   read from `FirstmatePort.BuildTracking` (env `BUILDBUDDY_ORG_API_KEY`
   supplied as a Kubernetes or Docker secret) and is never logged.
 
-  Any BuildBuddy host works; the configured `BUILDBUDDY_HOST` is only the
-  default and can be overridden per call or per recorded invocation.
+  API calls use the configured `BUILDBUDDY_HOST`.
   """
 
   alias FirstmatePort.BuildTracking
@@ -25,55 +24,25 @@ defmodule FirstmatePort.BuildBuddy do
   Web URL for an invocation, e.g. `https://host/invocation/<id>`.
   Returns nil when no host is given or configured.
   """
-  def invocation_url(invocation_id, host \\ nil)
+  def invocation_url(id) when not is_binary(id) or id == "", do: nil
 
-  def invocation_url(id, _host) when not is_binary(id) or id == "", do: nil
-
-  def invocation_url(id, nil) do
+  def invocation_url(id) do
     case host() do
       nil -> nil
-      h -> invocation_url(id, h)
+      host -> String.trim_trailing(host, "/") <> "/invocation/#{id}"
     end
   end
-
-  def invocation_url(id, host) do
-    host |> String.trim_trailing("/") |> Kernel.<>("/invocation/#{id}")
-  end
-
-  @doc """
-  Split a copied BuildBuddy invocation URL into host and invocation id.
-
-  Returns `{:ok, %{host: host, invocation_id: id}}` or `:error`.
-  """
-  def parse_invocation_url(url) when is_binary(url) do
-    case URI.parse(String.trim(url)) do
-      %URI{scheme: s, host: h, path: "/invocation/" <> id}
-      when s in ["http", "https"] and is_binary(h) and h != "" ->
-        id = id |> String.split("/") |> List.first("") |> String.trim()
-
-        if id == "" do
-          :error
-        else
-          {:ok, %{host: "#{s}://#{h}", invocation_id: id}}
-        end
-
-      _ ->
-        :error
-    end
-  end
-
-  def parse_invocation_url(_), do: :error
 
   @doc """
   Fetch one invocation via `GetInvocation`. Returns `{:ok, map}` with a
   normalized subset (`invocation_id`, `status`, `commit_sha`, `branch`,
   `repo_url`, `host`, `url`) plus the raw payload under `:raw`.
 
-  Options: `:host` to override the configured host, `:req_options` merged
+  Options: `:req_options` merged
   into the underlying `Req.new/1` (used by tests to stub HTTP).
   """
   def get_invocation(invocation_id, opts \\ []) do
-    with {:ok, {host, key}} <- credentials(opts),
+    with {:ok, {host, key}} <- credentials(),
          :ok <- require_id(invocation_id) do
       body = %{
         "requestContext" => %{},
@@ -89,55 +58,8 @@ defmodule FirstmatePort.BuildBuddy do
     end
   end
 
-  @doc """
-  List recent invocations via `SearchInvocation`, newest first.
-
-  Options: `:host`, `:req_options` (as in `get_invocation/2`), plus query
-  filters `:repo_url`, `:branch`, `:status` (e.g. `"FAILED"`), `:count`
-  (default 25), `:updated_after`, `:updated_before` (ISO8601), and
-  `:group_id` when the org needs an explicit request context.
-  """
-  def recent_invocations(opts \\ []) do
-    with {:ok, {host, key}} <- credentials(opts) do
-      query =
-        %{
-          "repoUrl" => opts[:repo_url],
-          "branchName" => opts[:branch],
-          "invocationStatus" => List.wrap(opts[:status] || []),
-          "updatedAfter" => opts[:updated_after],
-          "updatedBefore" => opts[:updated_before]
-        }
-        |> Enum.reject(fn {_k, v} -> v in [nil, "", []] end)
-        |> Map.new()
-
-      context =
-        case opts[:group_id] do
-          nil -> %{}
-          group -> %{"groupId" => group}
-        end
-
-      body = %{
-        "requestContext" => context,
-        "query" => query,
-        "sort" => %{"sortField" => "UPDATED_AT_USEC_SORT_FIELD", "ascending" => false},
-        "count" => opts[:count] || 25
-      }
-
-      case rpc(host, key, "SearchInvocation", body, opts) do
-        {:ok, %{"invocation" => invs}} when is_list(invs) ->
-          {:ok, Enum.map(invs, &normalize(&1, host))}
-
-        {:ok, other} when is_map(other) ->
-          {:error, {:unexpected_response, other}}
-
-        {:error, _} = err ->
-          err
-      end
-    end
-  end
-
-  defp credentials(opts) do
-    host = opts[:host] || host()
+  defp credentials() do
+    host = host()
 
     cond do
       BuildTracking.api_key() in [nil, ""] -> {:error, :unconfigured}
@@ -181,7 +103,7 @@ defmodule FirstmatePort.BuildBuddy do
       branch: field(inv, ["branchName", "branch_name"]) || "",
       repo_url: field(inv, ["repoUrl", "repo_url"]) || "",
       host: host,
-      url: invocation_url(id, host),
+      url: invocation_url(id),
       raw: inv
     }
   end
