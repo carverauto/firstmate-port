@@ -88,6 +88,8 @@ defmodule FirstmatePortWeb.UsageController do
     end
   end
 
+  defp number(_), do: nil
+
   defp integer(nil), do: nil
   defp integer(i) when is_integer(i), do: i
 
@@ -98,6 +100,8 @@ defmodule FirstmatePortWeb.UsageController do
     end
   end
 
+  defp integer(_), do: nil
+
   defp datetime(nil), do: nil
 
   defp datetime(s) when is_binary(s) do
@@ -106,4 +110,6 @@ defmodule FirstmatePortWeb.UsageController do
       _ -> nil
     end
   end
+
+  defp datetime(_), do: nil
 end

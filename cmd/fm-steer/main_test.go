@@ -215,3 +215,18 @@ func TestPostJSONStatusAcceptsEmptyInbox(t *testing.T) {
 		t.Fatalf("status %d", status)
 	}
 }
+
+func TestGetJSONFailsOnNonJSONSuccess(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "text/html")
+		_, _ = w.Write([]byte("<html><body>sign in</body></html>"))
+	}))
+	defer srv.Close()
+	var out struct {
+		Data []map[string]any `json:"data"`
+	}
+	err := getJSON(srv.URL+"/api/usage", "jwt", &out)
+	if err == nil {
+		t.Fatal("HTTP 200 with an HTML body was reported as success")
+	}
+}

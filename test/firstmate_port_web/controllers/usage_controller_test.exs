@@ -125,6 +125,27 @@ defmodule FirstmatePortWeb.UsageControllerTest do
     assert json_response(conn, 422)
   end
 
+  test "non-scalar numbers, priorities and timestamps are ignored, not crashes", %{
+    conn: conn,
+    token: token
+  } do
+    body =
+      auth(conn, token)
+      |> post(~p"/api/usage", %{
+        "provider" => "openrouter",
+        "label" => "captain",
+        "allowance" => true,
+        "spend_priority" => %{},
+        "reset_at" => 123
+      })
+      |> json_response(200)
+
+    assert body["allowance"] == nil
+    assert body["status"] == "unknown"
+    assert body["spend_priority"] == 100
+    assert body["reset_at"] == nil
+  end
+
   test "sync without provider keys reports manual-only", %{conn: conn, token: token} do
     auth(conn, token)
     |> post(~p"/api/usage", %{"provider" => "anthropic", "label" => "direct"})

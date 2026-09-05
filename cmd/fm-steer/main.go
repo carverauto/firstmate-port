@@ -486,8 +486,8 @@ func getJSON(url, token string, out any) error {
 	return statusError(status, raw)
 }
 
-// requestJSON reports transport failures only and hands the status back
-// raw, so the device-code poll loop can read RFC 8628's 400 as "pending".
+// requestJSON reports transport and 2xx decode failures, and hands the status
+// back raw, so the device-code poll loop can read RFC 8628's 400 as "pending".
 func requestJSON(method, url, token string, body any, out any) (int, []byte, error) {
 	var reader io.Reader
 	if body != nil {
@@ -517,7 +517,9 @@ func requestJSON(method, url, token string, body any, out any) (int, []byte, err
 		return resp.StatusCode, nil, err
 	}
 	if out != nil && len(raw) > 0 {
-		_ = json.Unmarshal(raw, out)
+		if err := json.Unmarshal(raw, out); err != nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return resp.StatusCode, raw, fmt.Errorf("%s: response was not JSON: %w", url, err)
+		}
 	}
 	return resp.StatusCode, raw, nil
 }
