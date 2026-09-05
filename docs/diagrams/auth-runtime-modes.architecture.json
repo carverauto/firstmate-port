@@ -1,0 +1,349 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "firstmate-port auth and runtime modes",
+    "output": "auth-runtime-modes.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "local-account",
+        "label": "Local account",
+        "focus": [
+          "visitor",
+          "login",
+          "auth",
+          "users",
+          "bootstrap",
+          "creds"
+        ],
+        "note": "The way in that needs no identity provider: one admin account created on first boot."
+      },
+      {
+        "id": "optional-oidc",
+        "label": "Optional OIDC",
+        "focus": [
+          "login",
+          "auth",
+          "oidc_sup",
+          "idp"
+        ],
+        "note": "Any OpenID Connect issuer. Endpoints come from its discovery document, never from a vendor URL template."
+      },
+      {
+        "id": "fail-soft",
+        "label": "Fail-soft supervision",
+        "focus": [
+          "supervisor",
+          "oidc_sup",
+          "idp",
+          "endpoint",
+          "login"
+        ],
+        "note": "A provider that cannot load its configuration dies alone. The endpoint and local sign-in keep serving."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "visitor",
+      "type": "external",
+      "label": "Visitor",
+      "sublabel": "Browser",
+      "pos": [
+        40,
+        285
+      ],
+      "size": [
+        130,
+        58
+      ]
+    },
+    {
+      "id": "login",
+      "type": "frontend",
+      "label": "LoginLive",
+      "sublabel": "/login",
+      "tag": "offers what is available",
+      "pos": [
+        240,
+        285
+      ],
+      "size": [
+        170,
+        58
+      ]
+    },
+    {
+      "id": "auth",
+      "type": "backend",
+      "label": "AuthController",
+      "sublabel": "/auth/local \u00b7 /auth/oidc",
+      "pos": [
+        530,
+        285
+      ],
+      "size": [
+        190,
+        58
+      ]
+    },
+    {
+      "id": "guardian",
+      "type": "security",
+      "label": "Guardian",
+      "sublabel": "signed session cookie",
+      "pos": [
+        830,
+        285
+      ],
+      "size": [
+        180,
+        58
+      ]
+    },
+    {
+      "id": "oidc_sup",
+      "type": "backend",
+      "label": "OIDC.Supervisor",
+      "sublabel": ":firstmate_oidc",
+      "tag": "temporary child",
+      "pos": [
+        400,
+        90
+      ],
+      "size": [
+        200,
+        58
+      ]
+    },
+    {
+      "id": "idp",
+      "type": "external",
+      "label": "Any OIDC issuer",
+      "sublabel": "Keycloak \u00b7 Dex \u00b7 Google \u00b7 Okta",
+      "pos": [
+        720,
+        90
+      ],
+      "size": [
+        210,
+        58
+      ]
+    },
+    {
+      "id": "endpoint",
+      "type": "cloud",
+      "label": "Phoenix Endpoint",
+      "sublabel": "/healthz stays up",
+      "pos": [
+        40,
+        185
+      ],
+      "size": [
+        200,
+        56
+      ]
+    },
+    {
+      "id": "supervisor",
+      "type": "backend",
+      "label": "FirstmatePort.Supervisor",
+      "sublabel": "one_for_one",
+      "pos": [
+        40,
+        90
+      ],
+      "size": [
+        200,
+        58
+      ]
+    },
+    {
+      "id": "bootstrap",
+      "type": "backend",
+      "label": "Bootstrap.ensure_admin!",
+      "sublabel": "first boot only",
+      "pos": [
+        330,
+        415
+      ],
+      "size": [
+        210,
+        58
+      ]
+    },
+    {
+      "id": "creds",
+      "type": "security",
+      "label": "First-run credential",
+      "sublabel": "compose logs \u00b7 firstmate-admin secret",
+      "pos": [
+        40,
+        415
+      ],
+      "size": [
+        210,
+        62
+      ]
+    },
+    {
+      "id": "users",
+      "type": "database",
+      "label": "users",
+      "sublabel": "hashed_password (PBKDF2)",
+      "pos": [
+        640,
+        415
+      ],
+      "size": [
+        200,
+        58
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "One image \u00b7 docker compose or Kubernetes",
+      "wraps": [
+        "endpoint",
+        "supervisor",
+        "login",
+        "auth",
+        "guardian",
+        "oidc_sup",
+        "bootstrap",
+        "users"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "visitor-login",
+      "from": "visitor",
+      "to": "login",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "login-auth",
+      "from": "login",
+      "to": "auth",
+      "label": "email + password",
+      "variant": "emphasis"
+    },
+    {
+      "id": "auth-users",
+      "from": "auth",
+      "to": "users",
+      "label": "verify password",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "auth-guardian",
+      "from": "auth",
+      "to": "guardian",
+      "label": "issue session",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "bootstrap-users",
+      "from": "bootstrap",
+      "to": "users",
+      "label": "creates once"
+    },
+    {
+      "id": "bootstrap-creds",
+      "from": "bootstrap",
+      "to": "creds",
+      "label": "prints once",
+      "variant": "security",
+      "fromSide": "left",
+      "toSide": "right",
+      "labelDy": -35
+    },
+    {
+      "id": "creds-visitor",
+      "from": "creds",
+      "to": "visitor",
+      "label": "operator reads",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "supervisor-oidc",
+      "from": "supervisor",
+      "to": "oidc_sup",
+      "label": "starts, never restarts",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "supervisor-endpoint",
+      "from": "supervisor",
+      "to": "endpoint",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "oidc-discovery",
+      "from": "oidc_sup",
+      "to": "idp",
+      "label": "loads discovery",
+      "variant": "dashed"
+    },
+    {
+      "id": "oidc-ready",
+      "from": "oidc_sup",
+      "to": "login",
+      "label": "ready? gates the button",
+      "fromSide": "left",
+      "toSide": "top"
+    },
+    {
+      "id": "auth-idp",
+      "from": "auth",
+      "to": "idp",
+      "label": "code + PKCE",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Local account \u2014 always available",
+      "items": [
+        "One admin created on first boot, never rewritten",
+        "Password generated and printed once, or set by env",
+        "PBKDF2-HMAC-SHA512 with a per-hash salt"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "OIDC \u2014 optional, vendor-neutral",
+      "items": [
+        "Any issuer; endpoints come from its discovery doc",
+        "Provider process is :firstmate_oidc, not a vendor",
+        "ALLOWED_EMAIL_DOMAIN is opt-in, unset by default"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Fail-soft \u2014 the node survives",
+      "items": [
+        "ueberauth_oidcc :issuers stays empty on purpose",
+        "A provider that cannot load config is left dead",
+        "/healthz and local sign-in keep serving"
+      ]
+    }
+  ]
+}

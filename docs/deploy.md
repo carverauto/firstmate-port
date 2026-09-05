@@ -46,6 +46,9 @@ mix phx.server
 ## Sign-in
 
 Two modes, same image. Neither is a build flag; both are environment.
+[`diagrams/auth-runtime-modes.html`](diagrams/auth-runtime-modes.html) draws
+both, plus the supervision path that keeps a failed provider from stopping the
+node.
 
 **Local** (`LOCAL_AUTH=true`, on by default) is a single bootstrap admin
 account, with no identity provider. It is what `docker compose up` and the base
