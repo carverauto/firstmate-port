@@ -14,7 +14,8 @@ permissions:
   packages: write
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    # Same self-hosted runners as ServiceRadar publish (captain directive).
+    runs-on: serviceradar-signing
     env:
       BUILDBUDDY_ORG_API_KEY: ${{ secrets.BUILDBUDDY_ORG_API_KEY || secrets.BUILDBUDDY_API_KEY }}
       OCI_REGISTRY: ${{ vars.OCI_REGISTRY || 'ghcr.io' }}
