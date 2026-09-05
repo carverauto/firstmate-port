@@ -117,11 +117,21 @@ a:hover {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   color: var(--ink);
   font-weight: 600;
   letter-spacing: -0.03em;
   text-decoration: none;
   flex: none;
+}
+
+.brand-wheel {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  display: block;
 }
 
 .brand:hover {
@@ -382,26 +392,42 @@ pre {
 }
 
 .auth-hero h1 {
-  margin: 0.4rem 0 0.75rem;
-  font-size: clamp(2rem, 4vw, 3.4rem);
+  margin: 0 0 0.75rem;
+  font-size: clamp(2rem, 4vw, 3.2rem);
   letter-spacing: -0.05em;
   line-height: 1.05;
   max-width: 14ch;
 }
 
-.brand-mark {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
 .lede {
   margin: 0;
-  max-width: 36ch;
+  max-width: 38ch;
+  color: var(--muted);
+  font-size: 1.02rem;
+}
+
+.auth-points {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
   color: var(--muted);
 }
 
-.auth-panel {
+.auth-points li {
+  position: relative;
+  padding-left: 1.35rem;
+}
+
+.auth-points li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+.auth-card {
   width: 100%;
   max-width: 22rem;
   justify-self: end;
@@ -411,7 +437,7 @@ pre {
   padding: 1.5rem;
 }
 
-.auth-panel h2 {
+.auth-card h2 {
   margin: 0 0 1rem;
   font-size: 1rem;
 }
@@ -491,7 +517,7 @@ pre {
     font-size: clamp(1.8rem, 8vw, 2.4rem);
   }
 
-  .auth-panel {
+  .auth-card {
     max-width: none;
     justify-self: stretch;
   }

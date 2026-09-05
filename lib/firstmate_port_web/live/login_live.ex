@@ -31,15 +31,19 @@ defmodule FirstmatePortWeb.LoginLive do
     ~H"""
     <Layouts.auth flash={@flash}>
       <section class="auth-hero">
-        <p class="brand-mark">firstmate port</p>
         <h1>The companion for a captain and crew.</h1>
         <p class="lede">
-          Review diagrams, PRs, issues, image builds, cluster deploys, and
-          no-mistakes runs in one place.
+          Review diagrams, PRs, issues, image builds, Kubernetes and Docker deploys,
+          and no-mistakes runs in one place.
         </p>
+        <ul class="auth-points">
+          <li>One log for diagrams, progress, and pipeline runs</li>
+          <li>Sign in with your identity provider</li>
+          <li>Local-dev sign-in for development</li>
+        </ul>
       </section>
 
-      <section class="auth-panel" aria-labelledby="sign-in-heading">
+      <section class="auth-card" aria-labelledby="sign-in-heading">
         <h2 id="sign-in-heading">Sign in</h2>
 
         <%= if @oidc? do %>
