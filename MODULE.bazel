@@ -1,0 +1,119 @@
+module(
+    name = "firstmate_port",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "rules_go", version = "0.62.0", repo_name = "io_bazel_rules_go")
+bazel_dep(name = "gazelle", version = "0.51.3", repo_name = "bazel_gazelle")
+bazel_dep(name = "rules_erlang", version = "3.19.0")
+bazel_dep(name = "rules_elixir", version = "1.2.0")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "bazel_skylib", version = "1.9.2", repo_name = "bazel_skylib")
+bazel_dep(name = "rules_oci", version = "2.3.0")
+bazel_dep(name = "rules_pkg", version = "1.2.0")
+bazel_dep(name = "aspect_bazel_lib", version = "2.22.5")
+bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4", repo_name = "io_buildbuddy_buildbuddy_toolchain")
+
+git_override(
+    module_name = "rules_erlang",
+    commit = "effba3214d0e5637c66430cad67d59810ce8f1c3",
+    remote = "https://github.com/bazelverse/rules_erlang.git",
+)
+
+git_override(
+    module_name = "rules_elixir",
+    commit = "31e99980a43598211d2a6c5fbb893a21a9c0644b",
+    remote = "https://github.com/bazelverse/rules_elixir.git",
+)
+
+hexpm_ext = use_extension("//third_party/hex:extensions.bzl", "hex")
+use_repo(hexpm_ext, "hexpm")
+
+host_platform_ext = use_extension("@platforms//host:extension.bzl", "host_platform")
+use_repo(host_platform_ext, "host_platform")
+
+erlang_config_ext = use_extension("@rules_erlang//bzlmod:extensions.bzl", "erlang_config")
+
+erlang_config_ext.prebuilt_erlang_from_hex_builds(
+    name = "otp_28_1",
+    arch = "amd64",
+    exec_compatible_with = ["@platforms//os:linux"],
+    os = "ubuntu-24.04",
+    sha256 = "6f7a95250a83f999909cf64dc375fd08809eb057f61b24eecdf2b3b44fe621ab",
+    version = "28.1",
+)
+
+erlang_config_ext.internal_erlang_from_github_release(
+    name = "otp_28_1_darwin",
+    exec_compatible_with = ["@platforms//os:macos"],
+    sha256 = "c7c6fe06a3bf0031187d4cb10d30e11de119b38bdba7cd277898f75d53bdb218",
+    version = "28.1",
+)
+use_repo(erlang_config_ext, "erlang_config")
+
+elixir_config_ext = use_extension("@rules_elixir//bzlmod:extensions.bzl", "elixir_config")
+
+elixir_config_ext.prebuilt_elixir_from_hex_builds(
+    name = "elixir_1_19_4",
+    otp_major = "28",
+    sha256 = "8fd7b5705b756c0e1ec71f9e8281b4b75801b9564f0205b5035319e8505ad2b4",
+    version = "1.19.4",
+)
+use_repo(elixir_config_ext, "elixir_config")
+
+register_toolchains(
+    "@erlang_config//otp_28_1:toolchain_major",
+    "@erlang_config//otp_28_1:toolchain_major_minor",
+    "@erlang_config//otp_28_1_darwin:toolchain_major",
+    "@erlang_config//otp_28_1_darwin:toolchain_major_minor",
+    "@elixir_config//elixir_1_19_4:toolchain",
+)
+
+hex_ext = use_extension("@rules_elixir//bzlmod:extensions.bzl", "hex")
+hex_ext.from_github_release(
+    sha256 = "dabd99ea48ba8064c32bc2e97d59ab1b1055a38a1dd178c5389d95c35e985d2d",
+    version = "2.5.1",
+)
+use_repo(hex_ext, "hex")
+
+go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
+go_sdk.download(version = "1.24.6")
+
+http_archive = use_repo_rule(
+    "@bazel_tools//tools/build_defs/repo:http.bzl",
+    "http_archive",
+)
+
+http_archive(
+    name = "otp_28_1_linux_arm64",
+    build_file_content = """
+filegroup(
+    name = "root_marker",
+    srcs = ["Install"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "otp_root",
+    srcs = glob(
+        allow_empty = False,
+        include = ["**"],
+        exclude = ["**/* *"],
+    ),
+    visibility = ["//visibility:public"],
+)
+""",
+    sha256 = "4585a32725c8eebcd9154cd8884366c93077895d1044974f1b728df5eae2cee9",
+    strip_prefix = "OTP-28.1",
+    urls = ["https://builds.hex.pm/builds/otp/arm64/ubuntu-24.04/OTP-28.1.tar.gz"],
+)
+
+oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
+oci.pull(
+    name = "debian_bookworm_slim",
+    image = "docker.io/library/debian",
+    platforms = ["linux/amd64"],
+    tag = "bookworm-slim",
+)
+use_repo(oci, "debian_bookworm_slim")
+

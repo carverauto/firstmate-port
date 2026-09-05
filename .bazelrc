@@ -1,0 +1,57 @@
+# Isolate local Bazel with:
+#   tools/bazel ...     (sets --output_base=/tmp/fm-fm-port/bazel)
+# --config=remote is fine. Never --config=ci locally.
+
+common --noannounce_rc
+common --color=yes
+common --enable_platform_specific_config
+
+build --keep_going
+build --jobs=auto
+build --show_timestamps
+build --repo_env=RULES_ERLANG_SKIP_SYSTEM=1
+build --repo_env=RULES_ELIXIR_SKIP_SYSTEM=1
+
+test --test_output=errors
+test --flaky_test_attempts=2
+
+# Cache / BES without taking execution ownership.
+# Defaults are generic. Copy .bazelrc.remote.example to .bazelrc.remote
+# for a private BuildBuddy fleet (carverauto or otherwise).
+try-import %workspace%/.bazelrc.remote
+
+build:cache_only --experimental_remote_cache_chunking
+build:cache_only --remote_cache_compression
+build:cache_only --experimental_remote_cache_compression_threshold=100
+build:cache_only --remote_bytestream_uri_prefix=carverauto.buildbuddy.io
+build:cache_only --remote_cache=grpcs://cache-proxy.carverauto.dev:443
+build:cache_only --bes_backend=grpcs://carverauto.buildbuddy.io
+build:cache_only --bes_results_url=https://carverauto.buildbuddy.io/invocation/
+
+build:remote_base --config=cache_only
+build:remote_base --jobs=100
+build:remote_base --remote_download_minimal
+build:remote_base --remote_executor=grpcs://carverauto.buildbuddy.io
+build:remote_base --host_platform=//build/rbe:rbe_platform
+build:remote_base --platforms=//build/rbe:rbe_platform
+build:remote_base --cpu=k8
+build:remote_base --extra_execution_platforms=//build/rbe:rbe_platform
+build:remote_base --define=EXECUTOR=remote
+build:remote_base --incompatible_strict_action_env
+build:remote_base --compilation_mode=opt
+build:remote_base --remote_timeout=15m
+build:remote_base --test_output=errors
+build:remote_base --noenable_platform_specific_config
+
+# CI-only. Do not pass --config=ci from a laptop.
+build:ci --config=remote_base
+build:ci --disk_cache=/bazel-cache/disk
+build:ci --repository_cache=/bazel-cache/repo
+build:ci --build_metadata=ROLE=CI
+
+# Workstation remote-exec. Safe to combine with a host-native platform.
+build:remote --config=remote_base
+build:remote --disk_cache=~/.cache/firstmate-port-bazel/disk
+build:remote --repository_cache=~/.cache/firstmate-port-bazel/repo
+build:remote --repo_contents_cache=~/.cache/firstmate-port-bazel/repo-contents
+build:remote --experimental_disk_cache_gc_max_size=50G

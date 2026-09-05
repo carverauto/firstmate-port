@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: firstmate
+      POSTGRES_PASSWORD: firstmate
+      POSTGRES_DB: firstmate
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U firstmate -d firstmate"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - firstmate_pg:/var/lib/postgresql/data
+
+  nats:
+    image: nats:2.14.0-alpine
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - ./deploy/nats-local.conf:/etc/nats/nats.conf:ro
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+  portal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    environment:
+      PHX_SERVER: "true"
+      PORT: "4000"
+      PHX_HOST: localhost
+      PUBLIC_URL: http://localhost:4000
+      DATABASE_URL: ecto://firstmate:firstmate@postgres/firstmate
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?set SECRET_KEY_BASE in .env}
+      DEV_AUTH: "true"
+      ALLOWED_EMAIL_DOMAIN: localhost
+      NATS_ENABLED: "true"
+      NATS_HOST: nats
+      NATS_PORT: "4222"
+      NATS_REPLICAS: "1"
+    ports:
+      - "4000:4000"
+
+volumes:
+  firstmate_pg:

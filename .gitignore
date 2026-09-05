@@ -1,0 +1,68 @@
+# Mix / Phoenix
+# No trailing slash on _build and deps: a symlink of that name would otherwise
+# be staged by `git add -A`.
+/_build
+/cover
+/deps
+/doc
+/.fetch
+erl_crash.dump
+.elixir_ls/
+*.ez
+/tmp
+firstmate_port-*.tar
+/priv/static/assets
+/priv/static/cache_manifest.json
+
+# Node
+npm-debug.log*
+/assets/node_modules/
+node_modules/
+
+# Secrets and local overrides
+.env
+.env.test
+*.pem
+*.key
+*.crt
+!priv/ssl/cacert.pem
+.local-secrets/
+docker-compose.override.yml
+docker-compose.local.yml
+docker-compose.*.local.yml
+
+# IDE / agent local
+.idea/
+.vscode/
+.DS_Store
+.claude/
+.beads/
+.gemini/
+.codex/
+.venv/
+__pycache__/
+*.py[cod]
+*.log
+
+# Go
+*.test
+*.out
+/fm-steer
+coverage.txt
+.gobuildcache/
+.gocache/
+.gomodcache/
+
+# Bazel local/remote rc, caches. GitHub Actions writes .bazelrc.remote from a secret.
+.bazelrc.local
+.bazelrc.remote
+/.bazelrc.user
+.bazel_output/
+/bazel-*
+third_party/bazel-repo-cache/
+third_party/bazel-disk-cache/
+third_party/distdir/*
+!third_party/distdir/README.md
+
+# BazelCI workflow is site-specific; do not check it in.
+buildbuddy.yaml

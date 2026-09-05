@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firstmate-port
+  namespace: firstmate
+  labels:
+    app: firstmate-port
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: firstmate-port
+  template:
+    metadata:
+      labels:
+        app: firstmate-port
+    spec:
+      securityContext:
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: hub
+          image: firstmate-port:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4000
+          env:
+            - name: PHX_SERVER
+              value: "true"
+            - name: PORT
+              value: "4000"
+            - name: PHX_HOST
+              value: firstmate.example.com
+            - name: PUBLIC_URL
+              value: https://firstmate.example.com
+            - name: NATS_ENABLED
+              value: "true"
+            - name: NATS_HOST
+              value: firstmate-nats
+            - name: NATS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-nats
+                  key: token
+            - name: DISCORD_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-discord
+                  key: public-key
+                  optional: true
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-pg-app
+                  key: uri
+            - name: SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-app
+                  key: secret-key-base
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-authentik-oauth
+                  key: client-id
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-authentik-oauth
+                  key: client-secret
+            - name: FIRSTMATE_AGENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-agent
+                  key: token
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: github-token
+                  key: GITHUB_TOKEN
+                  optional: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: firstmate-port
+  namespace: firstmate
+spec:
+  selector:
+    app: firstmate-port
+  ports:
+    - name: http
+      port: 4000
+      targetPort: http

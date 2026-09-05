@@ -1,0 +1,7 @@
+_build
+deps
+node_modules
+.git
+.tmp
+priv/static/assets
+priv/static/cache_manifest.json

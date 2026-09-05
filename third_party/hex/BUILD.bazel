@@ -1,0 +1,39 @@
+load("@rules_elixir//:hex_stubs.bzl", "hex_stubs", "hex_stubs_test", "hex_stubs_write")
+
+exports_files(glob(["*.BUILD"]))
+
+MIX_LOCKS = [
+    "//:mix.lock",
+]
+
+hex_stubs(
+    name = "stubs",
+    extra_mix_attrs = [
+        "extra_config = HEX_COMPILE_ENV_CONFIG,",
+    ],
+    extra_mix_loads = {
+        "@firstmate_port//build:hex_compile_env.bzl": ["HEX_COMPILE_ENV_CONFIG"],
+    },
+    locks = MIX_LOCKS,
+)
+
+hex_stubs_test(
+    name = "gen_test",
+    size = "small",
+    checked_in = ["hex_packages.bzl"] + glob(["*.BUILD"]),
+    stubs = ":stubs",
+    write_target = "//third_party/hex:write",
+)
+
+hex_stubs_write(
+    name = "write",
+    dest_package = "third_party/hex",
+    stubs = ":stubs",
+    tags = ["manual"],
+)
+
+alias(
+    name = "gen",
+    actual = ":write",
+    tags = ["manual"],
+)

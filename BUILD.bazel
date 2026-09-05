@@ -1,0 +1,178 @@
+load("@rules_elixir//:mix_app.bzl", "mix_app")
+load(
+    "//build:elixir_release.bzl",
+    "SHIPPED_ERTS_OTP_ROOT",
+    "SHIPPED_ERTS_ROOT_MARKER",
+    "elixir_release",
+)
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_push")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["mix.lock", "go.mod", "go.sum"])
+
+filegroup(
+    name = "srcs",
+    srcs = glob(
+        ["**"],
+        exclude = [
+            "bazel-*",
+            "_build/**",
+            "deps/**",
+            "node_modules/**",
+            "tmp/**",
+            ".git/**",
+        ],
+    ),
+)
+
+filegroup(
+    name = "compile_srcs",
+    srcs = glob(
+        [
+            "lib/**",
+            "config/**",
+            "priv/**",
+            "assets/**",
+            "mix.exs",
+            "mix.lock",
+        ],
+        exclude = [
+            "priv/static/assets/**",
+            "priv/static/cache_manifest.json",
+        ],
+    ) + glob(
+        ["test/support/**"],
+        allow_empty = True,
+    ),
+)
+
+PORT_DEPS = [
+    "@hexpm//:ash",
+    "@hexpm//:ash_ai",
+    "@hexpm//:ash_events",
+    "@hexpm//:ash_oban",
+    "@hexpm//:ash_paper_trail",
+    "@hexpm//:ash_phoenix",
+    "@hexpm//:ash_postgres",
+    "@hexpm//:bandit",
+    "@hexpm//:dns_cluster",
+    "@hexpm//:ecto_sql",
+    "@hexpm//:esbuild",
+    "@hexpm//:gettext",
+    "@hexpm//:gnat",
+    "@hexpm//:guardian",
+    "@hexpm//:jason",
+    "@hexpm//:oban",
+    "@hexpm//:phoenix",
+    "@hexpm//:phoenix_ecto",
+    "@hexpm//:phoenix_html",
+    "@hexpm//:phoenix_live_dashboard",
+    "@hexpm//:phoenix_live_view",
+    "@hexpm//:postgrex",
+    "@hexpm//:req",
+    "@hexpm//:req_llm",
+    "@hexpm//:simple_sat",
+    "@hexpm//:swoosh",
+    "@hexpm//:tailwind",
+    "@hexpm//:telemetry_metrics",
+    "@hexpm//:telemetry_poller",
+    "@hexpm//:ueberauth",
+    "@hexpm//:ueberauth_oidcc",
+    "@rules_elixir//elixir",
+]
+
+mix_app(
+    name = "erlang_app",
+    srcs = [":compile_srcs"],
+    app_name = "firstmate_port",
+    deps = PORT_DEPS,
+)
+
+elixir_release(
+    name = "release",
+    mix_env = "prod",
+    recipe = [":compile_srcs"],
+    include_erts_otp_root = SHIPPED_ERTS_OTP_ROOT,
+    include_erts_root_marker = SHIPPED_ERTS_ROOT_MARKER,
+    deps = [":erlang_app"],
+)
+
+go_library(
+    name = "fm-steer_lib",
+    srcs = ["cmd/fm-steer/main.go"],
+    importpath = "github.com/mfreeman451/firstmate-port/cmd/fm-steer",
+)
+
+go_binary(
+    name = "fm-steer",
+    embed = [":fm-steer_lib"],
+)
+
+go_test(
+    name = "fm-steer_test",
+    srcs = ["cmd/fm-steer/main_test.go"],
+    embed = [":fm-steer_lib"],
+)
+
+pkg_tar(
+    name = "fm-steer_layer",
+    srcs = [":fm-steer"],
+    package_dir = "/usr/local/bin",
+)
+
+oci_image(
+    name = "fm-steer_image",
+    base = "@debian_bookworm_slim",
+    entrypoint = ["/usr/local/bin/fm-steer"],
+    tars = [":fm-steer_layer"],
+)
+
+pkg_tar(
+    name = "portal_entrypoint_layer",
+    srcs = ["deploy/oci-entrypoint.sh"],
+    mode = "0755",
+    package_dir = "/app",
+    strip_prefix = "deploy",
+)
+
+pkg_tar(
+    name = "portal_cacert_layer",
+    srcs = ["priv/ssl/cacert.pem"],
+    package_dir = "/etc/ssl/certs",
+    strip_prefix = "priv/ssl",
+)
+
+oci_image(
+    name = "portal_image",
+    base = "@debian_bookworm_slim",
+    entrypoint = ["/app/oci-entrypoint.sh"],
+    env = {
+        "PHX_SERVER": "true",
+        "PORT": "4000",
+        "SSL_CERT_FILE": "/etc/ssl/certs/cacert.pem",
+    },
+    exposed_ports = ["4000/tcp"],
+    tars = [
+        ":release",
+        ":portal_entrypoint_layer",
+        ":portal_cacert_layer",
+    ],
+    workdir = "/app",
+)
+
+oci_push(
+    name = "portal_image_push",
+    image = ":portal_image",
+    repository = "registry.example.com/firstmate/firstmate-port",
+)
+
+oci_push(
+    name = "fm-steer_image_push",
+    image = ":fm-steer_image",
+    repository = "registry.example.com/firstmate/fm-steer",
+)
+
+

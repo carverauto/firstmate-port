@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Local Bazel isolation for the fm/fm-port lane.
+# Never pass --config=ci from a laptop.
+set -euo pipefail
+exec bazel --output_base=/tmp/fm-fm-port/bazel "$@"

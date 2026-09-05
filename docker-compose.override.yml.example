@@ -1,0 +1,17 @@
+# Copy to docker-compose.override.yml for a site-specific stack.
+# Harbor is the internal registry. ghcr.io is a later public mirror the
+# captain will set up; do not invent a second forge.
+#
+# Example (carverauto LAN):
+#
+# services:
+#   portal:
+#     image: registry.carverauto.dev/carverauto/firstmate-port:sha-pending
+#     environment:
+#       PHX_HOST: firstmate.carverauto.dev
+#       PUBLIC_URL: https://firstmate.carverauto.dev
+#       ALLOWED_EMAIL_DOMAIN: carverauto.dev
+#       OIDC_ISSUER: https://auth.carverauto.dev/application/o/firstmate/
+#       OIDC_DISCOVERY_URL: https://auth.carverauto.dev/application/o/firstmate/.well-known/openid-configuration
+#       DEV_AUTH: "false"
+#       NATS_REPLICAS: "3"
