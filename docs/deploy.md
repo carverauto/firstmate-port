@@ -50,7 +50,7 @@ If the source repository is private the package is private too, so the cluster
 needs an `imagePullSecret` built from a token with `read:packages`:
 
 ```sh
-kubectl -n firstmate create secret docker-registry ghcr-pull \
+kubectl -n firstmate create secret docker-registry ghcr-io-cred \
   --docker-server=ghcr.io --docker-username=<github-user> --docker-password=<token>
 ```
 

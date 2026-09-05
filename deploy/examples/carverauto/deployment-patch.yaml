@@ -1,6 +1,6 @@
 # Site identity for the portal container plus the ghcr pull secret.
 # ghcr.io/mfreeman451/firstmate-port is private because the source repo is;
-# create `ghcr-pull` from a token with read:packages before applying.
+# the namespace needs `ghcr-io-cred` (a docker-registry secret) before applying.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -10,7 +10,7 @@ spec:
   template:
     spec:
       imagePullSecrets:
-        - name: ghcr-pull
+        - name: ghcr-io-cred
       containers:
         - name: hub
           imagePullPolicy: IfNotPresent

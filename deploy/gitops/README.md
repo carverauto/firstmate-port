@@ -12,7 +12,7 @@ public VIP, and never expose the portal UI, `/mcp`, or NATS on the Discord
 hostname.
 
 Images come from ghcr.io (`ghcr.io/<owner>/firstmate-port`, tag `sha-<commit>`).
-If the source repo is private, the namespace also needs a `ghcr-pull`
+If the source repo is private, the namespace also needs a `ghcr-io-cred`
 `docker-registry` secret made from a token with `read:packages`.
 
 Site-specific labels and hostnames (for example a LAN Gateway selector) belong

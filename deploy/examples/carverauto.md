@@ -15,7 +15,7 @@ the portal. Copy them into GitOps overlays, `.env`, or `docker-compose.override.
 
 ghcr.io is the registry for this product; Harbor is not used. The source repo is
 private, so the package is private and the namespace needs an `imagePullSecret`
-(`ghcr-pull`) built from a token with `read:packages`.
+(`ghcr-io-cred`, a `docker-registry` secret) built from a token with `read:packages`.
 
 Gateways in this cluster:
 
