@@ -58,10 +58,29 @@ jobs:
           if [ -n "${EXTRA_TAG}" ]; then
             bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
           fi
-      - name: Verify pushed manifest
+      - name: Push fm-steer image
+        env:
+          EXTRA_TAG: ${{ github.event.inputs.extra_tag }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          digest="$(docker manifest inspect "${IMAGE_REPO}:${IMAGE_TAG}" \
-            | sha256sum | cut -d' ' -f1)"
-          echo "manifest for ${IMAGE_REPO}:${IMAGE_TAG} resolved (body sha256:${digest})"
+          repo="${OCI_REGISTRY}/${OCI_PROJECT}/fm-steer"
+          tag="sha-$(git rev-parse --short HEAD)"
+          echo "STEER_IMAGE_REPO=${repo}" >> "${GITHUB_ENV}"
+          echo "STEER_IMAGE_TAG=${tag}" >> "${GITHUB_ENV}"
+          bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${tag}"
+          if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
+            bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${REF_NAME}"
+          fi
+          if [ -n "${EXTRA_TAG}" ]; then
+            bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
+          fi
+      - name: Verify pushed manifests
+        run: |
+          set -euo pipefail
+          for ref in "${IMAGE_REPO}:${IMAGE_TAG}" "${STEER_IMAGE_REPO}:${STEER_IMAGE_TAG}"; do
+            digest="$(docker manifest inspect "${ref}" \
+              | sha256sum | cut -d' ' -f1)"
+            echo "manifest for ${ref} resolved (body sha256:${digest})"
+          done
           docker manifest inspect "${IMAGE_REPO}:${IMAGE_TAG}" | head -40
