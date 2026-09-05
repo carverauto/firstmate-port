@@ -44,12 +44,6 @@ spec:
                 secretKeyRef:
                   name: firstmate-nats
                   key: token
-            - name: DISCORD_WEBHOOK_URL
-              valueFrom:
-                secretKeyRef:
-                  name: firstmate-discord
-                  key: webhook-url
-                  optional: true
             - name: DISCORD_PUBLIC_KEY
               valueFrom:
                 secretKeyRef:

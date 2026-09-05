@@ -13,7 +13,7 @@ config :ash_oban, pro?: false, oban_name: Oban
 config :firstmate_port, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,
-  queues: [default: 10, discord: 5, github: 2],
+  queues: [default: 10, github: 2],
   lifeline: [rescue_after: {2, :hours}],
   pruner: [max_age: {1, :day}],
   repo: FirstmatePort.Repo,
@@ -104,7 +104,6 @@ config :firstmate_port, FirstmatePort.NATS.Connection,
   password: nil,
   replicas: 1
 
-config :firstmate_port, :discord_webhook_url, nil
 config :firstmate_port, :discord_public_key, nil
 
 config :ueberauth_oidcc, issuers: []

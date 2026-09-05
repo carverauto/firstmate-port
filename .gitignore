@@ -47,6 +47,7 @@ __pycache__/
 # Go
 *.test
 *.out
+/fm-steer
 coverage.txt
 .gobuildcache/
 .gocache/

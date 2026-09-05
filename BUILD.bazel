@@ -101,19 +101,6 @@ elixir_release(
 )
 
 go_library(
-    name = "natsutil",
-    srcs = ["internal/natsutil/connect.go"],
-    importpath = "github.com/mfreeman451/firstmate-port/internal/natsutil",
-    deps = ["@com_github_nats_io_nats_go//:nats_go"],
-)
-
-go_test(
-    name = "natsutil_test",
-    srcs = ["internal/natsutil/connect_test.go"],
-    embed = [":natsutil"],
-)
-
-go_library(
     name = "fm-steer_lib",
     srcs = ["cmd/fm-steer/main.go"],
     importpath = "github.com/mfreeman451/firstmate-port/cmd/fm-steer",
@@ -128,43 +115,6 @@ go_test(
     name = "fm-steer_test",
     srcs = ["cmd/fm-steer/main_test.go"],
     embed = [":fm-steer_lib"],
-)
-
-go_library(
-    name = "nats-tail_lib",
-    srcs = ["cmd/nats-tail/main.go"],
-    importpath = "github.com/mfreeman451/firstmate-port/cmd/nats-tail",
-    deps = [
-        ":natsutil",
-        "@com_github_nats_io_nats_go//:nats_go",
-    ],
-)
-
-go_binary(
-    name = "nats-tail",
-    embed = [":nats-tail_lib"],
-)
-
-go_test(
-    name = "nats-tail_test",
-    srcs = ["cmd/nats-tail/main_test.go"],
-    embed = [":nats-tail_lib"],
-)
-
-go_library(
-    name = "discord-inbound_lib",
-    srcs = ["cmd/discord-inbound/main.go"],
-    importpath = "github.com/mfreeman451/firstmate-port/cmd/discord-inbound",
-    deps = [
-        ":natsutil",
-        "@com_github_bwmarrin_discordgo//:discordgo",
-        "@com_github_nats_io_nats_go//:nats_go",
-    ],
-)
-
-go_binary(
-    name = "discord-inbound",
-    embed = [":discord-inbound_lib"],
 )
 
 pkg_tar(

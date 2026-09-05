@@ -64,7 +64,6 @@ defmodule FirstmatePort.Portal.Roll do
       change FirstmatePort.Changes.AssignPublicId
       validate {FirstmatePort.Validations.HttpsUrl, attribute: :pr_url, required?: false}
       validate {FirstmatePort.Validations.HttpsUrl, attribute: :issue_url, required?: false}
-      change {FirstmatePort.Changes.FanoutDiscord, kind: :roll}
     end
   end
 

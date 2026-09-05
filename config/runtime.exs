@@ -88,7 +88,6 @@ if config_env() == :prod do
     password: System.get_env("NATS_PASSWORD"),
     replicas: String.to_integer(System.get_env("NATS_REPLICAS") || "1")
 
-  config :firstmate_port, :discord_webhook_url, System.get_env("DISCORD_WEBHOOK_URL")
   config :firstmate_port, :discord_public_key, System.get_env("DISCORD_PUBLIC_KEY")
 
   issuers =

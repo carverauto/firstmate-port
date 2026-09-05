@@ -45,6 +45,24 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
     assert conn.status == 401
   end
 
+  test "signed command with NATS down is 502 so Discord retries", %{
+    conn: conn,
+    priv: priv
+  } do
+    body = ~s({"type":2,"data":{"name":"ping"}})
+    ts = "1710000000"
+    sig = sign(priv, ts, body)
+
+    conn =
+      conn
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("x-signature-ed25519", sig)
+      |> put_req_header("x-signature-timestamp", ts)
+      |> post("/interactions", body)
+
+    assert conn.status == 502
+  end
+
   defp sign(priv, ts, body) do
     :crypto.sign(:eddsa, :none, ts <> body, [priv, :ed25519])
     |> Base.encode16(case: :lower)

@@ -8,7 +8,7 @@ firstmate-port is the OSS companion portal for firstmate: a Phoenix LiveView sit
 - Ash, AshPostgres, AshPhoenix, AshOban, AshPaperTrail, AshEvents, AshAi MCP
 - Guardian + Ueberauth/ueberauth_oidcc + PKCE. No AshAuthentication tokens. No AshJsonApi.
 - Gnat / NATS JetStream
-- Go CLIs: `fm-steer`, `nats-tail`, `discord-inbound`
+- Go CLI: `fm-steer` (stdlib only; HTTP to the API, never NATS). Discord inbound is Phoenix (`POST /interactions`); no Go/Python sidecars.
 - Tailwind v4 + Geist
 - Bazel (rules_elixir / BuildBuddy remote-exec)
 - Docker Compose (portal, Postgres, single-node JetStream)
@@ -18,7 +18,7 @@ firstmate-port is the OSS companion portal for firstmate: a Phoenix LiveView sit
 
 ### Code Style
 - Elixir: mix format, pattern match in tests, `unbuffer mix test` when available
-- Go: stdlib plus official NATS client / discordgo
+- Go: stdlib only
 - Prefix every `npm` with `sfw`
 
 ### Architecture Patterns

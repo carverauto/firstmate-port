@@ -27,6 +27,5 @@ CLI: `fm-steer` authenticates with RFC 8628 device-code against this API and dri
 
 - `lib/` Phoenix/Ash portal
 - `cmd/fm-steer` HTTP inbox CLI (device-code; does not dial NATS)
-- `cmd/nats-tail`, `cmd/discord-inbound`, `cmd/discord-interactions`
-- `k8s/` portal + 3-node NATS + CNPG
+- `k8s/` portal + 3-node NATS + CNPG (Discord interactions are served by Phoenix at `/interactions`; no sidecars)
 - `docker-compose.yml` portal + Postgres + single-node JetStream

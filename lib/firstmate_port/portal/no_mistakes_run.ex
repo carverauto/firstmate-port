@@ -79,7 +79,6 @@ defmodule FirstmatePort.Portal.NoMistakesRun do
 
       change FirstmatePort.Changes.AssignPublicId
       validate {FirstmatePort.Validations.HttpsUrl, attribute: :pr_url, required?: false}
-      change {FirstmatePort.Changes.FanoutDiscord, kind: :no_mistakes}
     end
 
     update :human_respond do

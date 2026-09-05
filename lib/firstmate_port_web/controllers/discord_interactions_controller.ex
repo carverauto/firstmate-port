@@ -1,9 +1,14 @@
 defmodule FirstmatePortWeb.DiscordInteractionsController do
   @moduledoc """
-  Public Discord HTTP interactions. Verifies Ed25519. PING -> PONG.
+  Public Discord HTTP interactions endpoint. Verifies Ed25519, PING -> PONG,
+  and publishes command payloads onto `<tenant>.discord.inbound` through the
+  app's Gnat client. This Phoenix service is the only JetStream client;
+  Discord has no tenant context, so interactions land in the default tenant.
   """
 
   use FirstmatePortWeb, :controller
+
+  require Logger
 
   @max_body 64 * 1024
 
@@ -25,8 +30,14 @@ defmodule FirstmatePortWeb.DiscordInteractionsController do
         json(conn, %{type: 1})
 
       true ->
-        _ = publish(raw)
-        json(conn, %{type: 5})
+        case publish(raw) do
+          :ok ->
+            json(conn, %{type: 5})
+
+          {:error, reason} ->
+            Logger.warning("Discord interaction not queued: #{inspect(reason)}")
+            conn |> put_status(:bad_gateway) |> text("upstream unavailable")
+        end
     end
   end
 

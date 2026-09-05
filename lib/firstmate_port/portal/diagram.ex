@@ -51,7 +51,6 @@ defmodule FirstmatePort.Portal.Diagram do
       primary? true
       accept [:id, :title, :notes, :html, :png, :svg]
       change FirstmatePort.Changes.AssignPublicId
-      change {FirstmatePort.Changes.FanoutDiscord, kind: :diagram}
     end
   end
 
