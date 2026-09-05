@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -165,5 +166,52 @@ func TestUsageSyncPostsToPortal(t *testing.T) {
 	usageRun([]string{"--instance", srv.URL, "--sync"})
 	if gotPath != "/api/usage/sync" {
 		t.Fatalf("path %s", gotPath)
+	}
+}
+
+func TestGetJSONFailsOnUnauthorized(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+	}))
+	defer srv.Close()
+	var out map[string]any
+	err := getJSON(srv.URL+"/api/usage", "stale", &out)
+	if err == nil {
+		t.Fatal("HTTP 401 was reported as success")
+	}
+	if !strings.Contains(err.Error(), "unauthorized") {
+		t.Fatalf("error %v drops the portal message", err)
+	}
+}
+
+func TestPostJSONFailsOnNotFound(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "not_found"})
+	}))
+	defer srv.Close()
+	var out map[string]any
+	err := postJSON(srv.URL+"/api/cli/inbox/ack", "jwt", map[string]string{"ack": "999"}, &out)
+	if err == nil {
+		t.Fatal("HTTP 404 was reported as success")
+	}
+	if !strings.Contains(err.Error(), "not_found") {
+		t.Fatalf("error %v drops the portal message", err)
+	}
+}
+
+func TestPostJSONStatusAcceptsEmptyInbox(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	var out map[string]any
+	status, err := postJSONStatus(srv.URL+"/api/cli/inbox/next", "jwt", map[string]string{}, &out)
+	if err != nil {
+		t.Fatalf("HTTP 204 must not be an error: %v", err)
+	}
+	if status != http.StatusNoContent {
+		t.Fatalf("status %d", status)
 	}
 }

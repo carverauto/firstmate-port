@@ -77,6 +77,22 @@ defmodule FirstmatePortWeb.RouteControllerTest do
     assert body["checkpoint"] == "human-review"
   end
 
+  test "response axes round-trip with the request spelling", %{conn: conn, token: token} do
+    body =
+      conn
+      |> put_req_header("authorization", "Bearer " <> token)
+      |> post(~p"/api/route", %{
+        "description" => "write user docs for inbox list",
+        "axes" => %{"citations_required" => true}
+      })
+      |> json_response(200)
+
+    assert body["axes"]["citations_required"] == true
+    assert is_boolean(body["axes"]["live_web_required"])
+    refute Map.has_key?(body["axes"], "citations_required?")
+    refute Map.has_key?(body["axes"], "live_web_required?")
+  end
+
   test "missing description is unprocessable", %{conn: conn, token: token} do
     conn =
       conn

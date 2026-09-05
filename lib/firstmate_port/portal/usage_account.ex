@@ -41,19 +41,6 @@ defmodule FirstmatePort.Portal.UsageAccount do
       upsert? true
       upsert_identity :unique_account
 
-      upsert_fields [
-        :unit,
-        :allowance,
-        :used,
-        :window,
-        :reset_at,
-        :spend_priority,
-        :source,
-        :external_id,
-        :last_synced_at,
-        :notes
-      ]
-
       accept [
         :provider,
         :label,

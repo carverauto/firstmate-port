@@ -15,6 +15,16 @@ defmodule FirstmatePortWeb.CliAuthControllerTest do
     assert json_response(conn, 400)["error"] == "authorization_pending"
   end
 
+  test "user codes do not come from the seedable process PRNG" do
+    :rand.seed(:exsss, {101, 102, 103})
+    {:ok, first} = DeviceCode.issue(%{}, authorize?: false)
+
+    :rand.seed(:exsss, {101, 102, 103})
+    {:ok, second} = DeviceCode.issue(%{}, authorize?: false)
+
+    refute first.user_code == second.user_code
+  end
+
   test "approved device-code returns a CLI JWT", %{conn: conn} do
     {:ok, user} =
       User.upsert_oidc(%{email: "captain@localhost", name: "Captain"}, authorize?: false)

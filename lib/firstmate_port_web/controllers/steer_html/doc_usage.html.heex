@@ -10,7 +10,7 @@
   -d '&#123;&quot;provider&quot;: &quot;openrouter&quot;, &quot;label&quot;: &quot;captain&quot;,
        &quot;unit&quot;: &quot;usd&quot;, &quot;allowance&quot;: 100, &quot;window&quot;: &quot;monthly&quot;,
        &quot;spend_priority&quot;: 10&#125;'</pre>
-  <p>Agents post readings with the <code>record_usage</code> MCP tool or <code>POST /api/usage</code>. Humans add accounts on the /usage page.</p>
+  <p>Agents post readings with the <code>record_usage</code> MCP tool or <code>POST /api/usage</code>. Only the fields present in the request are written, so a reading never clears a configured allowance or spend priority. Humans add accounts on the /usage page.</p>
 
   <h2>Remaining, status, runway</h2>
   <p>Remaining is allowance minus used. Status is <code>ok</code> below 75 percent, <code>low</code> above it, <code>exhausted</code> at or past the cap, and <code>unknown</code> when no allowance is set. Unknown allowances stay null through the API, the CLI, and the UI. Nothing is guessed.</p>

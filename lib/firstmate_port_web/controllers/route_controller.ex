@@ -25,7 +25,13 @@ defmodule FirstmatePortWeb.RouteController do
     else
       intel = if params["intel"] in [true, "true"], do: ProviderIntel.fetch(), else: nil
       result = Router.route(description, axes: axes(params), intel: intel)
-      json(conn, Map.put(result, :tenant, Tenancy.slug(conn.assigns.current_user)))
+
+      json(
+        conn,
+        result
+        |> Map.put(:axes, response_axes(result.axes))
+        |> Map.put(:tenant, Tenancy.slug(conn.assigns.current_user))
+      )
     end
   end
 
@@ -77,5 +83,12 @@ defmodule FirstmatePortWeb.RouteController do
       v when is_boolean(v) -> Map.put(acc, target, v)
       _ -> acc
     end
+  end
+
+  defp response_axes(axes) do
+    axes
+    |> Map.drop([:citations_required?, :live_web_required?])
+    |> Map.put(:citations_required, axes.citations_required?)
+    |> Map.put(:live_web_required, axes.live_web_required?)
   end
 end

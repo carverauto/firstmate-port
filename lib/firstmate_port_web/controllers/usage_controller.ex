@@ -61,22 +61,21 @@ defmodule FirstmatePortWeb.UsageController do
   end
 
   defp attrs(params) do
-    %{
-      provider: params["provider"],
-      label: params["label"] || params["provider"],
-      unit: one_of(params["unit"], ~w(usd tokens credits), "usd"),
-      allowance: number(params["allowance"]),
-      used: number(params["used"]) || 0.0,
-      window: one_of(params["window"], ~w(monthly weekly daily one_time), "monthly"),
-      spend_priority: integer(params["spend_priority"]) || 100,
-      source: :manual,
-      reset_at: datetime(params["reset_at"]),
-      notes: params["notes"] || ""
-    }
+    %{provider: params["provider"], label: params["label"] || params["provider"]}
+    |> put_given(:unit, one_of(params["unit"], ~w(usd tokens credits)))
+    |> put_given(:allowance, number(params["allowance"]))
+    |> put_given(:used, number(params["used"]))
+    |> put_given(:window, one_of(params["window"], ~w(monthly weekly daily one_time)))
+    |> put_given(:spend_priority, integer(params["spend_priority"]))
+    |> put_given(:reset_at, datetime(params["reset_at"]))
+    |> put_given(:notes, params["notes"])
   end
 
-  defp one_of(value, allowed, default) do
-    if value in allowed, do: String.to_atom(value), else: String.to_atom(default)
+  defp put_given(attrs, _key, nil), do: attrs
+  defp put_given(attrs, key, value), do: Map.put(attrs, key, value)
+
+  defp one_of(value, allowed) do
+    if value in allowed, do: String.to_atom(value), else: nil
   end
 
   defp number(nil), do: nil

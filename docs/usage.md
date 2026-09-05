@@ -20,7 +20,10 @@ curl -X POST $PORTAL/api/usage -H "Authorization: Bearer $TOKEN" \
 ```
 
 Agents post readings with the `record_usage` MCP tool or `POST /api/usage`
-(upsert on provider plus label). Humans add accounts on the `/usage` page.
+(upsert on provider plus label). Only the fields present in the request are
+written, so posting `{"provider", "label", "used"}` leaves a configured
+allowance, window, spend priority, and source alone. Humans add accounts on
+the `/usage` page.
 
 ## Remaining, status, runway
 

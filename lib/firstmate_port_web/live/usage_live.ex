@@ -70,18 +70,17 @@ defmodule FirstmatePortWeb.UsageLive do
   end
 
   defp record_attrs(params) do
-    %{
-      provider: params["provider"],
-      label: empty_to_nil(params["label"]) || params["provider"],
-      unit: params["unit"] || "usd",
-      allowance: parse_float(params["allowance"]),
-      used: parse_float(params["used"]) || 0.0,
-      window: params["window"] || "monthly",
-      spend_priority: parse_int(params["spend_priority"]) || 100,
-      source: :manual,
-      notes: params["notes"] || ""
-    }
+    %{provider: params["provider"], label: empty_to_nil(params["label"]) || params["provider"]}
+    |> put_given(:unit, empty_to_nil(params["unit"]))
+    |> put_given(:allowance, parse_float(params["allowance"]))
+    |> put_given(:used, parse_float(params["used"]))
+    |> put_given(:window, empty_to_nil(params["window"]))
+    |> put_given(:spend_priority, parse_int(params["spend_priority"]))
+    |> put_given(:notes, empty_to_nil(params["notes"]))
   end
+
+  defp put_given(attrs, _key, nil), do: attrs
+  defp put_given(attrs, key, value), do: Map.put(attrs, key, value)
 
   defp empty_to_nil(nil), do: nil
   defp empty_to_nil(""), do: nil

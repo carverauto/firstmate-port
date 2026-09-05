@@ -115,12 +115,15 @@ func authLogin(args []string) {
 			Error       string `json:"error"`
 			Tenant      string `json:"tenant"`
 		}
-		status, err := postJSONStatus(base+"/api/cli/auth/token", "", map[string]string{
+		status, raw, err := requestJSON(http.MethodPost, base+"/api/cli/auth/token", "", map[string]string{
 			"grant_type":  "urn:ietf:params:oauth:grant-type:device_code",
 			"device_code": issued.DeviceCode,
 		}, &tok)
 		if err != nil {
 			log.Fatal(err)
+		}
+		if status >= 400 && status != http.StatusBadRequest {
+			log.Fatal(statusError(status, raw))
 		}
 		if tok.Error == "authorization_pending" || status == 400 && tok.AccessToken == "" && tok.Error == "" {
 			continue
@@ -468,45 +471,66 @@ func postJSON(url, token string, body any, out any) error {
 }
 
 func postJSONStatus(url, token string, body any, out any) (int, error) {
-	raw, err := json.Marshal(body)
+	status, raw, err := requestJSON(http.MethodPost, url, token, body, out)
 	if err != nil {
-		return 0, err
+		return status, err
 	}
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(raw))
-	if err != nil {
-		return 0, err
-	}
-	req.Header.Set("content-type", "application/json")
-	if token != "" {
-		req.Header.Set("authorization", "Bearer "+token)
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-	b, _ := io.ReadAll(resp.Body)
-	if out != nil && len(b) > 0 {
-		_ = json.Unmarshal(b, out)
-	}
-	if resp.StatusCode >= 500 {
-		return resp.StatusCode, fmt.Errorf("HTTP %d", resp.StatusCode)
-	}
-	return resp.StatusCode, nil
+	return status, statusError(status, raw)
 }
 
 func getJSON(url, token string, out any) error {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	status, raw, err := requestJSON(http.MethodGet, url, token, nil, out)
 	if err != nil {
 		return err
+	}
+	return statusError(status, raw)
+}
+
+// requestJSON reports transport failures only and hands the status back
+// raw, so the device-code poll loop can read RFC 8628's 400 as "pending".
+func requestJSON(method, url, token string, body any, out any) (int, []byte, error) {
+	var reader io.Reader
+	if body != nil {
+		raw, err := json.Marshal(body)
+		if err != nil {
+			return 0, nil, err
+		}
+		reader = bytes.NewReader(raw)
+	}
+	req, err := http.NewRequest(method, url, reader)
+	if err != nil {
+		return 0, nil, err
+	}
+	if body != nil {
+		req.Header.Set("content-type", "application/json")
 	}
 	if token != "" {
 		req.Header.Set("authorization", "Bearer "+token)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return 0, nil, err
 	}
 	defer resp.Body.Close()
-	return json.NewDecoder(resp.Body).Decode(out)
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return resp.StatusCode, nil, err
+	}
+	if out != nil && len(raw) > 0 {
+		_ = json.Unmarshal(raw, out)
+	}
+	return resp.StatusCode, raw, nil
+}
+
+func statusError(status int, raw []byte) error {
+	if status >= 200 && status < 300 {
+		return nil
+	}
+	var body struct {
+		Error string `json:"error"`
+	}
+	if len(raw) > 0 && json.Unmarshal(raw, &body) == nil && body.Error != "" {
+		return fmt.Errorf("HTTP %d: %s", status, body.Error)
+	}
+	return fmt.Errorf("HTTP %d", status)
 }

@@ -64,6 +64,46 @@ defmodule FirstmatePortWeb.UsageControllerTest do
     assert row["runway_days"] == nil
   end
 
+  test "an agent reading keeps the configured allowance, window and spend priority", %{
+    conn: conn,
+    token: token
+  } do
+    auth(conn, token)
+    |> post(~p"/api/usage", %{
+      "provider" => "openrouter",
+      "label" => "captain",
+      "unit" => "usd",
+      "allowance" => 100.0,
+      "used" => 10.0,
+      "window" => "weekly",
+      "spend_priority" => 10,
+      "notes" => "captain key"
+    })
+
+    reading =
+      auth(build_conn(), token)
+      |> post(~p"/api/usage", %{"provider" => "openrouter", "label" => "captain", "used" => 42.0})
+      |> json_response(200)
+
+    assert reading["used"] == 42.0
+    assert reading["allowance"] == 100.0
+    assert reading["remaining"] == 58.0
+    assert reading["status"] == "ok"
+    assert reading["spend_priority"] == 10
+    assert reading["window"] == "weekly"
+
+    [row] =
+      auth(build_conn(), token)
+      |> get(~p"/api/usage")
+      |> json_response(200)
+      |> Map.get("data")
+
+    assert row["allowance"] == 100.0
+    assert row["spend_priority"] == 10
+    assert row["window"] == "weekly"
+    assert row["used"] == 42.0
+  end
+
   test "usage is tenant-scoped", %{conn: conn, token: token, other_token: other_token} do
     auth(conn, token)
     |> post(~p"/api/usage", %{"provider" => "openrouter", "label" => "local-only"})
