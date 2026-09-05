@@ -83,8 +83,9 @@ defmodule FirstmatePortWeb.AuthController do
       email = params |> Map.get("email", "") |> to_string() |> String.trim()
       password = params |> Map.get("password", "") |> to_string()
 
-      with {:ok, user} <- fetch_user(email),
-           true <- User.valid_password?(user, password),
+      user = fetch_user(email)
+
+      with true <- User.valid_password?(user, password),
            {:ok, token, _claims} <- Guardian.encode_and_sign(user, %{typ: "access"}) do
         return_to = get_session(conn, :return_to) || "/"
 
@@ -108,12 +109,12 @@ defmodule FirstmatePortWeb.AuthController do
     end
   end
 
-  defp fetch_user(""), do: :error
+  defp fetch_user(""), do: nil
 
   defp fetch_user(email) do
     case User.get_by_email(email, authorize?: false) do
-      {:ok, %User{} = user} -> {:ok, user}
-      _ -> :error
+      {:ok, %User{} = user} -> user
+      _ -> nil
     end
   end
 

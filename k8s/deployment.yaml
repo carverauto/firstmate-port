@@ -43,20 +43,16 @@ spec:
             # Read the credentials back with:
             #   kubectl -n firstmate get secret firstmate-admin \
             #     -o jsonpath='{.data.password}' | base64 -d
-            # Without this secret the portal generates a password and prints it
-            # once at startup, which is harder to recover from pod logs.
             - name: BOOTSTRAP_ADMIN_EMAIL
               valueFrom:
                 secretKeyRef:
                   name: firstmate-admin
                   key: email
-                  optional: true
             - name: BOOTSTRAP_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: firstmate-admin
                   key: password
-                  optional: true
             - name: NATS_ENABLED
               value: "true"
             - name: NATS_HOST

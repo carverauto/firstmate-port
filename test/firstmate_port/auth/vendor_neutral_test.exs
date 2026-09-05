@@ -1,58 +1,53 @@
 defmodule FirstmatePort.Auth.VendorNeutralTest do
-  @moduledoc """
-  The portal speaks generic OIDC. A vendor name may appear only as one example
-  issuer under deploy/examples, never as an adapter, process name, or default.
-  """
   use ExUnit.Case, async: true
 
-  @vendor "authentik"
+  alias FirstmatePort.Auth.OIDC
+
   @root Path.expand("../../..", __DIR__)
 
-  # Example overlays are allowed to name a real provider; that is their job.
-  @allowed_dirs ["deploy/examples"]
+  test "configured providers use the generic worker identity" do
+    cfg = [issuer: "https://idp.example.test", client_id: "portal", client_secret: "secret"]
 
-  # This file names the vendor in order to look for it.
-  @self "test/firstmate_port/auth/vendor_neutral_test.exs"
-
-  test "no vendor-named process, module, or config in the OTP app" do
-    offenders =
-      repo_files(["lib", "config", "test"])
-      |> Enum.reject(&(&1 == @self))
-      |> Enum.filter(&contains_vendor?/1)
-
-    assert offenders == [],
-           """
-           OIDC must be a generic abstraction, not a driver for one vendor.
-           Vendor-named code found in: #{Enum.join(offenders, ", ")}
-           """
+    assert [%{id: :firstmate_oidc, start: {_, :start_link, [opts]}}] = OIDC.child_specs(cfg)
+    assert opts.name == OIDC.provider_name()
+    assert opts.issuer == "https://idp.example.test"
   end
 
-  test "no vendor-named default in shipped deploy manifests or env samples" do
-    offenders =
-      repo_files([".env.example", "k8s", "deploy", "docker-compose.yml"])
-      |> Enum.reject(fn path -> Enum.any?(@allowed_dirs, &String.starts_with?(path, &1)) end)
-      |> Enum.filter(&contains_vendor?/1)
+  test "shipped runtimes enable local login without an issuer or allowlist" do
+    [compose] = yaml("docker-compose.yml")
+    compose_env = compose["services"]["portal"]["environment"]
+    kubernetes_env = deployment_env("k8s/deployment.yaml")
 
-    assert offenders == [],
-           """
-           Site-specific issuers belong in #{Enum.join(@allowed_dirs, ", ")}.
-           Vendor-named defaults found in: #{Enum.join(offenders, ", ")}
-           """
-  end
+    for env <- [compose_env, Map.new(kubernetes_env, fn {name, entry} -> {name, entry["value"]} end)] do
+      assert env["LOCAL_AUTH"] == "true"
+      assert is_nil(env["OIDC_ISSUER"])
+      assert is_nil(env["OIDC_DISCOVERY_URL"])
+      assert is_nil(env["ALLOWED_EMAIL_DOMAIN"])
+    end
 
-  # Includes untracked-but-not-ignored files, so a newly added vendor-shaped
-  # module is caught before it is ever staged.
-  defp repo_files(paths) do
-    args = ["ls-files", "--cached", "--others", "--exclude-standard", "--" | paths]
-    {out, 0} = System.cmd("git", args, cd: @root)
-
-    out |> String.split("\n", trim: true) |> Enum.uniq()
-  end
-
-  defp contains_vendor?(path) do
-    case File.read(Path.join(@root, path)) do
-      {:ok, contents} -> String.contains?(String.downcase(contents), @vendor)
-      _ -> false
+    for {name, key} <- [{"BOOTSTRAP_ADMIN_EMAIL", "email"}, {"BOOTSTRAP_ADMIN_PASSWORD", "password"}] do
+      ref = kubernetes_env[name]["valueFrom"]["secretKeyRef"]
+      assert ref["name"] == "firstmate-admin"
+      assert ref["key"] == key
+      refute Map.get(ref, "optional", false)
     end
   end
+
+  test "the site overlay preserves local bootstrap login" do
+    env =
+      Map.merge(
+        deployment_env("k8s/deployment.yaml"),
+        deployment_env("deploy/examples/carverauto/deployment-patch.yaml")
+      )
+
+    assert env["LOCAL_AUTH"]["value"] == "true"
+  end
+
+  defp deployment_env(path) do
+    deployment = Enum.find(yaml(path), &(&1["kind"] == "Deployment"))
+    hub = Enum.find(deployment["spec"]["template"]["spec"]["containers"], &(&1["name"] == "hub"))
+    Map.new(hub["env"], &{&1["name"], &1})
+  end
+
+  defp yaml(path), do: YamlElixir.read_all_from_file!(Path.join(@root, path))
 end

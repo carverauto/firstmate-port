@@ -24,8 +24,6 @@ spec:
             # This site uses Authentik. It is one example issuer, not a
             # requirement: the portal reads endpoints from discovery, so any
             # OpenID Connect provider drops in here unchanged.
-            - name: LOCAL_AUTH
-              value: "false"
             - name: OIDC_ISSUER
               value: https://auth.carverauto.dev/application/o/firstmate/
             - name: OIDC_DISCOVERY_URL
