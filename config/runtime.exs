@@ -50,9 +50,10 @@ if config_env() != :test do
     end
 
   config :firstmate_port,
-    allowed_email_domain: System.get_env("ALLOWED_EMAIL_DOMAIN") || "localhost",
+    allowed_email_domain: System.get_env("ALLOWED_EMAIL_DOMAIN"),
     oidc_issuer: oidc_issuer,
-    dev_auth: local_auth? in ~w(true 1)
+    local_auth: local_auth? not in ~w(false 0),
+    enable_saas: System.get_env("ENABLE_SAAS") in ~w(true 1)
 
   # Optional in every runtime. An unset, wrong, or unreachable issuer leaves the
   # portal serving local sign-in; it never stops the node.

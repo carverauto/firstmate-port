@@ -17,8 +17,14 @@ Avoid capturing `mix phx.gen.secret` with `$(...)` during initial setup: Mix may
 compile dependencies to load the task, and command substitution hides standard
 output (including compilation progress) while warnings remain visible on stderr.
 
-Open http://localhost:4000/login. With `LOCAL_AUTH=true`, sign in as
-`captain@localhost`. No identity provider is required in any runtime.
+Open http://localhost:4000/login and sign in with the account the portal
+printed on first boot:
+
+```sh
+docker compose logs portal | grep -A4 "first-run sign-in"
+```
+
+No identity provider is required in any runtime.
 
 CLI (HTTP only, no NATS):
 
@@ -41,9 +47,22 @@ mix phx.server
 
 Two modes, same image. Neither is a build flag; both are environment.
 
-**Local** (`LOCAL_AUTH=true`) is an email form gated by `ALLOWED_EMAIL_DOMAIN`,
-with no identity provider. It is what `docker compose up` and the base `k8s/`
-manifests use, so a cluster can come up and sign in before any IdP exists.
+**Local** (`LOCAL_AUTH=true`, on by default) is a single bootstrap admin
+account, with no identity provider. It is what `docker compose up` and the base
+`k8s/` manifests use, so a cluster can come up and sign in before any IdP
+exists.
+
+The account is created on first boot and never rewritten afterwards, so a
+restart cannot rotate a password out from under you.
+
+| | Where the password comes from | How you read it |
+| --- | --- | --- |
+| Compose | generated | `docker compose logs portal` (printed once) |
+| Kubernetes | `firstmate-admin` secret, created by `deploy/bootstrap-secrets.sh` | `kubectl -n firstmate get secret firstmate-admin -o jsonpath='{.data.password}' \| base64 -d` |
+
+Set `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` to choose them
+yourself. A generated password is printed once and is not recoverable from the
+database afterwards.
 
 **OIDC** (`OIDC_ISSUER` plus `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET`) adds a
 "Continue with identity provider" button. Any OpenID Connect provider works —
@@ -51,6 +70,10 @@ Keycloak, Dex, Google, Okta, Entra — because every endpoint is read from the
 issuer's discovery document. There is no per-vendor adapter to write. Put the
 client credentials in a `firstmate-oidc` secret; `deploy/examples` has a worked
 provider setup.
+
+Anyone your provider authenticates may sign in. `ALLOWED_EMAIL_DOMAIN` is an
+optional extra restriction for sites that want one; it is unset by default and
+never gates the local account.
 
 OIDC is optional and fails soft. An unset, misconfigured, or unreachable issuer
 logs and leaves OIDC disabled: `/healthz`, the endpoint, and local sign-in stay

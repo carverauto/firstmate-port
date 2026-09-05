@@ -2,8 +2,8 @@ defmodule FirstmatePortWeb.LoginLive do
   @moduledoc """
   Editorial sign-in.
 
-  Offers whatever is actually available: an identity provider once its discovery
-  document is loaded, a local email form when local auth is on, and an honest
+  Offers whatever is actually available: the local account when local auth is on,
+  an identity provider once its discovery document is loaded, and an honest
   message when neither is. A configured-but-unreachable provider is called out
   as unreachable rather than unconfigured, because those need different fixes.
   """
@@ -14,7 +14,7 @@ defmodule FirstmatePortWeb.LoginLive do
   @impl true
   def mount(_params, _session, socket) do
     oidc = FirstmatePort.Auth.OIDC.status()
-    local? = Application.get_env(:firstmate_port, :dev_auth, false)
+    local? = Application.get_env(:firstmate_port, :local_auth, false)
 
     {:ok,
      socket
@@ -48,7 +48,7 @@ defmodule FirstmatePortWeb.LoginLive do
         <% end %>
 
         <%= if @local? do %>
-          <form action={~p"/auth/dev"} method="post" class="auth-form">
+          <form action={~p"/auth/local"} method="post" class="auth-form">
             <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
             <label for="email">Email</label>
             <input
@@ -59,7 +59,17 @@ defmodule FirstmatePortWeb.LoginLive do
               autocomplete="username"
               required
             />
-            <p class="hint">Local only. Allowed domains come from ALLOWED_EMAIL_DOMAIN.</p>
+            <label for="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              name="password"
+              autocomplete="current-password"
+              required
+            />
+            <p class="hint">
+              The first-run account and its password are printed in the portal log on first boot.
+            </p>
             <button type="submit" class="btn btn-primary">Enter the port</button>
           </form>
         <% end %>
@@ -72,7 +82,7 @@ defmodule FirstmatePortWeb.LoginLive do
 
         <%= if @oidc == :disabled and not @local? do %>
           <p class="empty-copy" role="status">
-            Sign-in is not configured. Set LOCAL_AUTH=true for local sign-in, or set OIDC_ISSUER, OIDC_CLIENT_ID and OIDC_CLIENT_SECRET for an identity provider.
+            Sign-in is not configured. Set LOCAL_AUTH=true for the local account, or set OIDC_ISSUER, OIDC_CLIENT_ID and OIDC_CLIENT_SECRET for an identity provider.
           </p>
         <% end %>
       </section>

@@ -109,7 +109,7 @@ defmodule FirstmatePortWeb.Router do
     live "/login", LoginLive
     get "/auth/oidc", AuthController, :request
     get "/auth/oidc/callback", AuthController, :callback
-    post "/auth/dev", AuthController, :dev_login
+    post "/auth/local", AuthController, :local_login
     get "/auth/logout", AuthController, :logout
     get "/healthz", PageController, :healthz
     get "/d/:id/card.png", DiagramHTMLController, :card

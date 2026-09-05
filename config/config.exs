@@ -77,10 +77,21 @@ config :firstmate_port,
     FirstmatePort.Jobs
   ],
   public_url: "http://localhost:4000",
-  allowed_email_domain: "localhost",
+  # Unset means any account an identity provider vouches for may sign in. A
+  # domain here is an extra restriction on top of the provider, not the login.
+  allowed_email_domain: nil,
   oidc_issuer: nil,
-  dev_auth: false,
+  # Local sign-in is the default way in: a fresh portal must be signable-into
+  # without an identity provider.
+  local_auth: true,
+  # Seam, not a feature. Public images are OSS and compile with this off; the
+  # SaaS lane owns sign-up, tenant provisioning, and billing in its own repo.
+  # Tenancy is already attribute-based, so nothing here needs rewriting later.
+  enable_saas: false,
   default_tenant_slug: "local"
+
+# Deliberately slow. Test config lowers it; nothing else should.
+config :firstmate_port, FirstmatePort.Accounts.Password, iterations: 210_000
 
 config :firstmate_port, FirstmatePort.Auth.Guardian,
   issuer: "firstmate_port",

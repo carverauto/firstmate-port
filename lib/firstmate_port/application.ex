@@ -34,6 +34,7 @@ defmodule FirstmatePort.Application do
     opts = [strategy: :one_for_one, name: FirstmatePort.Supervisor]
     result = Supervisor.start_link(children, opts)
     _ = FirstmatePort.Accounts.Bootstrap.ensure_agent!()
+    _ = FirstmatePort.Accounts.Bootstrap.ensure_admin!()
     result
   end
 

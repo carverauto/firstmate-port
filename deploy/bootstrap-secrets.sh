@@ -63,6 +63,17 @@ else
     --from-literal=key="$CLOAK_DERIVED_KEY"
 fi
 
+# The first-run sign-in. Created here so the operator can read it back with
+# kubectl instead of hunting for it in pod logs.
+if kubectl -n "$NS" get secret firstmate-admin >/dev/null 2>&1; then
+  echo "reusing firstmate-admin"
+else
+  ADMIN_EMAIL="${ADMIN_EMAIL:-admin@localhost}"
+  kubectl -n "$NS" create secret generic firstmate-admin \
+    --from-literal=email="$ADMIN_EMAIL" \
+    --from-literal=password="$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)"
+fi
+
 if kubectl -n "$NS" get secret firstmate-nats >/dev/null 2>&1; then
   echo "reusing firstmate-nats"
 else
@@ -70,6 +81,11 @@ else
     --from-literal=token="$(openssl rand -hex 32)"
 fi
 
+echo
+echo "Sign in with the bootstrap admin account:"
+echo "  kubectl -n $NS get secret firstmate-admin -o jsonpath='{.data.email}' | base64 -d; echo"
+echo "  kubectl -n $NS get secret firstmate-admin -o jsonpath='{.data.password}' | base64 -d; echo"
+echo
 echo "GitHub PAT (optional until poll is enabled):"
 echo "  kubectl -n $NS create secret generic github-token --from-literal=GITHUB_TOKEN=<fine-grained-pat>"
 echo "Discord and other per-tenant credentials are NOT kubectl secrets."

@@ -42,8 +42,11 @@ services:
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:?set SECRET_KEY_BASE in .env}
       # Local-only default; production key setup and rotation: docs/credentials.md.
       CLOAK_KEY: ${CLOAK_KEY:-Zmlyc3RtYXRlLXBvcnQgZGV2IHZhdWx0IGtleSAhISE=}
+      # First boot prints the admin account and a generated password once:
+      #   docker compose logs portal
       LOCAL_AUTH: "true"
-      ALLOWED_EMAIL_DOMAIN: localhost
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@localhost}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       NATS_ENABLED: "true"
       NATS_HOST: nats
       NATS_PORT: "4222"

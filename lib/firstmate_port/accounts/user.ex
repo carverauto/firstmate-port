@@ -22,7 +22,7 @@ defmodule FirstmatePort.Accounts.User do
     primary_key_type(:uuid_v7)
     change_tracking_mode(:changes_only)
     store_action_name?(true)
-    ignore_attributes([:inserted_at, :updated_at, :hashed_api_key])
+    ignore_attributes([:inserted_at, :updated_at, :hashed_api_key, :hashed_password])
   end
 
   code_interface do
@@ -30,6 +30,7 @@ defmodule FirstmatePort.Accounts.User do
     define :get_by_email, action: :by_email, args: [:email]
     define :upsert_oidc, action: :upsert_oidc
     define :bootstrap_agent, action: :bootstrap_agent
+    define :bootstrap_admin, action: :bootstrap_admin
     define :authenticate_api_key, action: :authenticate_api_key, args: [:token]
   end
 
@@ -58,6 +59,14 @@ defmodule FirstmatePort.Accounts.User do
       change FirstmatePort.Accounts.User.AssignDefaultTenant
     end
 
+    create :bootstrap_admin do
+      upsert? true
+      upsert_identity :unique_email
+      accept [:email, :name, :hashed_password, :tenant_slug]
+      change set_attribute(:role, :human)
+      change FirstmatePort.Accounts.User.AssignDefaultTenant
+    end
+
     read :authenticate_api_key do
       get? true
       argument :token, :string, allow_nil?: false, sensitive?: true
@@ -74,7 +83,13 @@ defmodule FirstmatePort.Accounts.User do
       authorize_if actor_present()
     end
 
-    policy action([:upsert_oidc, :bootstrap_agent, :authenticate_api_key, :by_email]) do
+    policy action([
+             :upsert_oidc,
+             :bootstrap_agent,
+             :bootstrap_admin,
+             :authenticate_api_key,
+             :by_email
+           ]) do
       authorize_if always()
     end
   end
@@ -102,6 +117,12 @@ defmodule FirstmatePort.Accounts.User do
       sensitive? true
     end
 
+    # Set only for the local sign-in account. Humans who arrive through an
+    # identity provider never have one.
+    attribute :hashed_password, :string do
+      sensitive? true
+    end
+
     attribute :tenant_slug, :string do
       allow_nil? false
       public? true
@@ -120,4 +141,18 @@ defmodule FirstmatePort.Accounts.User do
   end
 
   def agent?(user), do: user.role == :agent
+
+  @doc """
+  Whether `password` signs this user in.
+
+  Runs the same work for a user without a password as for a wrong one, so an
+  attacker cannot use timing to learn which accounts have local credentials.
+  """
+  # Matches on the field rather than the struct: Ash defines __struct__ too late
+  # in the module body for %__MODULE__{} to expand here.
+  def valid_password?(%{hashed_password: hashed}, password),
+    do: FirstmatePort.Accounts.Password.verify(password, hashed)
+
+  def valid_password?(_user, password),
+    do: FirstmatePort.Accounts.Password.verify(password, nil)
 end
