@@ -43,6 +43,9 @@ defmodule FirstmatePortWeb.CliAuthController do
 
         code.status == :approved ->
           issue_cli_jwt(conn, code)
+
+        true ->
+          conn |> put_status(:bad_request) |> json(%{error: "invalid_grant"})
       end
     else
       _ ->
@@ -57,12 +60,18 @@ defmodule FirstmatePortWeb.CliAuthController do
 
         case Guardian.encode_and_sign(user, claims) do
           {:ok, token, _} ->
-            json(conn, %{
-              access_token: token,
-              token_type: "Bearer",
-              expires_in: 12 * 3600,
-              tenant: user.tenant_slug
-            })
+            case DeviceCode.consume(code, %{}, authorize?: false) do
+              {:ok, _} ->
+                json(conn, %{
+                  access_token: token,
+                  token_type: "Bearer",
+                  expires_in: 12 * 3600,
+                  tenant: user.tenant_slug
+                })
+
+              {:error, reason} ->
+                conn |> put_status(:bad_request) |> json(%{error: inspect(reason)})
+            end
 
           {:error, reason} ->
             conn |> put_status(:internal_server_error) |> json(%{error: inspect(reason)})

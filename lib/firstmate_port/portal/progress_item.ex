@@ -13,6 +13,7 @@ defmodule FirstmatePort.Portal.ProgressItem do
   postgres do
     table "progress_items"
     repo FirstmatePort.Repo
+    identity_wheres_to_sql unique_url: "url <> ''"
   end
 
   paper_trail do

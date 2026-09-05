@@ -20,6 +20,7 @@ defmodule FirstmatePort.Auth.DeviceCode do
     define :get_by_user_code, action: :by_user_code, args: [:user_code]
     define :approve, action: :approve
     define :deny, action: :deny
+    define :consume, action: :consume
   end
 
   actions do
@@ -44,12 +45,17 @@ defmodule FirstmatePort.Auth.DeviceCode do
 
     update :approve do
       accept [:user_id, :tenant_slug]
-      change set_attribute(:status, :approved)
+      change fn changeset, context -> approve_pending(changeset, context) end
     end
 
     update :deny do
       accept []
       change set_attribute(:status, :denied)
+    end
+
+    update :consume do
+      accept []
+      change fn changeset, context -> consume_approved(changeset, context) end
     end
   end
 
@@ -72,7 +78,7 @@ defmodule FirstmatePort.Auth.DeviceCode do
     end
 
     attribute :status, :atom do
-      constraints one_of: [:pending, :approved, :denied]
+      constraints one_of: [:pending, :approved, :denied, :consumed]
       default :pending
       allow_nil? false
     end
@@ -88,5 +94,28 @@ defmodule FirstmatePort.Auth.DeviceCode do
   identities do
     identity :unique_device_code, [:device_code]
     identity :unique_user_code, [:user_code]
+  end
+
+  defp approve_pending(changeset, _context) do
+    data = changeset.data
+
+    cond do
+      data.status != :pending ->
+        Ash.Changeset.add_error(changeset, field: :status, message: "not pending")
+
+      DateTime.compare(DateTime.utc_now(), data.expires_at) == :gt ->
+        Ash.Changeset.add_error(changeset, field: :status, message: "expired")
+
+      true ->
+        Ash.Changeset.change_attribute(changeset, :status, :approved)
+    end
+  end
+
+  defp consume_approved(changeset, _context) do
+    if changeset.data.status == :approved do
+      Ash.Changeset.change_attribute(changeset, :status, :consumed)
+    else
+      Ash.Changeset.add_error(changeset, field: :status, message: "not approved")
+    end
   end
 end

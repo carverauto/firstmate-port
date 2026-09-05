@@ -136,8 +136,13 @@ defmodule FirstmatePortWeb.Router do
 
   defp put_mcp_actor(conn, _opts) do
     case conn.assigns[:current_user] do
-      nil -> conn
-      user -> Ash.PlugHelpers.set_actor(conn, user)
+      nil ->
+        conn
+
+      user ->
+        conn
+        |> Ash.PlugHelpers.set_actor(user)
+        |> Ash.PlugHelpers.set_tenant(FirstmatePort.Tenancy.slug(user))
     end
   end
 end

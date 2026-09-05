@@ -27,10 +27,13 @@ defmodule FirstmatePort.Repo.Migrations.AttributeTenancy do
     execute("DROP SCHEMA IF EXISTS t_local")
 
     for table <- @tenant_tables do
-      execute("ALTER TABLE IF EXISTS #{table} ADD COLUMN IF NOT EXISTS tenant_slug text NOT NULL DEFAULT 'local'")
+      execute(
+        "ALTER TABLE IF EXISTS #{table} ADD COLUMN IF NOT EXISTS tenant_slug text NOT NULL DEFAULT 'local'"
+      )
     end
 
     drop_if_exists index(:progress_items, [:url], name: :progress_items_unique_url_index)
+
     create unique_index(:progress_items, [:tenant_slug, :url],
              where: "url <> ''",
              name: :progress_items_unique_tenant_url_index
@@ -60,9 +63,11 @@ defmodule FirstmatePort.Repo.Migrations.AttributeTenancy do
     create unique_index(:no_mistakes_runs, [:run_id])
     drop_if_exists index(:github_items, [:tenant_slug, :html_url])
     create unique_index(:github_items, [:html_url])
+
     drop_if_exists index(:progress_items, [:tenant_slug, :url],
                      name: :progress_items_unique_tenant_url_index
                    )
+
     create unique_index(:progress_items, [:url],
              where: "url <> ''",
              name: :progress_items_unique_url_index

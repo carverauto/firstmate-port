@@ -180,17 +180,36 @@ oci_image(
     tars = [":fm-steer_layer"],
 )
 
+pkg_tar(
+    name = "portal_entrypoint_layer",
+    srcs = ["deploy/oci-entrypoint.sh"],
+    mode = "0755",
+    package_dir = "/app",
+    strip_prefix = "deploy",
+)
+
+pkg_tar(
+    name = "portal_cacert_layer",
+    srcs = ["priv/ssl/cacert.pem"],
+    package_dir = "/etc/ssl/certs",
+    strip_prefix = "priv/ssl",
+)
+
 oci_image(
     name = "portal_image",
     base = "@debian_bookworm_slim",
-    cmd = ["start"],
-    entrypoint = ["/app/bin/firstmate_port"],
+    entrypoint = ["/app/oci-entrypoint.sh"],
     env = {
         "PHX_SERVER": "true",
         "PORT": "4000",
+        "SSL_CERT_FILE": "/etc/ssl/certs/cacert.pem",
     },
     exposed_ports = ["4000/tcp"],
-    tars = [":release"],
+    tars = [
+        ":release",
+        ":portal_entrypoint_layer",
+        ":portal_cacert_layer",
+    ],
     workdir = "/app",
 )
 

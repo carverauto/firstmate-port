@@ -23,12 +23,12 @@ defmodule FirstmatePortWeb.DeviceLive do
 
     case DeviceCode.get_by_user_code(socket.assigns.user_code, authorize?: false) do
       {:ok, code} ->
-        {:ok, _} =
-          DeviceCode.approve(code, %{user_id: user.id, tenant_slug: user.tenant_slug},
-            authorize?: false
-          )
-
-        {:noreply, assign(socket, :status, :approved)}
+        case DeviceCode.approve(code, %{user_id: user.id, tenant_slug: user.tenant_slug},
+               authorize?: false
+             ) do
+          {:ok, _} -> {:noreply, assign(socket, :status, :approved)}
+          {:error, _} -> {:noreply, assign(socket, :status, :missing)}
+        end
 
       _ ->
         {:noreply, assign(socket, :status, :missing)}

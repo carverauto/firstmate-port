@@ -11,9 +11,17 @@ defmodule FirstmatePort.TenancyTest do
     assert Tenancy.default_slug() == "local"
   end
 
-  test "invalid slugs fall back to the default" do
-    assert Tenancy.slug(%{tenant_slug: "Acme.Steer.>"}) == "local"
-    assert Tenancy.slug("not a slug") == "local"
+  test "invalid slugs error instead of reading the default tenant" do
+    assert_raise ArgumentError, fn -> Tenancy.slug(%{tenant_slug: "Acme.Steer.>"}) end
+    assert_raise ArgumentError, fn -> Tenancy.slug("not a slug") end
+  end
+
+  test "upsert rejects an invalid tenant slug" do
+    assert {:error, _} =
+             FirstmatePort.Accounts.User.upsert_oidc(
+               %{email: "bad-tenant@localhost", name: "Bad", tenant_slug: "Acme"},
+               authorize?: false
+             )
   end
 
   test "streams are named <tenant>.steer and <tenant>.inbound" do

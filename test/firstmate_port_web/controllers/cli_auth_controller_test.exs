@@ -35,6 +35,30 @@ defmodule FirstmatePortWeb.CliAuthControllerTest do
     body = json_response(conn, 200)
     assert body["access_token"]
     assert body["tenant"] == "local"
+
+    conn =
+      post(build_conn(), ~p"/api/cli/auth/token", %{
+        "grant_type" => "urn:ietf:params:oauth:grant-type:device_code",
+        "device_code" => code.device_code
+      })
+
+    assert json_response(conn, 400)["error"] == "invalid_grant"
+  end
+
+  test "ack of a missing inbox token is not found", %{conn: conn} do
+    {:ok, a} =
+      User.upsert_oidc(%{email: "ack@localhost", name: "Ack", tenant_slug: "local"},
+        authorize?: false
+      )
+
+    {:ok, token, _} = FirstmatePort.Auth.Guardian.encode_and_sign(a, %{"typ" => "cli"})
+
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer " <> token)
+      |> post(~p"/api/cli/inbox/ack", %{"ack" => "999"})
+
+    assert json_response(conn, 404)["error"] == "not_found"
   end
 
   test "inbox is tenant-scoped", %{conn: conn} do

@@ -105,6 +105,7 @@ defmodule FirstmatePort.Accounts.User do
     attribute :tenant_slug, :string do
       allow_nil? false
       public? true
+      constraints min_length: 1, max_length: 63, match: ~r/^[a-z][a-z0-9-]*$/
     end
 
     timestamps()

@@ -10,9 +10,9 @@ defmodule FirstmatePort.Tenancy do
   def valid_slug?(s) when is_binary(s), do: Regex.match?(@slug, s)
   def valid_slug?(_), do: false
 
-  def slug(%{tenant_slug: s}) when is_binary(s), do: pick(s)
-  def slug(%{tenant: %{slug: s}}) when is_binary(s), do: pick(s)
-  def slug(s) when is_binary(s), do: pick(s)
+  def slug(%{tenant_slug: s}) when is_binary(s), do: require_slug!(s)
+  def slug(%{tenant: %{slug: s}}) when is_binary(s), do: require_slug!(s)
+  def slug(s) when is_binary(s), do: require_slug!(s)
   def slug(_), do: default_slug()
 
   def default_slug do
@@ -28,5 +28,11 @@ defmodule FirstmatePort.Tenancy do
   def steer_subjects(tenant), do: ["#{slug(tenant)}.steer.>"]
   def inbound_subjects(tenant), do: ["#{slug(tenant)}.discord.inbound"]
 
-  defp pick(s), do: if(valid_slug?(s), do: s, else: default_slug())
+  defp require_slug!(s) do
+    if valid_slug?(s) do
+      s
+    else
+      raise ArgumentError, "invalid tenant slug"
+    end
+  end
 end

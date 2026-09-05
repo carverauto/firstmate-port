@@ -91,8 +91,10 @@ defmodule FirstmatePort.Inbox do
   def handle_call({:ack, tenant, token}, _from, state) do
     case Integer.parse(token || "") do
       {seq, ""} ->
-        :ets.delete(state.table, {tenant, seq})
-        {:reply, :ok, state}
+        case :ets.take(state.table, {tenant, seq}) do
+          [{_key, _status, _item}] -> {:reply, :ok, state}
+          [] -> {:reply, {:error, :not_found}, state}
+        end
 
       _ ->
         {:reply, {:error, :not_found}, state}
