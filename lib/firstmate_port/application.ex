@@ -9,6 +9,8 @@ defmodule FirstmatePort.Application do
   def start(_type, _args) do
     children = [
       FirstmatePortWeb.Telemetry,
+      # Before the Repo: nothing may read a credential row without the vault.
+      FirstmatePort.Vault,
       FirstmatePort.Repo,
       {DNSCluster, query: Application.get_env(:firstmate_port, :dns_cluster_query) || :ignore},
       {Oban,

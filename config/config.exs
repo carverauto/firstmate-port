@@ -71,6 +71,7 @@ config :firstmate_port,
   generators: [timestamp_type: :utc_datetime],
   ash_domains: [
     FirstmatePort.Accounts,
+    FirstmatePort.Credentials,
     FirstmatePort.Portal,
     FirstmatePort.Events,
     FirstmatePort.Jobs
@@ -104,6 +105,8 @@ config :firstmate_port, FirstmatePort.NATS.Connection,
   password: nil,
   replicas: 1
 
+# Bootstrap only. A tenant's real Discord public key lives in its
+# `discord`/`public_key` credential; see `docs/credentials.md`.
 config :firstmate_port, :discord_public_key, nil
 
 config :ueberauth_oidcc, issuers: []
@@ -171,6 +174,18 @@ config :logger, :default_formatter,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+
+# Keep secrets out of request and LiveView event logs. `value` is the parameter
+# tenant credentials are submitted under; the rest are the usual suspects.
+config :phoenix, :filter_parameters, [
+  "password",
+  "secret",
+  "token",
+  "value",
+  "api_key",
+  "public_key",
+  "client_secret"
+]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

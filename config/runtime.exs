@@ -88,6 +88,34 @@ if config_env() == :prod do
     password: System.get_env("NATS_PASSWORD"),
     replicas: String.to_integer(System.get_env("NATS_REPLICAS") || "1")
 
+  # Tenant credentials are encrypted before they reach CNPG. CLOAK_KEY is the
+  # explicit key. When it is absent one is derived from SECRET_KEY_BASE, which
+  # every deployment already has, so adding this feature never stops an existing
+  # cluster from booting. Set CLOAK_KEY once and stored credentials stop
+  # depending on SECRET_KEY_BASE - see docs/credentials.md.
+  cloak_key =
+    System.get_env("CLOAK_KEY") ||
+      Base.encode64(:crypto.hash(:sha256, "firstmate-port cloak v1:" <> secret_key_base))
+
+  config :firstmate_port, FirstmatePort.Vault,
+    key: cloak_key,
+    # Each key generation needs its own tag; see docs/credentials.md.
+    tag: System.get_env("CLOAK_KEY_TAG") || "AES.GCM.V1",
+    retired_keys:
+      System.get_env("CLOAK_KEYS_RETIRED", "")
+      |> String.split(",", trim: true)
+      |> Enum.map(fn pair ->
+        case String.split(pair, "=", parts: 2) do
+          [tag, key] ->
+            {String.trim(tag), String.trim(key)}
+
+          _ ->
+            raise "CLOAK_KEYS_RETIRED must be comma-separated tag=base64key pairs"
+        end
+      end)
+
+  # Bootstrap only, for a cluster with no tenant Discord credential yet. A tenant
+  # that stores its own `discord`/`public_key` in the portal takes over from it.
   config :firstmate_port, :discord_public_key, System.get_env("DISCORD_PUBLIC_KEY")
 
   issuers =

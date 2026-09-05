@@ -44,11 +44,16 @@ spec:
                 secretKeyRef:
                   name: firstmate-nats
                   key: token
-            - name: DISCORD_PUBLIC_KEY
+            # The only credential the cluster holds. Tenant secrets - Discord,
+            # GitHub, provider API keys - are entered in the portal and encrypted
+            # with this key before they reach Postgres. Optional: without it the
+            # portal derives a key from SECRET_KEY_BASE, so a cluster that has not
+            # run deploy/bootstrap-secrets.sh still rolls. See docs/credentials.md.
+            - name: CLOAK_KEY
               valueFrom:
                 secretKeyRef:
-                  name: firstmate-discord
-                  key: public-key
+                  name: firstmate-cloak
+                  key: key
                   optional: true
             - name: DATABASE_URL
               valueFrom:

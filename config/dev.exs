@@ -1,6 +1,10 @@
 import Config
 config :ash, policies: [show_policy_breakdowns?: true]
 
+# Tenant credentials are encrypted at rest even in dev, so the dev database
+# looks like production. Not a secret; prod reads CLOAK_KEY from the environment.
+config :firstmate_port, FirstmatePort.Vault, key: "Zmlyc3RtYXRlLXBvcnQgZGV2IHZhdWx0IGtleSAhISE="
+
 # Configure your database
 config :firstmate_port, FirstmatePort.Repo,
   username: "postgres",

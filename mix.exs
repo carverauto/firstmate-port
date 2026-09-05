@@ -51,6 +51,8 @@ defmodule FirstmatePort.MixProject do
       {:ash_postgres, "~> 2.4"},
       {:ash_paper_trail, "~> 0.6.0"},
       {:ash_events, "~> 0.7.0"},
+      {:ash_cloak, "~> 0.4.0"},
+      {:cloak, "~> 1.1"},
       {:ash, "~> 3.31"},
       {:simple_sat, "~> 0.1.4"},
       {:guardian, "~> 2.3"},

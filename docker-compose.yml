@@ -40,6 +40,10 @@ services:
       PUBLIC_URL: http://localhost:4000
       DATABASE_URL: ecto://firstmate:firstmate@postgres/firstmate
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:?set SECRET_KEY_BASE in .env}
+      # Encrypts tenant credentials. The default is the checked-in local key so
+      # `docker compose up` works with no extra setup; a real deployment sets
+      # CLOAK_KEY from `openssl rand -base64 32`. See docs/credentials.md.
+      CLOAK_KEY: ${CLOAK_KEY:-Zmlyc3RtYXRlLXBvcnQgZGV2IHZhdWx0IGtleSAhISE=}
       DEV_AUTH: "true"
       ALLOWED_EMAIL_DOMAIN: localhost
       NATS_ENABLED: "true"
