@@ -28,7 +28,15 @@ jobs:
           fi
 
           umask 077
-          printf 'common --remote_header=x-buildbuddy-api-key=%s\n' "${BUILDBUDDY_ORG_API_KEY}" > .bazelrc.remote
+          cat <<'EOF' | sed 's/^ *//' > .bazelrc.remote
+            build --bes_results_url=https://carverauto.buildbuddy.io/invocation/
+            build --bes_backend=grpcs://carverauto.buildbuddy.io
+            build --remote_cache=grpcs://cache-proxy.carverauto.dev:443
+            build --remote_executor=grpcs://carverauto.buildbuddy.io
+            build --remote_timeout=15m
+            build --remote_download_minimal
+          EOF
+          printf 'common --remote_header=x-buildbuddy-api-key=%s\n' "${BUILDBUDDY_ORG_API_KEY}" >> .bazelrc.remote
       - name: Bazel build CLI
         run: bazel --output_base=/tmp/fm-fm-port/bazel build --config=remote //:fm-steer
       - name: Bazel test Go
