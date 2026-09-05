@@ -18,14 +18,20 @@ defmodule FirstmatePort.Auth.VendorNeutralTest do
     compose_env = compose["services"]["portal"]["environment"]
     kubernetes_env = deployment_env("k8s/deployment.yaml")
 
-    for env <- [compose_env, Map.new(kubernetes_env, fn {name, entry} -> {name, entry["value"]} end)] do
+    for env <- [
+          compose_env,
+          Map.new(kubernetes_env, fn {name, entry} -> {name, entry["value"]} end)
+        ] do
       assert env["LOCAL_AUTH"] == "true"
       assert is_nil(env["OIDC_ISSUER"])
       assert is_nil(env["OIDC_DISCOVERY_URL"])
       assert is_nil(env["ALLOWED_EMAIL_DOMAIN"])
     end
 
-    for {name, key} <- [{"BOOTSTRAP_ADMIN_EMAIL", "email"}, {"BOOTSTRAP_ADMIN_PASSWORD", "password"}] do
+    for {name, key} <- [
+          {"BOOTSTRAP_ADMIN_EMAIL", "email"},
+          {"BOOTSTRAP_ADMIN_PASSWORD", "password"}
+        ] do
       ref = kubernetes_env[name]["valueFrom"]["secretKeyRef"]
       assert ref["name"] == "firstmate-admin"
       assert ref["key"] == key

@@ -205,7 +205,9 @@ defmodule FirstmatePortWeb.AuthRuntimeTest do
       assert redirected_to(signed_in) == "/"
       assert get_session(signed_in, :guardian_token)
 
-      second_log = ExUnit.CaptureLog.capture_log([level: :info], fn -> Bootstrap.ensure_admin!() end)
+      second_log =
+        ExUnit.CaptureLog.capture_log([level: :info], fn -> Bootstrap.ensure_admin!() end)
+
       refute second_log =~ password
       {:ok, user} = User.get_by_email("generated@example.test", authorize?: false)
       assert User.valid_password?(user, password)
