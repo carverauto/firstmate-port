@@ -18,6 +18,22 @@ else
     --from-literal=password="$PG_PASS"
 fi
 
+# CNPG does not create a <cluster>-app secret when bootstrap.initdb.secret is
+# supplied, so build the DATABASE_URL the Deployment reads from the credentials
+# above. Passwords generated here are alphanumeric, so no URL escaping is needed.
+PG_CLUSTER="${PG_CLUSTER:-firstmate-pg}"
+PG_DB="${PG_DB:-firstmate}"
+PG_USER="$(kubectl -n "$NS" get secret firstmate-db-credentials -o jsonpath='{.data.username}' | base64 -d)"
+PG_PASSWORD="$(kubectl -n "$NS" get secret firstmate-db-credentials -o jsonpath='{.data.password}' | base64 -d)"
+kubectl -n "$NS" create secret generic "${PG_CLUSTER}-app" \
+  --from-literal=uri="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_CLUSTER}-rw:5432/${PG_DB}" \
+  --from-literal=username="${PG_USER}" \
+  --from-literal=password="${PG_PASSWORD}" \
+  --from-literal=dbname="${PG_DB}" \
+  --from-literal=host="${PG_CLUSTER}-rw" \
+  --from-literal=port="5432" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
 if kubectl -n "$NS" get secret firstmate-app >/dev/null 2>&1; then
   echo "reusing firstmate-app"
 else

@@ -93,7 +93,7 @@ spec:
                 peer="firstmate-nats-${i}.firstmate-nats-headless.${POD_NAMESPACE}.svc.cluster.local"
                 self="${POD_NAME}.firstmate-nats-headless.${POD_NAMESPACE}.svc.cluster.local"
                 if [ "${peer}" != "${self}" ]; then
-                  ROUTES_BLOCK="${ROUTES_BLOCK}        nats://${peer}:6222"$'\n'
+                  ROUTES_BLOCK="${ROUTES_BLOCK}        nats://cluster:${NATS_TOKEN}@${peer}:6222"$'\n'
                 fi
               done
               cat >/tmp/nats-server.conf <<EOF
@@ -115,8 +115,11 @@ spec:
                 name: firstmate
                 listen: 0.0.0.0:6222
                 advertise: ${POD_NAME}.firstmate-nats-headless.${POD_NAMESPACE}.svc.cluster.local:6222
+                # Route auth is user/password: nats-server rejects a bare token
+                # inside a cluster{} block. Clients still use the token above.
                 authorization {
-                  token: "${NATS_TOKEN}"
+                  user: "cluster"
+                  password: "${NATS_TOKEN}"
                 }
                 routes: [
               ${ROUTES_BLOCK}    ]
