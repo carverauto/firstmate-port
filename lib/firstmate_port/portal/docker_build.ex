@@ -1,7 +1,7 @@
-defmodule FirstmatePort.Portal.Roll do
+defmodule FirstmatePort.Portal.DockerBuild do
   @moduledoc """
-  Kubernetes cluster image build and helm roll events. Recording is
-  opt-in; see `FirstmatePort.BuildTracking`.
+  Opt-in image build records. Users record the builds they care about;
+  nothing is collected unless docker tracking is enabled.
   """
 
   import Ash.Expr
@@ -14,7 +14,7 @@ defmodule FirstmatePort.Portal.Roll do
     extensions: [AshPaperTrail.Resource, AshEvents.Events]
 
   postgres do
-    table "rolls"
+    table "docker_builds"
     repo FirstmatePort.Repo
   end
 
@@ -50,13 +50,12 @@ defmodule FirstmatePort.Portal.Roll do
       primary? true
 
       accept [
-        :cluster,
-        :namespace,
+        :repository,
+        :tag,
         :status,
-        :image_tag,
-        :rebuilt,
-        :copied,
-        :helm_revision,
+        :digest,
+        :dockerfile,
+        :context,
         :pr_url,
         :issue_url,
         :outcome
@@ -91,12 +90,12 @@ defmodule FirstmatePort.Portal.Roll do
       constraints min_length: 4, max_length: 64
     end
 
-    attribute :cluster, :string do
+    attribute :repository, :string do
       allow_nil? false
       public? true
     end
 
-    attribute :namespace, :string do
+    attribute :tag, :string do
       allow_nil? false
       public? true
     end
@@ -107,22 +106,17 @@ defmodule FirstmatePort.Portal.Roll do
       public? true
     end
 
-    attribute :image_tag, :string do
-      allow_nil? false
+    attribute :digest, :string do
+      default ""
       public? true
     end
 
-    attribute :rebuilt, {:array, :string} do
-      default []
+    attribute :dockerfile, :string do
+      default ""
       public? true
     end
 
-    attribute :copied, {:array, :string} do
-      default []
-      public? true
-    end
-
-    attribute :helm_revision, :string do
+    attribute :context, :string do
       default ""
       public? true
     end

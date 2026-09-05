@@ -41,17 +41,17 @@ defmodule FirstmatePortWeb.Api.IngestControllerTest do
     refute body =~ "require a tenant"
   end
 
-  test "agent can record a farm01 roll with a copied GitHub URL", %{conn: conn, token: token} do
+  test "agent can record a kubernetes roll with a copied GitHub URL", %{conn: conn, token: token} do
     conn =
       conn
       |> put_req_header("authorization", "Bearer " <> token)
       |> post(~p"/api/rolls", %{
-        "cluster" => "farm01",
-        "namespace" => "serviceradar",
+        "cluster" => "example-cluster",
+        "namespace" => "example-ns",
         "status" => "success",
         "image_tag" => "sha-deadbeef",
         "pr_url" => "https://github.com/example/app/pull/4313",
-        "outcome" => "web-ng rolled"
+        "outcome" => "web rolled"
       })
 
     assert %{"id" => id, "url" => url} = json_response(conn, 200)
@@ -60,13 +60,56 @@ defmodule FirstmatePortWeb.Api.IngestControllerTest do
     assert String.contains?(url, "/rolls/")
   end
 
+  test "roll without a cluster is rejected", %{conn: conn, token: token} do
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer " <> token)
+      |> post(~p"/api/rolls", %{
+        "namespace" => "example-ns",
+        "status" => "started",
+        "image_tag" => "sha-x"
+      })
+
+    assert conn.status in [400, 422]
+  end
+
+  test "agent can record a docker build", %{conn: conn, token: token} do
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer " <> token)
+      |> post(~p"/api/docker-builds", %{
+        "repository" => "ghcr.io/example/app",
+        "tag" => "sha-deadbeef",
+        "status" => "success",
+        "pr_url" => "https://github.com/example/app/pull/4313"
+      })
+
+    assert %{"id" => id, "url" => url} = json_response(conn, 200)
+    assert id
+    assert String.contains?(url, "/docker-builds/")
+  end
+
+  test "agent can record a buildbuddy invocation from a bare URL", %{conn: conn, token: token} do
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer " <> token)
+      |> post(~p"/api/buildbuddy-invocations", %{
+        "buildbuddy_url" => "https://bb.example.com/invocation/abc-123",
+        "status" => "SUCCESS"
+      })
+
+    assert %{"id" => id, "invocation_id" => "abc-123", "url" => url} = json_response(conn, 200)
+    assert id
+    assert String.contains?(url, "/buildbuddy-invocations/")
+  end
+
   test "rejects a roll whose PR URL is not full https", %{conn: conn, token: token} do
     conn =
       conn
       |> put_req_header("authorization", "Bearer " <> token)
       |> post(~p"/api/rolls", %{
-        "cluster" => "farm01",
-        "namespace" => "serviceradar",
+        "cluster" => "example-cluster",
+        "namespace" => "example-ns",
         "status" => "started",
         "image_tag" => "sha-x",
         "pr_url" => "4313"
@@ -130,10 +173,25 @@ defmodule FirstmatePortWeb.Api.IngestControllerTest do
       conn
       |> put_req_header("authorization", "Bearer " <> jwt)
       |> post(~p"/api/rolls", %{
-        "cluster" => "farm01",
-        "namespace" => "serviceradar",
+        "cluster" => "example-cluster",
+        "namespace" => "example-ns",
         "status" => "started",
         "image_tag" => "sha-x"
+      })
+
+    assert conn.status in [401, 403]
+  end
+
+  test "browser user cannot write docker builds", %{conn: conn, human: human} do
+    {:ok, jwt, _} = FirstmatePort.Auth.Guardian.encode_and_sign(human)
+
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer " <> jwt)
+      |> post(~p"/api/docker-builds", %{
+        "repository" => "ghcr.io/example/app",
+        "tag" => "sha-x",
+        "status" => "started"
       })
 
     assert conn.status in [401, 403]

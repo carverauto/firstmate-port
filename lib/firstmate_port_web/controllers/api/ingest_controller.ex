@@ -1,7 +1,16 @@
 defmodule FirstmatePortWeb.Api.IngestController do
   use FirstmatePortWeb, :controller
 
-  alias FirstmatePort.Portal.{Diagram, NoMistakesRun, ProgressItem, Roll}
+  alias FirstmatePort.BuildBuddy
+
+  alias FirstmatePort.Portal.{
+    BuildBuddyInvocation,
+    Diagram,
+    DockerBuild,
+    NoMistakesRun,
+    ProgressItem,
+    Roll
+  }
 
   def create_diagram(conn, params) do
     actor = conn.assigns.current_user
@@ -48,7 +57,7 @@ defmodule FirstmatePortWeb.Api.IngestController do
 
   def create_roll(conn, params) do
     record(conn, Roll, :record, %{
-      cluster: params["cluster"] || "farm01",
+      cluster: params["cluster"],
       namespace: params["namespace"],
       status: params["status"],
       image_tag: params["image_tag"],
@@ -60,6 +69,52 @@ defmodule FirstmatePortWeb.Api.IngestController do
       outcome: params["outcome"] || ""
     })
   end
+
+  def create_docker_build(conn, params) do
+    record(conn, DockerBuild, :record, %{
+      repository: params["repository"],
+      tag: params["tag"],
+      status: params["status"],
+      digest: params["digest"] || "",
+      dockerfile: params["dockerfile"] || "",
+      context: params["context"] || "",
+      pr_url: params["pr_url"] || "",
+      issue_url: params["issue_url"] || "",
+      outcome: params["outcome"] || ""
+    })
+  end
+
+  def create_buildbuddy_invocation(conn, params) do
+    {invocation_id, host} = invocation_identity(params)
+
+    record(conn, BuildBuddyInvocation, :record, %{
+      invocation_id: invocation_id,
+      host: host,
+      status: params["status"] || "",
+      commit_sha: params["commit_sha"] || "",
+      branch: params["branch"] || "",
+      repo_url: params["repo_url"] || "",
+      buildbuddy_url: params["buildbuddy_url"] || "",
+      pr_url: params["pr_url"] || "",
+      outcome: params["outcome"] || ""
+    })
+  end
+
+  # Callers may POST just a copied invocation URL; split it into the
+  # invocation id and host the API client needs.
+  defp invocation_identity(%{"invocation_id" => id} = params)
+       when is_binary(id) and id != "" do
+    {id, params["host"] || ""}
+  end
+
+  defp invocation_identity(%{"buildbuddy_url" => url} = params) when is_binary(url) do
+    case BuildBuddy.parse_invocation_url(url) do
+      {:ok, %{host: host, invocation_id: id}} -> {id, params["host"] || host}
+      :error -> {params["invocation_id"], params["host"] || ""}
+    end
+  end
+
+  defp invocation_identity(params), do: {params["invocation_id"], params["host"] || ""}
 
   def create_no_mistakes(conn, params) do
     record(conn, NoMistakesRun, :record, %{
@@ -79,6 +134,8 @@ defmodule FirstmatePortWeb.Api.IngestController do
   def list_diagrams(conn, _params), do: list(conn, Diagram)
   def list_progress(conn, _params), do: list(conn, ProgressItem)
   def list_rolls(conn, _params), do: list(conn, Roll)
+  def list_docker_builds(conn, _params), do: list(conn, DockerBuild)
+  def list_buildbuddy_invocations(conn, _params), do: list(conn, BuildBuddyInvocation)
   def list_no_mistakes(conn, _params), do: list(conn, NoMistakesRun)
 
   defp list(conn, resource) do
@@ -112,6 +169,26 @@ defmodule FirstmatePortWeb.Api.IngestController do
     }
   end
 
+  defp summarize(%DockerBuild{} = b) do
+    %{
+      id: b.id,
+      repository: b.repository,
+      tag: b.tag,
+      status: b.status,
+      pr_url: b.pr_url
+    }
+  end
+
+  defp summarize(%BuildBuddyInvocation{} = i) do
+    %{
+      id: i.id,
+      invocation_id: i.invocation_id,
+      status: i.status,
+      buildbuddy_url: i.buildbuddy_url,
+      pr_url: i.pr_url
+    }
+  end
+
   defp summarize(%NoMistakesRun{} = n) do
     %{
       id: n.id,
@@ -126,6 +203,11 @@ defmodule FirstmatePortWeb.Api.IngestController do
 
   defp url_for(%Diagram{id: id}), do: public_url() <> "/d/" <> id
   defp url_for(%Roll{id: id}), do: public_url() <> "/rolls/" <> id
+  defp url_for(%DockerBuild{id: id}), do: public_url() <> "/docker-builds/" <> id
+
+  defp url_for(%BuildBuddyInvocation{id: id}),
+    do: public_url() <> "/buildbuddy-invocations/" <> id
+
   defp url_for(%ProgressItem{id: id}), do: public_url() <> "/?tab=progress#" <> id
   defp url_for(%NoMistakesRun{id: id}), do: public_url() <> "/?tab=no-mistakes#" <> id
 
