@@ -54,10 +54,15 @@ jobs:
         run: |
           set -euo pipefail
           want="$(tr -d '[:space:]' < .bazelversion)"
-          # Bounded: a wedged distribution download fails here in minutes,
-          # not as a silent hour-long hang in the push step.
-          got="$(timeout 900 bazel --output_base=/tmp/fm-fm-port/bazel version 2>&1 | grep 'Build label' | awk '{print $3}')"
-          echo "want=${want} got=${got}"
+          # bazel on PATH is the bazelisk shim; under HTTPS_PROXY it can hang
+          # even when the distribution is already cached. Prefer the real binary.
+          real="$(find "${BAZELISK_HOME}/downloads" -type f -path '*/bin/bazel' ! -name '*.lock' 2>/dev/null | head -1 || true)"
+          if [ -z "${real}" ]; then
+            echo "cached bazel binary not found under BAZELISK_HOME=${BAZELISK_HOME:-unset}" >&2
+            exit 1
+          fi
+          got="$(timeout 60 "${real}" --version | awk '{print $2}')"
+          echo "want=${want} got=${got} via=${real}"
           test "${got}" = "${want}"
       - name: Configure BuildBuddy remote
         run: |
