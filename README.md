@@ -16,7 +16,7 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP, Bandit, U
 
 ## Docs
 
-- [docs/deploy.md](docs/deploy.md) Harbor publish, compose, Kubernetes
+- [docs/deploy.md](docs/deploy.md) ghcr.io publish, compose, Kubernetes
 - [docs/bazel.md](docs/bazel.md) rules_elixir / BuildBuddy, `--output_base=/tmp/fm-fm-port/bazel`
 
 Prefix every `npm` invocation with `sfw`.

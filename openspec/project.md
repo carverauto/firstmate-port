@@ -12,7 +12,7 @@ firstmate-port is the OSS companion portal for firstmate: a Phoenix LiveView sit
 - Tailwind v4 + Geist
 - Bazel (rules_elixir / BuildBuddy remote-exec)
 - Docker Compose (portal, Postgres, single-node JetStream)
-- Harbor for internal images; ghcr.io is a later public mirror
+- ghcr.io for images (`ghcr.io/<owner>/firstmate-port`)
 
 ## Project Conventions
 
@@ -46,9 +46,9 @@ firstmate-port is the OSS companion portal for firstmate: a Phoenix LiveView sit
 - Do not schedule a Mac Bazel cache wipe in AshOban or Kubernetes
 - Do not relocate `~/.no-mistakes` into the cluster
 - Local Bazel: `--output_base=/tmp/fm-fm-port/bazel`. `--config=remote` is fine; never `--config=ci` locally
-- Harbor is the internal registry; do not invent a second forge
+- ghcr.io is the registry; do not invent a second forge
 
 ## External Dependencies
 - Optional OIDC issuer (Authentik or other)
 - GitHub API (fine-grained PAT) when poll is enabled
-- Harbor for image publish
+- ghcr.io for image publish

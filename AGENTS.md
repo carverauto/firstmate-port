@@ -15,8 +15,8 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 - `fm-steer` is the captain CLI. Device-code against this API. It must not import or dial NATS.
 - Attribute tenancy on shared Postgres and one NATS account. Streams are `<tenant>.steer` / `<tenant>.inbound`. Seed tenant `local` as an example. The API is the tenant wall and the only JetStream client.
 - Do not add `notify.py`, `watch.py`, or the launchd plist. Those stay in firstmate-notify.
-- Site hostnames, Authentik, Harbor, and email allowlists belong in env samples / compose overrides / `deploy/examples`. Defaults run on localhost.
-- Harbor is the internal image registry. ghcr.io is a later public mirror; do not invent a second forge.
+- Site hostnames, Authentik, registry namespaces, and email allowlists belong in env samples / compose overrides / `deploy/examples`. Defaults run on localhost.
+- ghcr.io is the image registry (`ghcr.io/<owner>/firstmate-port`). CI logs in with the workflow `GITHUB_TOKEN`; there are no registry robot secrets. Do not invent a second forge.
 
 ## Stack
 

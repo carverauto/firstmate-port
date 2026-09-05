@@ -166,13 +166,13 @@ oci_image(
 oci_push(
     name = "portal_image_push",
     image = ":portal_image",
-    repository = "registry.example.com/firstmate/firstmate-port",
+    repository = "ghcr.io/OWNER/firstmate-port",
 )
 
 oci_push(
     name = "fm-steer_image_push",
     image = ":fm-steer_image",
-    repository = "registry.example.com/firstmate/fm-steer",
+    repository = "ghcr.io/OWNER/fm-steer",
 )
 
 

@@ -1,0 +1,57 @@
+# Public Discord interactions hostname on the public shared Gateway.
+# Path-only /interactions: the portal UI, /mcp, and NATS are never reachable
+# from this hostname. Phoenix verifies the Ed25519 signature itself; there is
+# no Discord sidecar.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: discord-firstmate
+  namespace: firstmate
+  labels:
+    app.kubernetes.io/name: firstmate
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: discord-firstmate.carverauto.dev
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+    external-dns.alpha.kubernetes.io/ttl: "60"
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: serviceradar-shared-gateway
+      namespace: serviceradar-system
+      sectionName: https-carverauto
+  hostnames:
+    - discord-firstmate.carverauto.dev
+  rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /interactions
+      backendRefs:
+        - name: firstmate-port
+          port: 4000
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: discord-firstmate-http-redirect
+  namespace: firstmate
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: serviceradar-shared-gateway
+      namespace: serviceradar-system
+      sectionName: http-carverauto
+  hostnames:
+    - discord-firstmate.carverauto.dev
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301

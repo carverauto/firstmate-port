@@ -11,16 +11,14 @@ on:
         type: string
 permissions:
   contents: read
-  id-token: write
+  packages: write
 jobs:
   publish:
     runs-on: ubuntu-latest
     env:
       BUILDBUDDY_ORG_API_KEY: ${{ secrets.BUILDBUDDY_ORG_API_KEY || secrets.BUILDBUDDY_API_KEY }}
-      OCI_REGISTRY: ${{ vars.OCI_REGISTRY || 'registry.example.com' }}
-      OCI_PROJECT: ${{ vars.OCI_PROJECT || 'firstmate' }}
-      OCI_USERNAME: ${{ secrets.HARBOR_ROBOT_USERNAME }}
-      OCI_TOKEN: ${{ secrets.HARBOR_ROBOT_SECRET }}
+      OCI_REGISTRY: ${{ vars.OCI_REGISTRY || 'ghcr.io' }}
+      OCI_PROJECT: ${{ vars.OCI_PROJECT || github.repository_owner }}
     steps:
       - uses: actions/checkout@v4
       - uses: bazel-contrib/setup-bazel@0.15.0
@@ -37,10 +35,12 @@ jobs:
 
           umask 077
           printf 'common --remote_header=x-buildbuddy-api-key=%s\n' "${BUILDBUDDY_ORG_API_KEY}" > .bazelrc.remote
-      - name: Login to Harbor
-        if: ${{ env.OCI_USERNAME != '' && env.OCI_TOKEN != '' }}
+      - name: Login to the container registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "${OCI_TOKEN}" | docker login "${OCI_REGISTRY}" -u "${OCI_USERNAME}" --password-stdin
+          set -euo pipefail
+          echo "${GITHUB_TOKEN}" | docker login "${OCI_REGISTRY}" -u "${GITHUB_ACTOR}" --password-stdin
       - name: Push portal image
         env:
           EXTRA_TAG: ${{ github.event.inputs.extra_tag }}
@@ -49,6 +49,8 @@ jobs:
           set -euo pipefail
           repo="${OCI_REGISTRY}/${OCI_PROJECT}/firstmate-port"
           tag="sha-$(git rev-parse --short HEAD)"
+          echo "IMAGE_REPO=${repo}" >> "${GITHUB_ENV}"
+          echo "IMAGE_TAG=${tag}" >> "${GITHUB_ENV}"
           bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${tag}"
           if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
             bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${REF_NAME}"
@@ -56,3 +58,10 @@ jobs:
           if [ -n "${EXTRA_TAG}" ]; then
             bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
           fi
+      - name: Verify pushed manifest
+        run: |
+          set -euo pipefail
+          digest="$(docker manifest inspect "${IMAGE_REPO}:${IMAGE_TAG}" \
+            | sha256sum | cut -d' ' -f1)"
+          echo "manifest for ${IMAGE_REPO}:${IMAGE_TAG} resolved (body sha256:${digest})"
+          docker manifest inspect "${IMAGE_REPO}:${IMAGE_TAG}" | head -40

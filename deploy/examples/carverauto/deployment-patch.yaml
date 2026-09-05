@@ -1,0 +1,31 @@
+# Site identity for the portal container plus the ghcr pull secret.
+# ghcr.io/mfreeman451/firstmate-port is private because the source repo is;
+# create `ghcr-pull` from a token with read:packages before applying.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firstmate-port
+  namespace: firstmate
+spec:
+  template:
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: hub
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PHX_HOST
+              value: firstmate.carverauto.dev
+            - name: PUBLIC_URL
+              value: https://firstmate.carverauto.dev
+            - name: ALLOWED_EMAIL_DOMAIN
+              value: carverauto.dev
+            - name: OIDC_ISSUER
+              value: https://auth.carverauto.dev/application/o/firstmate/
+            - name: OIDC_DISCOVERY_URL
+              value: https://auth.carverauto.dev/application/o/firstmate/.well-known/openid-configuration
+            - name: OIDC_REDIRECT_URI
+              value: https://firstmate.carverauto.dev/auth/oidc/callback
+            - name: NATS_REPLICAS
+              value: "3"
