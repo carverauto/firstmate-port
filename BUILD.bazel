@@ -187,6 +187,8 @@ oci_image(
         "PHX_SERVER": "true",
         "PORT": "4000",
         "SSL_CERT_FILE": "/etc/ssl/certs/cacert.pem",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
     },
     exposed_ports = ["4000/tcp"],
     tars = [
