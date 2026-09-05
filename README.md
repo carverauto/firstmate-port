@@ -1,6 +1,6 @@
 # firstmate-port
 
-Phoenix LiveView companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, farm rolls, NATS queues, and no-mistakes runs. The Mac Discord notifier (`notify.py`, `watch.py`, launchd) stays in firstmate-notify.
+Phoenix/Ash companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, runs, and usage in one LiveView UI. Discord inbound is served by Phoenix at POST `/interactions`.
 
 ## Local
 
@@ -15,7 +15,13 @@ shell sessions, save the generated value as `SECRET_KEY_BASE` in `.env`.
 
 http://localhost:4000/login. With `DEV_AUTH=true`, use `captain@localhost`.
 
-Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP, Bandit, Ueberauth OIDC, Gnat/JetStream LiveView, Tailwind v4.
+Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`, Bandit, Ueberauth OIDC, Gnat/JetStream, Tailwind v4 + Geist.
+
+Tenancy: shared Postgres and one NATS account. Streams are `<tenant>.steer` / `<tenant>.inbound` (seed tenant `local`). The API is the tenant wall and the only JetStream client.
+
+Images: Harbor is the internal registry; ghcr.io is a later public mirror.
+
+Workstation notification stays in firstmate-notify until Elixir outbound replaces it.
 
 ## Docs
 
@@ -26,7 +32,7 @@ Prefix every `npm` invocation with `sfw`.
 
 ## fm-steer CLI
 
-`fm-steer` authenticates with RFC 8628 device-code against this API and drives inbox put/next/ack/list over HTTP. It does not dial NATS. JWT is stored at `$XDG_CONFIG_HOME/fm-steer/credentials.json` (mode 0600).
+`fm-steer` (Go) authenticates with RFC 8628 device-code against this API and drives inbox put/next/ack/list over HTTP. It does not dial NATS. JWT is stored at `$XDG_CONFIG_HOME/fm-steer/credentials.json` (mode 0600).
 
 Install from source (Go 1.25+):
 
