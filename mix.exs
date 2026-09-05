@@ -63,6 +63,8 @@ defmodule FirstmatePort.MixProject do
       {:castore, "~> 1.0"},
       {:phoenix_view, "~> 2.0"},
       {:cowboy, "~> 2.12"},
+      {:ranch, "~> 2.1"},
+      {:cowlib, "~> 2.12"},
       {:gen_smtp, "~> 1.2"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
