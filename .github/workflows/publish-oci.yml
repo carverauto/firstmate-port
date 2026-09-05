@@ -15,7 +15,7 @@ permissions:
 jobs:
   publish:
     # Same self-hosted runners as ServiceRadar publish (captain directive).
-    runs-on: serviceradar-signing
+    runs-on: arc-runner-set
     env:
       BUILDBUDDY_ORG_API_KEY: ${{ secrets.BUILDBUDDY_ORG_API_KEY || secrets.BUILDBUDDY_API_KEY }}
       OCI_REGISTRY: ${{ vars.OCI_REGISTRY || 'ghcr.io' }}
