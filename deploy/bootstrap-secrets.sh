@@ -75,4 +75,7 @@ echo "  kubectl -n $NS create secret generic github-token --from-literal=GITHUB_
 echo "Discord and other per-tenant credentials are NOT kubectl secrets."
 echo "  Each tenant enters its own at https://<host>/settings/credentials"
 echo "  or through PUT /api/credentials/<provider>/<key>. See docs/credentials.md."
-echo "done. OIDC secret is created by deploy/bootstrap-authentik-oidc.sh"
+echo "Optional OIDC (any OpenID Connect provider; the portal runs on local sign-in without it):"
+echo "  kubectl -n $NS create secret generic firstmate-oidc --from-literal=client-id=<id> --from-literal=client-secret=<secret>"
+echo "  then set OIDC_ISSUER on the Deployment. See deploy/examples for a worked provider."
+echo "done."

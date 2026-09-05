@@ -1,6 +1,6 @@
 defmodule FirstmatePort.Accounts.User do
   @moduledoc """
-  Portal actor. Humans sign in via Authentik OIDC; agents use a hashed API key.
+  Portal actor. Humans sign in via OIDC or local auth; agents use a hashed API key.
   """
 
   import Ash.Expr

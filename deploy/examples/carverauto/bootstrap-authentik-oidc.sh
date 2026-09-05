@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# Pattern copied from ~/src/gitops/jupyterhub/bootstrap-authentik-oidc.sh
+# Example only: provisions an OIDC client in Authentik, one provider among many.
+#
+# The portal itself has no Authentik adapter. It speaks generic OpenID Connect
+# and reads every endpoint from the issuer's discovery document, so the same
+# portal works against Keycloak, Dex, Google, Okta, or Entra. Whatever you use,
+# the portal needs only OIDC_ISSUER plus a client id and secret in the
+# `firstmate-oidc` secret. Write the equivalent of this script for your own
+# provider, or create that secret by hand.
 set -euo pipefail
 
 : "${AUTHENTIK_NAMESPACE:=authentik}"
 : "${AUTHENTIK_SERVER_DEPLOYMENT:=authentik-server}"
 : "${FIRSTMATE_NAMESPACE:=firstmate}"
-: "${FIRSTMATE_OIDC_SECRET:=firstmate-authentik-oauth}"
+: "${FIRSTMATE_OIDC_SECRET:=firstmate-oidc}"
 : "${FIRSTMATE_OIDC_CLIENT_ID:=firstmate}"
 : "${FIRSTMATE_OIDC_APP_SLUG:=firstmate}"
 : "${FIRSTMATE_OIDC_REDIRECT_URI:=https://firstmate.example.com/auth/oidc/callback}"

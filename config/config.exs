@@ -87,12 +87,16 @@ config :firstmate_port, FirstmatePort.Auth.Guardian,
   secret_key: "dev-guardian-secret-change-in-runtime",
   ttl: {12, :hours}
 
-config :firstmate_port, FirstmatePortWeb.Auth.OIDCStrategy,
-  client_id: System.get_env("OIDC_CLIENT_ID") || "firstmate-port",
-  client_secret: System.get_env("OIDC_CLIENT_SECRET"),
-  issuer: System.get_env("OIDC_ISSUER"),
-  discovery_url: System.get_env("OIDC_DISCOVERY_URL"),
-  redirect_uri: System.get_env("OIDC_REDIRECT_URI") || "http://localhost:4000/auth/oidc/callback",
+# OIDC is optional and vendor-neutral. Compiled defaults configure no issuer, so
+# a fresh checkout and the public image run on local auth alone. Real values are
+# read from the environment in config/runtime.exs; nothing here is baked into a
+# release.
+config :firstmate_port, FirstmatePort.Auth.OIDC,
+  client_id: nil,
+  client_secret: nil,
+  issuer: nil,
+  discovery_url: nil,
+  redirect_uri: nil,
   scopes: ["openid", "email", "profile"]
 
 config :firstmate_port, FirstmatePort.NATS.Connection,
@@ -105,6 +109,10 @@ config :firstmate_port, FirstmatePort.NATS.Connection,
   password: nil,
   replicas: 1
 
+# Deliberately empty, in every environment. UeberauthOidcc.Application starts one
+# permanent child per entry, and a provider that cannot load its configuration
+# crashes there and terminates the node. FirstmatePort.Auth.OIDC.Supervisor owns
+# the provider instead, as a temporary child.
 config :ueberauth_oidcc, issuers: []
 
 config :ueberauth, Ueberauth,
@@ -112,7 +120,8 @@ config :ueberauth, Ueberauth,
     oidc:
       {Ueberauth.Strategy.Oidcc,
        [
-         issuer: :firstmate_authentik,
+         # The name of the provider process, not a vendor.
+         issuer: :firstmate_oidc,
          client_id: {:system, "OIDC_CLIENT_ID"},
          client_secret: {:system, "OIDC_CLIENT_SECRET"},
          scopes: ["openid", "email", "profile"],

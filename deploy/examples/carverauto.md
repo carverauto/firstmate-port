@@ -7,7 +7,7 @@ the portal. Copy them into GitOps overlays, `.env`, or `docker-compose.override.
 | --- | --- |
 | Portal hostname | `firstmate.carverauto.dev` |
 | LAN VIP | `192.168.6.87` |
-| Authentik issuer | `https://auth.carverauto.dev/application/o/firstmate/` |
+| OIDC issuer (Authentik) | `https://auth.carverauto.dev/application/o/firstmate/` |
 | Image | `ghcr.io/mfreeman451/firstmate-port` |
 | Discord interactions | `discord-firstmate.carverauto.dev` |
 | Email allowlist | `@carverauto.dev` |
@@ -29,3 +29,10 @@ The namespace needs both gateway selector labels:
 
 A ready-to-apply kustomize overlay of exactly this table is in
 [`carverauto/`](carverauto/). It is an example overlay, never a compiled-in default.
+
+Authentik is this site's identity provider, not the portal's. The portal speaks
+generic OpenID Connect and reads its endpoints from the issuer's discovery
+document, so swapping in Keycloak, Dex, Google, Okta, or Entra means changing
+`OIDC_ISSUER` and the client credentials, nothing else.
+[`carverauto/bootstrap-authentik-oidc.sh`](carverauto/bootstrap-authentik-oidc.sh)
+provisions the client for this particular provider.

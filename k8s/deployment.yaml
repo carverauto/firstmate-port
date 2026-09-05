@@ -35,6 +35,13 @@ spec:
               value: firstmate.example.com
             - name: PUBLIC_URL
               value: https://firstmate.example.com
+            # Local sign-in: an email form gated by ALLOWED_EMAIL_DOMAIN, no
+            # identity provider required. This is the supported way to bring a
+            # cluster up; add OIDC below once you have a provider.
+            - name: LOCAL_AUTH
+              value: "true"
+            - name: ALLOWED_EMAIL_DOMAIN
+              value: example.com
             - name: NATS_ENABLED
               value: "true"
             - name: NATS_HOST
@@ -61,16 +68,23 @@ spec:
                 secretKeyRef:
                   name: firstmate-app
                   key: secret-key-base
+            # OIDC is optional and vendor-neutral: any OpenID Connect provider
+            # works, and the portal keeps serving local sign-in when these are
+            # absent or the provider is unreachable. Every key is optional so a
+            # missing secret cannot block the pod from starting. Set
+            # OIDC_ISSUER in an overlay to turn it on; see deploy/examples.
             - name: OIDC_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: firstmate-authentik-oauth
+                  name: firstmate-oidc
                   key: client-id
+                  optional: true
             - name: OIDC_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: firstmate-authentik-oauth
+                  name: firstmate-oidc
                   key: client-secret
+                  optional: true
             - name: FIRSTMATE_AGENT_TOKEN
               valueFrom:
                 secretKeyRef:

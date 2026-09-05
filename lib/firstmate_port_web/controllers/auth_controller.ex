@@ -1,10 +1,23 @@
 defmodule FirstmatePortWeb.AuthController do
+  @moduledoc """
+  Sign-in endpoints.
+
+  The identity-provider routes stay mounted whether or not a provider is
+  configured, so that a portal running on local auth answers them with a
+  redirect instead of a crash.
+  """
+
   use FirstmatePortWeb, :controller
 
+  # Runs before Ueberauth. Without a loaded provider the strategy fails inside
+  # the plug, and these actions answer with a 502 that inspects the underlying
+  # error at the visitor. "OIDC is off" is a normal state, not a gateway fault.
+  plug :require_oidc when action in [:request, :callback]
   plug Ueberauth when action in [:request, :callback]
 
   alias FirstmatePort.Accounts.User
   alias FirstmatePort.Auth.Guardian
+  alias FirstmatePort.Auth.OIDC
   alias FirstmatePort.Links
 
   def request(conn, _params) do
@@ -83,6 +96,17 @@ defmodule FirstmatePortWeb.AuthController do
       conn
       |> put_status(:not_found)
       |> text("not found")
+    end
+  end
+
+  defp require_oidc(conn, _opts) do
+    if OIDC.enabled?() do
+      conn
+    else
+      conn
+      |> put_flash(:error, "Sign-in with an identity provider is not available.")
+      |> redirect(to: ~p"/login")
+      |> halt()
     end
   end
 

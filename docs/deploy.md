@@ -17,7 +17,8 @@ Avoid capturing `mix phx.gen.secret` with `$(...)` during initial setup: Mix may
 compile dependencies to load the task, and command substitution hides standard
 output (including compilation progress) while warnings remain visible on stderr.
 
-Open http://localhost:4000/login. With `DEV_AUTH=true`, sign in as `captain@localhost`.
+Open http://localhost:4000/login. With `LOCAL_AUTH=true`, sign in as
+`captain@localhost`. No identity provider is required in any runtime.
 
 CLI (HTTP only, no NATS):
 
@@ -35,6 +36,31 @@ docker compose up postgres nats
 mix setup
 mix phx.server
 ```
+
+## Sign-in
+
+Two modes, same image. Neither is a build flag; both are environment.
+
+**Local** (`LOCAL_AUTH=true`) is an email form gated by `ALLOWED_EMAIL_DOMAIN`,
+with no identity provider. It is what `docker compose up` and the base `k8s/`
+manifests use, so a cluster can come up and sign in before any IdP exists.
+
+**OIDC** (`OIDC_ISSUER` plus `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET`) adds a
+"Continue with identity provider" button. Any OpenID Connect provider works —
+Keycloak, Dex, Google, Okta, Entra — because every endpoint is read from the
+issuer's discovery document. There is no per-vendor adapter to write. Put the
+client credentials in a `firstmate-oidc` secret; `deploy/examples` has a worked
+provider setup.
+
+OIDC is optional and fails soft. An unset, misconfigured, or unreachable issuer
+logs and leaves OIDC disabled: `/healthz`, the endpoint, and local sign-in stay
+up, and the login page says the provider is unreachable rather than pretending
+it is unconfigured. Missing OIDC settings and a missing OS CA bundle are both
+survivable; neither takes the node down.
+
+On an image with no CA bundle, point `OIDC_CACERTFILE` (or `SSL_CERT_FILE`) at a
+PEM file. The portal falls back to the bundle it ships at `priv/ssl/cacert.pem`,
+so outbound TLS works even on a scratch base image.
 
 ## Images
 
@@ -63,7 +89,7 @@ kubectl -n firstmate create secret docker-registry ghcr-io-cred \
   --docker-server=ghcr.io --docker-username=<github-user> --docker-password=<token>
 ```
 
-Site-specific hostnames, Authentik URLs, allowlists, and ghcr namespaces live in:
+Site-specific hostnames, issuer URLs, allowlists, and ghcr namespaces live in:
 
 - `.env` / `docker-compose.override.yml` (from the `.example` files)
 - `deploy/examples/` notes
@@ -78,7 +104,6 @@ They are not compiled-in defaults.
 ```sh
 kubectl apply -k k8s
 ./deploy/bootstrap-secrets.sh
-# optional OIDC: ./deploy/bootstrap-authentik-oidc.sh
 ```
 
 `fm-steer` is the HTTP inbox port (`put` / `next` / `ack` / `list`). It does not dial NATS. The Phoenix API is the only JetStream client. The on-disk firstmate inbox stays until dual-write is wired.

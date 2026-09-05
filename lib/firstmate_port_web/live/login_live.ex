@@ -1,19 +1,27 @@
 defmodule FirstmatePortWeb.LoginLive do
-  @moduledoc "Editorial sign-in. OIDC when configured; local email when DEV_AUTH is on."
+  @moduledoc """
+  Editorial sign-in.
+
+  Offers whatever is actually available: an identity provider once its discovery
+  document is loaded, a local email form when local auth is on, and an honest
+  message when neither is. A configured-but-unreachable provider is called out
+  as unreachable rather than unconfigured, because those need different fixes.
+  """
   use FirstmatePortWeb, :live_view
 
   import Phoenix.Controller, only: [get_csrf_token: 0]
 
   @impl true
   def mount(_params, _session, socket) do
-    oidc? = oidc_configured?()
-    dev? = Application.get_env(:firstmate_port, :dev_auth, false)
+    oidc = FirstmatePort.Auth.OIDC.status()
+    local? = Application.get_env(:firstmate_port, :dev_auth, false)
 
     {:ok,
      socket
      |> assign(:page_title, "Sign in")
-     |> assign(:oidc?, oidc?)
-     |> assign(:dev?, dev?)
+     |> assign(:oidc, oidc)
+     |> assign(:oidc?, oidc == :ready)
+     |> assign(:local?, local?)
      |> assign(:email, "")
      |> assign(:error, nil)}
   end
@@ -39,7 +47,7 @@ defmodule FirstmatePortWeb.LoginLive do
           </.link>
         <% end %>
 
-        <%= if @dev? do %>
+        <%= if @local? do %>
           <form action={~p"/auth/dev"} method="post" class="auth-form">
             <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
             <label for="email">Email</label>
@@ -56,20 +64,19 @@ defmodule FirstmatePortWeb.LoginLive do
           </form>
         <% end %>
 
-        <%= if not @oidc? and not @dev? do %>
+        <%= if @oidc == :unavailable do %>
           <p class="empty-copy" role="status">
-            Sign-in is not configured. Set OIDC_ISSUER and OIDC_CLIENT_SECRET, or enable DEV_AUTH for a local compose stack.
+            Your identity provider is not reachable right now.
+          </p>
+        <% end %>
+
+        <%= if @oidc == :disabled and not @local? do %>
+          <p class="empty-copy" role="status">
+            Sign-in is not configured. Set LOCAL_AUTH=true for local sign-in, or set OIDC_ISSUER, OIDC_CLIENT_ID and OIDC_CLIENT_SECRET for an identity provider.
           </p>
         <% end %>
       </section>
     </Layouts.auth>
     """
-  end
-
-  defp oidc_configured? do
-    cfg = Application.get_env(:firstmate_port, FirstmatePortWeb.Auth.OIDCStrategy) || []
-    discovery = cfg[:discovery_url] || Application.get_env(:firstmate_port, :oidc_issuer)
-    secret = cfg[:client_secret]
-    is_binary(discovery) and discovery != "" and is_binary(secret) and secret != ""
   end
 end

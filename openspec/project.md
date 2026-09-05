@@ -51,6 +51,6 @@ See [README.md](../README.md) for the product introduction and common usage.
 - ghcr.io is the registry; do not invent a second forge
 
 ## External Dependencies
-- Optional OIDC issuer (Authentik or other)
+- Optional OIDC issuer: any OpenID Connect provider, discovered from the issuer URL. No per-vendor adapter.
 - GitHub API (fine-grained PAT) when poll is enabled
 - ghcr.io for image publish
