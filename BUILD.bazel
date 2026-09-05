@@ -102,8 +102,21 @@ elixir_release(
 )
 
 go_library(
+    name = "fmsteer_lib",
+    srcs = [
+        "internal/fmsteer/auth.go",
+        "internal/fmsteer/cli.go",
+        "internal/fmsteer/client.go",
+        "internal/fmsteer/creds.go",
+        "internal/fmsteer/inbox.go",
+    ],
+    importpath = "github.com/mfreeman451/firstmate-port/internal/fmsteer",
+)
+
+go_library(
     name = "fm-steer_lib",
     srcs = ["cmd/fm-steer/main.go"],
+    deps = [":fmsteer_lib"],
     importpath = "github.com/mfreeman451/firstmate-port/cmd/fm-steer",
 )
 
@@ -130,8 +143,8 @@ go_binary(
 
 go_test(
     name = "fm-steer_test",
-    srcs = ["cmd/fm-steer/main_test.go"],
-    embed = [":fm-steer_lib"],
+    srcs = ["internal/fmsteer/fmsteer_test.go"],
+    embed = [":fmsteer_lib"],
 )
 
 pkg_tar(
