@@ -1,7 +1,7 @@
 # Project Context
 
 ## Purpose
-firstmate-port is the OSS companion portal for firstmate: a Phoenix LiveView site where a captain and crew review Archify diagrams, PRs, issues, NATS queues, and no-mistakes runs. Discord inbound is served by Phoenix at POST `/interactions`.
+See [README.md](../README.md) for the product introduction and common usage.
 
 ## Tech Stack
 - Elixir 1.19 / Phoenix 1.8 LiveView / Bandit
