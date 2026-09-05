@@ -6,25 +6,34 @@ defmodule FirstmatePortWeb.Api.IngestController do
   def create_diagram(conn, params) do
     actor = conn.assigns.current_user
 
-    attrs = %{
-      id: params["id"],
-      title: params["title"] || "untitled",
-      notes: params["notes"] || "",
-      html: decode_bin(params["html"] || params["html_base64"]),
-      png: decode_bin(params["png_base64"]),
-      svg: decode_bin(params["svg"])
-    }
+    with {:ok, html} <- decode_bin("html_base64", params["html_base64"]),
+         {:ok, png} <- decode_bin("png_base64", params["png_base64"]),
+         {:ok, svg} <- decode_bin("svg_base64", params["svg_base64"]) do
+      attrs = %{
+        id: params["id"],
+        title: params["title"] || "untitled",
+        notes: params["notes"] || "",
+        html: html,
+        png: png,
+        svg: svg
+      }
 
-    case Diagram.upload(attrs, FirstmatePort.Tenancy.opts(actor)) do
-      {:ok, diagram} ->
-        json(conn, %{
-          id: diagram.id,
-          url: public_url() <> "/d/" <> diagram.id,
-          title: diagram.title
-        })
+      case Diagram.upload(attrs, FirstmatePort.Tenancy.opts(actor)) do
+        {:ok, diagram} ->
+          json(conn, %{
+            id: diagram.id,
+            url: public_url() <> "/d/" <> diagram.id,
+            title: diagram.title
+          })
 
-      {:error, error} ->
-        conn |> put_status(:unprocessable_entity) |> json(%{error: inspect(error)})
+        {:error, error} ->
+          conn |> put_status(:unprocessable_entity) |> json(%{error: inspect(error)})
+      end
+    else
+      {:error, field} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: "#{field} must be base64-encoded"})
     end
   end
 
@@ -125,19 +134,15 @@ defmodule FirstmatePortWeb.Api.IngestController do
     |> String.trim_trailing("/")
   end
 
-  defp decode_bin(nil), do: nil
-  defp decode_bin(""), do: nil
+  defp decode_bin(_field, nil), do: {:ok, nil}
+  defp decode_bin(_field, ""), do: {:ok, nil}
 
-  defp decode_bin(value) when is_binary(value) do
-    case Base.decode64(value, padding: false) do
-      {:ok, bin} ->
-        bin
-
-      :error ->
-        case Base.decode64(value) do
-          {:ok, bin} -> bin
-          :error -> value
-        end
+  defp decode_bin(field, value) when is_binary(value) do
+    case Base.decode64(value) do
+      {:ok, bin} -> {:ok, bin}
+      :error -> {:error, field}
     end
   end
+
+  defp decode_bin(field, _value), do: {:error, field}
 end

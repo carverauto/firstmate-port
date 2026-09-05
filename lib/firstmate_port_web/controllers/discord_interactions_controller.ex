@@ -12,8 +12,6 @@ defmodule FirstmatePortWeb.DiscordInteractionsController do
 
   @max_body 64 * 1024
 
-  def healthz(conn, _params), do: text(conn, "ok")
-
   def create(conn, params) do
     raw = conn.assigns[:raw_body] || ""
     sig = conn |> get_req_header("x-signature-ed25519") |> List.first()

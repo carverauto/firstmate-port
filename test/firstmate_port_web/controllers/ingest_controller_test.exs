@@ -75,6 +75,54 @@ defmodule FirstmatePortWeb.Api.IngestControllerTest do
     assert conn.status in [400, 422]
   end
 
+  test "diagram upload stores the exact base64-decoded bytes", %{conn: conn, token: token} do
+    html = "<html><body>interactive</body></html>"
+    png = <<137, 80, 78, 71, 13, 10, 26, 10, 0, 1, 2, 3>>
+
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer " <> token)
+      |> post(~p"/api/diagrams", %{
+        "id" => "roundtrip-diagram",
+        "title" => "Round trip",
+        "html_base64" => Base.encode64(html),
+        "png_base64" => Base.encode64(png)
+      })
+
+    assert %{"id" => id} = json_response(conn, 200)
+
+    card =
+      build_conn()
+      |> put_req_header("user-agent", "Mozilla/5.0 (compatible; Discordbot/2.0)")
+      |> get("/d/#{id}/card.png")
+
+    assert card.status == 200
+    assert card.resp_body == png
+  end
+
+  test "diagram upload rejects a field that is not base64", %{conn: conn, token: token} do
+    conn =
+      conn
+      |> put_req_header("authorization", "Bearer " <> token)
+      |> post(~p"/api/diagrams", %{
+        "id" => "raw-svg-diagram",
+        "title" => "Raw svg",
+        "html_base64" => Base.encode64("<html></html>"),
+        "svg_base64" => ~s(<svg xmlns="http://www.w3.org/2000/svg"/>)
+      })
+
+    assert %{"error" => error} = json_response(conn, 400)
+    assert error =~ "svg_base64"
+
+    listing =
+      build_conn()
+      |> put_req_header("authorization", "Bearer " <> token)
+      |> get(~p"/api/diagrams")
+
+    assert %{"data" => rows} = json_response(listing, 200)
+    refute Enum.any?(rows, &(&1["id"] == "raw-svg-diagram"))
+  end
+
   test "browser user cannot write rolls", %{conn: conn, human: human} do
     {:ok, jwt, _} = FirstmatePort.Auth.Guardian.encode_and_sign(human)
 
