@@ -82,12 +82,12 @@ jobs:
           tag="sha-$(git rev-parse --short HEAD)"
           echo "IMAGE_REPO=${repo}" >> "${GITHUB_ENV}"
           echo "IMAGE_TAG=${tag}" >> "${GITHUB_ENV}"
-          "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel --announce_rc run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${tag}"
+          "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${tag}"
           if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
-            "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel --announce_rc run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${REF_NAME}"
+            "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${REF_NAME}"
           fi
           if [ -n "${EXTRA_TAG}" ]; then
-            "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel --announce_rc run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
+            "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
           fi
       - name: Push fm-steer image
         env:
@@ -99,12 +99,12 @@ jobs:
           tag="sha-$(git rev-parse --short HEAD)"
           echo "STEER_IMAGE_REPO=${repo}" >> "${GITHUB_ENV}"
           echo "STEER_IMAGE_TAG=${tag}" >> "${GITHUB_ENV}"
-          "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel --announce_rc run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${tag}"
+          "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${tag}"
           if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
-            "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel --announce_rc run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${REF_NAME}"
+            "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${REF_NAME}"
           fi
           if [ -n "${EXTRA_TAG}" ]; then
-            "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel --announce_rc run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
+            "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
           fi
       - name: Verify pushed manifests
         run: |
