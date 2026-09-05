@@ -40,10 +40,7 @@ jobs:
           # (breaks Actions broker).
           HTTP_PROXY: http://smokescreen.egress.svc.cluster.local:4750
           HTTPS_PROXY: http://smokescreen.egress.svc.cluster.local:4750
-          http_proxy: http://smokescreen.egress.svc.cluster.local:4750
-          https_proxy: http://smokescreen.egress.svc.cluster.local:4750
           NO_PROXY: localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local,carverauto.buildbuddy.io,registry.carverauto.dev,ghcr.io
-          no_proxy: localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local,carverauto.buildbuddy.io,registry.carverauto.dev,ghcr.io
         run: ./scripts/install-bazelisk.sh
 
       - name: Persist Smokescreen proxy for Bazel fetches
@@ -51,10 +48,7 @@ jobs:
           {
             echo "HTTP_PROXY=http://smokescreen.egress.svc.cluster.local:4750"
             echo "HTTPS_PROXY=http://smokescreen.egress.svc.cluster.local:4750"
-            echo "http_proxy=http://smokescreen.egress.svc.cluster.local:4750"
-            echo "https_proxy=http://smokescreen.egress.svc.cluster.local:4750"
             echo "NO_PROXY=localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local,carverauto.buildbuddy.io,registry.carverauto.dev,ghcr.io"
-            echo "no_proxy=localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local,carverauto.buildbuddy.io,registry.carverauto.dev,ghcr.io"
           } >> "$GITHUB_ENV"
       - name: Verify Bazel version
         run: |
