@@ -88,11 +88,8 @@ if config_env() == :prod do
     password: System.get_env("NATS_PASSWORD"),
     replicas: String.to_integer(System.get_env("NATS_REPLICAS") || "1")
 
-  # Tenant credentials are encrypted before they reach CNPG. CLOAK_KEY is the
-  # explicit key. When it is absent one is derived from SECRET_KEY_BASE, which
-  # every deployment already has, so adding this feature never stops an existing
-  # cluster from booting. Set CLOAK_KEY once and stored credentials stop
-  # depending on SECRET_KEY_BASE - see docs/credentials.md.
+  # Preserve boot compatibility through key derivation. Before changing keys,
+  # follow docs/credentials.md to keep existing ciphertext readable.
   cloak_key =
     System.get_env("CLOAK_KEY") ||
       Base.encode64(:crypto.hash(:sha256, "firstmate-port cloak v1:" <> secret_key_base))

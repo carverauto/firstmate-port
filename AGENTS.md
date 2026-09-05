@@ -14,7 +14,7 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 
 - `fm-steer` is the captain CLI. Device-code against this API. It must not import or dial NATS.
 - Attribute tenancy on shared Postgres and one NATS account. Streams are `<tenant>.steer` / `<tenant>.inbound`. Seed tenant `local` as an example. The API is the tenant wall and the only JetStream client.
-- Tenant secrets are rows, not cluster secrets: tenants enter them in the portal, `AshCloak` encrypts them into CNPG, and only `CLOAK_KEY` stays in Kubernetes. Never add a per-tenant `kubectl create secret`, and never expose plaintext over HTTP or MCP. Discord routing requires exactly one matching tenant across all portal keys; environment keys are not accepted. Bootstrap preserves the derived vault key. See `docs/credentials.md`.
+- Tenant credentials belong in portal UI/API and AshCloak-encrypted CNPG rows, never per-tenant Kubernetes secrets or plaintext HTTP/MCP responses. See `docs/credentials.md` for storage, Discord routing, and vault-key operations.
 - Do not add `notify.py`, `watch.py`, or the launchd plist. Those stay in firstmate-notify.
 - Site hostnames, Authentik, registry namespaces, and email allowlists belong in env samples / compose overrides / `deploy/examples`. Defaults run on localhost.
 - ghcr.io is the image registry (`ghcr.io/<owner>/firstmate-port`). CI logs in with the workflow `GITHUB_TOKEN`; there are no registry robot secrets. Do not invent a second forge.

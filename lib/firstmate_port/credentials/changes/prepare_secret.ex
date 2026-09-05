@@ -1,8 +1,8 @@
 defmodule FirstmatePort.Credentials.Changes.PrepareSecret do
   @moduledoc """
   Normalises the `:value` argument before `AshCloak` encrypts it, and records the
-  non-secret facts the portal shows in its place: the last four characters and
-  the byte size.
+  metadata the portal shows in its place: a hint (see `Slots.hint/1`) and the
+  byte size.
 
   Runs at change time so the trimmed argument is what AshCloak's `before_action`
   hook picks up.

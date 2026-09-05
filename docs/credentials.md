@@ -7,8 +7,8 @@ and stores the ciphertext in the same shared Postgres (CNPG) every other portal
 row lives in.
 
 There is no `kubectl create secret firstmate-discord`, and no per-tenant secret of
-any other kind. The cluster holds one credential: the vault key that encrypts all
-the others.
+any other kind. Kubernetes holds the vault key and deployment infrastructure
+secrets, as listed below; tenant credentials stay in Postgres.
 
 ## What the cluster still holds
 
@@ -38,8 +38,11 @@ explicit `CLOAK_KEY` equal to the existing derived key (the bootstrap script
 does this), and the two become independent. To replace it with a random key,
 follow the tagged rotation procedure below; never replace a key under the same tag.
 
-`config/dev.exs` and `config/test.exs` carry a fixed, non-secret key so the dev
-and test databases hold real ciphertext without any setup.
+`config/dev.exs` and `config/test.exs` carry fixed, non-secret keys so the dev
+and test databases hold real ciphertext without any setup. Docker Compose also
+defaults to the development key. For a fresh production installation, generate
+an explicit key with `openssl rand -base64 32` before storing credentials. For an
+existing database, preserve its current key or follow the rotation procedure.
 
 ## Storing a credential in the UI
 
@@ -48,15 +51,15 @@ and test databases hold real ciphertext without any setup.
 3. Paste the secret and save.
 
 The page never shows a stored secret again. It shows the slot, the last four
-characters, and the byte size, which is enough to tell two tokens apart and to
-spot a truncated paste. A secret that went in wrong is replaced with **Rotate**,
-not read back and edited.
+characters (only for values of at least 12 characters), and the byte size, which
+helps distinguish tokens and spot a truncated paste. A secret that went in wrong
+is replaced with **Rotate**, not read back and edited.
 
 ## Storing a credential over the API
 
-The endpoints live under `/api/credentials` and take the same session or
-device-code JWT as the rest of the CLI API, so `fm-steer auth login` is enough to
-get a token. The tenant comes from the signed-in user, never from the request.
+The endpoints live under `/api/credentials` and accept a bearer API key or
+device-code JWT, so `fm-steer auth login` is enough to get a token. The tenant
+comes from the signed-in user, never from the request.
 
 ```sh
 # What slots the portal knows about
@@ -96,9 +99,11 @@ schema change. The ones the portal knows by name are in
 live (a `discord`/`public_key` that is not 64 hex characters is refused at the
 form, not at the next inbound interaction).
 
-The `oidc`/`client_secret` slot is storage only. Portal sign-in is configured
-from the environment by whoever runs the deployment; nothing here reads that slot
-to configure an identity provider.
+Currently, only `discord`/`public_key` is consumed by an integration. Other
+slots are storage only: saving a GitHub token does not configure the existing
+`GITHUB_TOKEN`-based poller, and saving a bot token does not wire outbound Discord
+calls. Portal sign-in remains configured from the deployment environment; it
+does not read `oidc`/`client_secret`.
 
 ## Discord inbound
 
@@ -146,7 +151,12 @@ able to enumerate a tenant's secrets.
 
 ## Rotating the vault key
 
-`CLOAK_KEY` can be replaced without re-encrypting the database first:
+`CLOAK_KEY` is a base64-encoded 32-byte key. `CLOAK_KEY_TAG` defaults to
+`AES.GCM.V1`; `CLOAK_KEYS_RETIRED` accepts comma-separated `tag=base64key` pairs
+for decryption only. The key can be replaced without re-encrypting the database
+first. The supplied Kubernetes Deployment and Compose service wire only
+`CLOAK_KEY`; add `CLOAK_KEY_TAG` and `CLOAK_KEYS_RETIRED` to the app environment
+through your deployment overlay when rotating.
 
 1. Move the current key to `CLOAK_KEYS_RETIRED` as `AES.GCM.V1=<old base64 key>`.
 2. Put the new key in `CLOAK_KEY`, and give it a new tag: `CLOAK_KEY_TAG=AES.GCM.V2`.
@@ -157,5 +167,5 @@ able to enumerate a tenant's secrets.
 
 Every ciphertext carries the tag of the key that wrote it, and that tag is how a
 stored value finds the key that can read it. A retired key that reused the active
-tag would shadow it, so the app refuses to boot in that case rather than failing
-at the first read.
+tag would be shadowed by it, so the app refuses to boot in that case rather than
+failing at the first read.

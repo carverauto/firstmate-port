@@ -3,7 +3,7 @@ defmodule FirstmatePortWeb.CredentialsLive do
   Where a tenant fills its own credential slots.
 
   Secrets go one way. A stored value is never assigned back into the socket or
-  rendered, so the page shows the slot, the last four characters, and the byte
+  rendered, so the page shows the slot, a hint (see `Slots.hint/1`), and the byte
   size; a secret that went in wrong is fixed by rotating it, not by reading it
   back.
   """

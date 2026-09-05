@@ -39,7 +39,7 @@ See [README.md](../README.md) for the product introduction and common usage.
 - `fm-steer` is the inbox port (put/next/ack/list). Do not rip the on-disk inbox.
 - NATS in cluster shape is 3-replica FileStorage; compose may be single-node
 - Tenancy is attribute-based on shared Postgres; one NATS account; streams named `<tenant>.steer` and `<tenant>.inbound`
-- Tenant credentials (Discord keys, GitHub tokens, provider API keys) are entered in the portal and stored AshCloak-encrypted in CNPG; the cluster holds only `CLOAK_KEY`. Discord inbound picks the tenant by which stored public key verifies the signature. See `docs/credentials.md`
+- Tenant credential storage, Discord routing, and vault-key operations: see [docs/credentials.md](../docs/credentials.md).
 - Public Discord failures stay generic
 
 ## Important Constraints

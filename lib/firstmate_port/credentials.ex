@@ -31,7 +31,7 @@ defmodule FirstmatePort.Credentials do
   end
 
   resources do
-    resource(FirstmatePort.Credentials.Credential)
+    resource FirstmatePort.Credentials.Credential
   end
 
   alias FirstmatePort.Credentials.Credential

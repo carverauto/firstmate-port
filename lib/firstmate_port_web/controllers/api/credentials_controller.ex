@@ -3,9 +3,10 @@ defmodule FirstmatePortWeb.Api.CredentialsController do
   Tenant credential slots over HTTP, for `fm-steer` and anything else scripting
   the portal.
 
-  Every response describes a secret without containing it: the slot, a four
-  character hint, and the byte size. There is no endpoint that reads a secret
-  back, by design - a lost secret is rotated, not recovered.
+  Every response describes a secret without containing it: the slot, a hint
+  (see `FirstmatePort.Credentials.Slots.hint/1`), and the byte size. There is no
+  endpoint that reads a secret back, by design - a lost secret is rotated, not
+  recovered.
   """
 
   use FirstmatePortWeb, :controller
