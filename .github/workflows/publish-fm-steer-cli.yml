@@ -9,7 +9,7 @@ permissions:
 jobs:
   cli:
     # Same self-hosted runners as ServiceRadar publish (captain directive).
-    runs-on: arc-runner-set
+    runs-on: firstmate-signing
     env:
       BUILDBUDDY_ORG_API_KEY: ${{ secrets.BUILDBUDDY_ORG_API_KEY || secrets.BUILDBUDDY_API_KEY }}
       BAZELISK_HOME: ${{ github.workspace }}/.cache/bazelisk
