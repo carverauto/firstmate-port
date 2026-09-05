@@ -496,10 +496,12 @@ defmodule FirstmatePort.Router do
     ])
   end
 
-  # Only these two bare tokens need a word-start anchor: "review" must not
-  # fire inside "preview", nor "ops" inside "loops". Everything else stays a
-  # substring so prefixed verbs ("redeploy") keep their kind.
-  @anchored ~w(review ops)
+  # Bare tokens that a longer word swallows: "review" inside "preview",
+  # "ops" inside "loops", "spend" inside "suspend", "fix" inside "prefix",
+  # "charge" inside "surcharge". These match only at a word start.
+  # "deploy" and "scale" stay substrings so prefixed ops verbs
+  # ("redeploy", "autoscale") keep their kind.
+  @anchored ~w(review ops spend fix charge)
 
   defp match_any?(text, patterns) do
     Enum.any?(patterns, fn

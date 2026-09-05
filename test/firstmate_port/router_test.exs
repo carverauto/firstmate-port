@@ -48,6 +48,28 @@ defmodule FirstmatePort.RouterTest do
     assert Router.classify("the ops runbook needs a restart step").kind == :ops
   end
 
+  test "risk words do not fire inside longer unrelated words" do
+    assert Router.classify("suspend the discord fanout job").risk == :low
+    assert Router.classify("add a prefix to the changelog entries").risk == :low
+    assert Router.classify("document the surcharge rules for the plan").risk == :low
+    assert Router.classify("recharge the prepaid credits").risk == :low
+
+    assert Router.classify("spend the remaining credits on the crew key").risk == :medium
+    assert Router.classify("charge the customer for the overage").risk == :high
+  end
+
+  test "a suspend task stays in the cheap lane" do
+    got = Router.route("suspend the discord fanout job")
+
+    assert got.harness == "grok"
+    assert got.effort == "low"
+    assert got.checkpoint == nil
+  end
+
+  test "a docs task naming a prefix is not code" do
+    assert Router.classify("add a prefix to the changelog entries").kind == :docs
+  end
+
   test "a prefixed ops verb keeps its kind, blast radius and checkpoint" do
     for text <- ["redeploy the api gateway", "undeploy the canary", "autoscale the workers"] do
       assert Router.classify(text).kind == :ops, "#{text} lost its ops kind"

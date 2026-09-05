@@ -136,6 +136,12 @@ defmodule FirstmatePort.Router.Evals do
       expect_effort: "high"
     },
     %{
+      name: "suspend a job",
+      description: "suspend the discord fanout job",
+      expect_harness: "grok",
+      expect_effort: "low"
+    },
+    %{
       name: "explain retry loops",
       description: "explain how the retry loops work in the discord fanout job",
       expect_harness: "grok",
