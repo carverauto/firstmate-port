@@ -1,7 +1,9 @@
 # Site identity for the portal container plus the ghcr pull secret.
 # ghcr.io/carverauto/firstmate-port; the namespace pulls it with `ghcr-io-cred`
 # (a docker-registry secret). Local sign-in (DEV_AUTH) and the bootstrap admin
-# secret come from the OSS base manifests; no site email wall is set here.
+# secret come from the OSS base manifests; no site email wall and no IdP are
+# set here (fail-soft generic OIDC lands via the fm-port-auth-runtime lane;
+# the site issuer example stays in carverauto.md only).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,16 +22,5 @@ spec:
               value: firstmate.carverauto.dev
             - name: PUBLIC_URL
               value: https://firstmate.carverauto.dev
-            - name: ALLOWED_EMAIL_DOMAIN
-              value: carverauto.dev
-            # This site uses Authentik. It is one example issuer, not a
-            # requirement: the portal reads endpoints from discovery, so any
-            # OpenID Connect provider drops in here unchanged.
-            - name: OIDC_ISSUER
-              value: https://auth.carverauto.dev/application/o/firstmate/
-            - name: OIDC_DISCOVERY_URL
-              value: https://auth.carverauto.dev/application/o/firstmate/.well-known/openid-configuration
-            - name: OIDC_REDIRECT_URI
-              value: https://firstmate.carverauto.dev/auth/oidc/callback
             - name: NATS_REPLICAS
               value: "3"
