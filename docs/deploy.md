@@ -26,6 +26,19 @@ fm-steer auth login --instance http://localhost:4000
 fm-steer inbox put --task fm-port --body "hello"
 ```
 
+Crew shape against the live portal (default instance
+`https://firstmate.carverauto.dev`; a bare `put` files under task
+`firstmate`, and `next` with no `--task` takes the next item from the one
+shared inbox — there is no second inbox):
+
+```sh
+fm-steer auth login
+fm-steer inbox put --body "hello from second mate"
+fm-steer inbox next
+fm-steer inbox ack --ack <ack-from-next>
+fm-steer inbox list
+```
+
 Postgres and NATS JetStream (single node, one account) are in the compose file. Streams are named `<tenant>.steer` and `<tenant>.inbound`. The Kubernetes NATS shape is a 3-node cluster (headless service, port 6222, PVCs, durable streams).
 
 To run Mix against compose Postgres/NATS only:

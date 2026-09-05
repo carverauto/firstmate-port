@@ -9,6 +9,14 @@ import (
 	"os"
 )
 
+// DefaultInstance is the live portal. Local compose needs an explicit
+// --instance http://localhost:4000 (or FIRSTMATE_INSTANCE).
+const DefaultInstance = "https://firstmate.carverauto.dev"
+
+// DefaultTask is the task a bare `inbox put` files under: a message for
+// firstmate, not a crew item.
+const DefaultTask = "firstmate"
+
 // Run dispatches the fm-steer subcommands and returns the process exit
 // code. main.go passes it straight to os.Exit.
 func Run(args []string) int {

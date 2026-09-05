@@ -30,7 +30,7 @@ func CmdAuth(args []string) int {
 // AuthLogin runs the OAuth device-code flow and stores the token.
 func AuthLogin(args []string) {
 	fs := flag.NewFlagSet("login", flag.ExitOnError)
-	instance := fs.String("instance", Env("FIRSTMATE_INSTANCE", "http://localhost:4000"), "API base URL")
+	instance := fs.String("instance", Env("FIRSTMATE_INSTANCE", DefaultInstance), "API base URL")
 	_ = fs.Parse(args)
 	base := strings.TrimRight(*instance, "/")
 

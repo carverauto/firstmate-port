@@ -32,12 +32,12 @@ func CmdInbox(args []string) int {
 // InboxPut enqueues a message for a task; the body comes from --body or stdin.
 func InboxPut(args []string) {
 	fs := flag.NewFlagSet("put", flag.ExitOnError)
-	task := fs.String("task", "", "task id (required)")
+	task := fs.String("task", "", "task id (default "+DefaultTask+")")
 	bodyFlag := fs.String("body", "", "body; stdin if omitted")
 	instance := fs.String("instance", Env("FIRSTMATE_INSTANCE", ""), "API base URL")
 	_ = fs.Parse(args)
 	if *task == "" {
-		log.Fatal("put requires --task")
+		*task = DefaultTask
 	}
 	body := *bodyFlag
 	if body == "" {

@@ -92,6 +92,36 @@ func TestInboxPutGoesToHTTP(t *testing.T) {
 	}
 }
 
+func TestInboxPutDefaultsTaskToFirstmate(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	var gotTask string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]string
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		gotTask = body["task"]
+		_ = json.NewEncoder(w).Encode(map[string]any{"seq": 1, "task": body["task"]})
+	}))
+	defer srv.Close()
+	if err := WriteCreds(srv.URL, "jwt", "local"); err != nil {
+		t.Fatal(err)
+	}
+	InboxPut([]string{"--body", "hello from second mate", "--instance", srv.URL})
+	if gotTask != DefaultTask {
+		t.Fatalf("task %q, want %q", gotTask, DefaultTask)
+	}
+}
+
+func TestDefaultInstanceIsLivePortal(t *testing.T) {
+	if DefaultInstance != "https://firstmate.carverauto.dev" {
+		t.Fatalf("default %q", DefaultInstance)
+	}
+	t.Setenv("FIRSTMATE_INSTANCE", "http://localhost:4000")
+	if got := Env("FIRSTMATE_INSTANCE", DefaultInstance); got != "http://localhost:4000" {
+		t.Fatalf("override %q", got)
+	}
+}
+
 func TestRunRejectsUnknownSubcommand(t *testing.T) {
 	if got := Run([]string{"bogus"}); got != 2 {
 		t.Fatalf("exit %d", got)
