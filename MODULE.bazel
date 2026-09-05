@@ -61,6 +61,8 @@ elixir_config_ext.prebuilt_elixir_from_hex_builds(
 )
 use_repo(elixir_config_ext, "elixir_config")
 
+register_toolchains("//build:mix_payloads")
+
 register_toolchains(
     "@erlang_config//otp_28_1:toolchain_major",
     "@erlang_config//otp_28_1:toolchain_major_minor",
