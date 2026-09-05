@@ -38,17 +38,32 @@ mix phx.server
 
 ## Images
 
-Harbor is the internal registry. ghcr.io is a later public mirror the captain will set up. Do not invent a second forge.
+ghcr.io is the registry. `.github/workflows/publish-oci.yml` builds with Bazel and
+pushes `ghcr.io/<owner>/firstmate-port` on `v*` tags and on `workflow_dispatch`,
+authenticating with the workflow `GITHUB_TOKEN` (`permissions: packages: write`).
+There are no registry robot secrets and no cosign/OpenBao requirement. Do not
+invent a second forge.
+
+Tags: `sha-<short-commit>` on every publish, plus the `v*` tag name on tag pushes.
 
 ```sh
 docker build -t firstmate-port:local .
-# Internal publish (example):
-# docker tag firstmate-port:local registry.example.com/firstmate/firstmate-port:sha-$(git rev-parse --short HEAD)
-# docker push registry.example.com/firstmate/firstmate-port:sha-$(git rev-parse --short HEAD)
+# Manual publish (CI is the normal path):
+export OCI_PROJECT=<github-owner>
+# docker tag firstmate-port:local ghcr.io/$OCI_PROJECT/firstmate-port:sha-$(git rev-parse --short HEAD)
+# docker push ghcr.io/$OCI_PROJECT/firstmate-port:sha-$(git rev-parse --short HEAD)
 ./deploy/sign-and-push.sh sha256:<digest>
 ```
 
-Site-specific hostnames, Authentik URLs, allowlists, and Harbor projects live in:
+If the source repository is private the package is private too, so the cluster
+needs an `imagePullSecret` built from a token with `read:packages`:
+
+```sh
+kubectl -n firstmate create secret docker-registry ghcr-io-cred \
+  --docker-server=ghcr.io --docker-username=<github-user> --docker-password=<token>
+```
+
+Site-specific hostnames, Authentik URLs, allowlists, and ghcr namespaces live in:
 
 - `.env` / `docker-compose.override.yml` (from the `.example` files)
 - `deploy/examples/` notes

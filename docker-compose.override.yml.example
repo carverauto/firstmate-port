@@ -1,12 +1,12 @@
 # Copy to docker-compose.override.yml for a site-specific stack.
-# Harbor is the internal registry. ghcr.io is a later public mirror the
-# captain will set up; do not invent a second forge.
+# ghcr.io is the registry; images are published by CI as
+# ghcr.io/<owner>/firstmate-port. Do not invent a second forge.
 #
 # Example (carverauto LAN):
 #
 # services:
 #   portal:
-#     image: registry.carverauto.dev/carverauto/firstmate-port:sha-pending
+#     image: ghcr.io/OWNER/firstmate-port:sha-pending
 #     environment:
 #       PHX_HOST: firstmate.carverauto.dev
 #       PUBLIC_URL: https://firstmate.carverauto.dev

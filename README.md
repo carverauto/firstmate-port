@@ -19,12 +19,25 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP, Bandit, U
 
 ## Docs
 
-- [docs/deploy.md](docs/deploy.md) Harbor publish, compose, Kubernetes
+- [docs/deploy.md](docs/deploy.md) ghcr.io publish, compose, Kubernetes
 - [docs/bazel.md](docs/bazel.md) rules_elixir / BuildBuddy, `--output_base=/tmp/fm-fm-port/bazel`
 
 Prefix every `npm` invocation with `sfw`.
 
-CLI: `fm-steer` authenticates with RFC 8628 device-code against this API and drives inbox put/next/ack/list over HTTP. It does not dial NATS. JWT is stored at `$XDG_CONFIG_HOME/fm-steer/credentials.json` (mode 0600).
+## fm-steer CLI
+
+`fm-steer` authenticates with RFC 8628 device-code against this API and drives inbox put/next/ack/list over HTTP. It does not dial NATS. JWT is stored at `$XDG_CONFIG_HOME/fm-steer/credentials.json` (mode 0600).
+
+Install from source (Go 1.25+):
+
+```sh
+go install github.com/mfreeman451/firstmate-port/cmd/fm-steer@latest
+```
+
+The repo is private, so `go install` needs read access (`gh auth` / git
+credentials). Without Go, download a release binary instead: every `v*` tag
+publishes `fm-steer_<tag>_<os>_<arch>` assets (linux amd64/arm64, darwin
+amd64/arm64) plus `SHA256SUMS` on the GitHub Release.
 
 ## Layout
 

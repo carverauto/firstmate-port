@@ -1,0 +1,8 @@
+# Both shared Gateways select namespaces by label.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: firstmate
+  labels:
+    carverauto.com/lan-gateway-access: "true"
+    serviceradar.com/gateway-access: "true"

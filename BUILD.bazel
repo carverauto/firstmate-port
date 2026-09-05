@@ -5,7 +5,7 @@ load(
     "SHIPPED_ERTS_ROOT_MARKER",
     "elixir_release",
 )
-load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_cross_binary", "go_library", "go_test")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_push")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
@@ -93,11 +93,12 @@ mix_app(
 
 elixir_release(
     name = "release",
+    app = ":erlang_app",
+    out = "firstmate-port-release.tar.gz",
+    srcs = [":compile_srcs"],
     mix_env = "prod",
-    recipe = [":compile_srcs"],
-    include_erts_otp_root = SHIPPED_ERTS_OTP_ROOT,
-    include_erts_root_marker = SHIPPED_ERTS_ROOT_MARKER,
-    deps = [":erlang_app"],
+    erts_otp_root = SHIPPED_ERTS_OTP_ROOT,
+    erts_root_marker = SHIPPED_ERTS_ROOT_MARKER,
 )
 
 go_library(
@@ -110,6 +111,22 @@ go_binary(
     name = "fm-steer",
     embed = [":fm-steer_lib"],
 )
+
+# Cross-compiled fm-steer CLIs for GitHub Release assets.
+# Same go_cross_binary shape as serviceradar native add-ons.
+[
+    go_cross_binary(
+        name = "fm-steer_" + os + "_" + arch,
+        platform = "@io_bazel_rules_go//go/toolchain:{}_{}".format(os, arch),
+        target = ":fm-steer",
+    )
+    for (os, arch) in [
+        ("linux", "amd64"),
+        ("linux", "arm64"),
+        ("darwin", "amd64"),
+        ("darwin", "arm64"),
+    ]
+]
 
 go_test(
     name = "fm-steer_test",
@@ -166,13 +183,13 @@ oci_image(
 oci_push(
     name = "portal_image_push",
     image = ":portal_image",
-    repository = "registry.example.com/firstmate/firstmate-port",
+    repository = "ghcr.io/OWNER/firstmate-port",
 )
 
 oci_push(
     name = "fm-steer_image_push",
     image = ":fm-steer_image",
-    repository = "registry.example.com/firstmate/fm-steer",
+    repository = "ghcr.io/OWNER/fm-steer",
 )
 
 

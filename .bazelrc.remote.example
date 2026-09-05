@@ -1,4 +1,4 @@
-# Copy to .bazelrc.remote (gitignored). Harbor/BuildBuddy hostnames belong here,
+# Copy to .bazelrc.remote (gitignored). Registry/BuildBuddy hostnames belong here,
 # not in the committed .bazelrc defaults.
 #
 # Example (carverauto):
