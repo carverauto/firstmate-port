@@ -118,7 +118,9 @@ defmodule FirstmatePortWeb.Router do
     get "/healthz", PageController, :healthz
     get "/steer", SteerController, :landing
     get "/steer/docs", SteerController, :docs
-    get "/steer/docs/:page", SteerController, :doc
+    get "/steer/docs/fm-steer", SteerController, :doc_fm_steer
+    get "/steer/docs/routing", SteerController, :doc_routing
+    get "/steer/docs/usage", SteerController, :doc_usage
     get "/d/:id/card.png", DiagramHTMLController, :card
     get "/d/:id", DiagramHTMLController, :show
   end

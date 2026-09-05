@@ -4,10 +4,9 @@
   <p class="muted">Short pages for operators and for agents calling the API.</p>
   <h2>Pages</h2>
   <ul>
-    <li :for={page <- FirstmatePortWeb.SteerDocs.index()}>
-      <.link navigate={~p"/steer/docs/#{page.slug}"}>{page.title}</.link>
-      <span class="muted">{page.path}</span>
-    </li>
+    <li><.link navigate={~p"/steer/docs/fm-steer"}>fm-steer CLI</.link></li>
+    <li><.link navigate={~p"/steer/docs/routing"}>Routing</.link></li>
+    <li><.link navigate={~p"/steer/docs/usage"}>Usage and billing</.link></li>
   </ul>
-  <p>Each page is the repo markdown itself, so there is no second copy to keep in sync.</p>
+  <p>These pages are the only copy of the user docs. The repo README links here rather than restating them.</p>
 </div>

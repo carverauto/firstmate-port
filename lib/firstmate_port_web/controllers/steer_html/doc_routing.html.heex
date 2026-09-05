@@ -1,0 +1,38 @@
+<div class="doc">
+  <.link navigate={~p"/steer/docs"} class="back">Back to docs</.link>
+  <h1>Routing</h1>
+  <p class="muted">POST /api/route answers one question: which worker harness, model, and effort should run a task, and why.</p>
+
+  <h2>Axes</h2>
+  <table>
+    <thead><tr><th>Axis</th><th>Values</th><th>Signals</th></tr></thead>
+    <tbody>
+      <tr><td>kind</td><td>code, research, ops, docs, review, data, chat</td><td>verbs outrank nouns</td></tr>
+      <tr><td>ambiguity</td><td>low, medium, high</td><td>"figure out", "unknown", long briefs</td></tr>
+      <tr><td>blast_radius</td><td>low, medium, high</td><td>production, deploy, delete, customer</td></tr>
+      <tr><td>citations_required</td><td>boolean</td><td>"cite", "audit report", compliance</td></tr>
+      <tr><td>risk</td><td>low, medium, high</td><td>"rotate the token", api keys, payments, customer data</td></tr>
+      <tr><td>live_web_required</td><td>boolean</td><td>"latest", "news", "this week"</td></tr>
+    </tbody>
+  </table>
+  <p>Classification is a deterministic keyword heuristic. Any axis can be overridden per request: that is the rater-agent path, where a separate agent ranks difficulty and the router still owns the final pick.</p>
+  <pre>curl -X POST $PORTAL/api/route -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '&#123;&quot;description&quot;: &quot;deploy the portal to production&quot;,
+       &quot;axes&quot;: &#123;&quot;blast_radius&quot;: &quot;high&quot;&#125;&#125;'</pre>
+
+  <h2>Capability matrix</h2>
+  <p>The fleet matrix lists the lanes the fleet can drive (claude, codex, grok, opencode). Routing filters lanes on hard constraints, then picks the cheapest survivor, breaking ties on latency and quality. Effort (low, medium, high) rises with ambiguity, blast radius, and risk. High blast radius or risk adds a <code>human-review</code> checkpoint.</p>
+
+  <h2>Hard routes</h2>
+  <p>Code review bypasses the matrix: it always returns harness <code>codex</code> with model <code>gpt-6-astra</code> (GPT-6-Astra). Review never goes to a chat or docs lane, even with provider intel enabled.</p>
+
+  <h2>Provider intel</h2>
+  <p>OpenRouter (model metadata, pricing, context) and Artificial Analysis (quality, latency) are inputs, used only to refine the model pick inside the chosen lane, and only when the request sets <code>"intel": true</code>. No single public leaderboard ever decides: the matrix is the base vote, the bundled eval set is the regression gate, and popularity is never treated as capability.</p>
+
+  <h2>Architecture</h2>
+  <p><code>docs/architecture/router-usage.html</code> in the repo is the Archify diagram for this system: router, usage ledger, fm-steer, trust boundaries, and the JetStream rule.</p>
+
+  <h2>Eval set</h2>
+  <p>Pinned tasks in <code>FirstmatePort.Router.Evals</code> must keep routing to their lanes (<code>mix test</code> enforces it). When the fleet misroutes a real task, add the scrubbed description with the lane it should have taken, then fix the classifier or matrix until the set is green.</p>
+</div>

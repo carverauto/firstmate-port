@@ -18,11 +18,15 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP, Bandit, U
 
 - [docs/deploy.md](docs/deploy.md) Harbor publish, compose, Kubernetes
 - [docs/bazel.md](docs/bazel.md) rules_elixir / BuildBuddy, `--output_base=/tmp/fm-fm-port/bazel`
-- [docs/fm-steer.md](docs/fm-steer.md) CLI: auth, inbox, route, usage
-- [docs/routing.md](docs/routing.md) task router: axes, matrix, intel, evals
-- [docs/usage.md](docs/usage.md) token usage ledger: accounts, runway, sync
 
-Marketing landing page and user docs are served at `/steer`.
+User docs are served by the portal itself, one copy only, from the marketing
+landing page at `/steer`:
+
+- `/steer/docs/fm-steer` CLI: auth, inbox, route, usage
+- `/steer/docs/routing` task router: axes, matrix, intel, evals
+- `/steer/docs/usage` token usage ledger: accounts, runway, sync
+
+Run `mix phx.server` and open <http://localhost:4000/steer/docs>.
 
 Prefix every `npm` invocation with `sfw`.
 

@@ -102,6 +102,18 @@ defmodule FirstmatePortWeb.RouteControllerTest do
     assert json_response(conn, 422)["error"] =~ "description"
   end
 
+  test "a non-string description is unprocessable, not a 500", %{token: token} do
+    for bad <- [42, %{"text" => "fix the test"}, ["fix the test"], true] do
+      body =
+        build_conn()
+        |> put_req_header("authorization", "Bearer " <> token)
+        |> post(~p"/api/route", %{"description" => bad})
+        |> json_response(422)
+
+      assert body["error"] =~ "description"
+    end
+  end
+
   test "unauthenticated route is rejected", %{conn: conn} do
     conn = post(conn, ~p"/api/route", %{"description" => "hi"})
     assert json_response(conn, 401)["error"] == "unauthorized"

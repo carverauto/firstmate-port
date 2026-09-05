@@ -105,6 +105,18 @@ defmodule FirstmatePort.Router.Evals do
       expect_effort: "high"
     },
     %{
+      name: "api token into the vault",
+      description: "store the openrouter api token in the vault",
+      expect_harness: "claude",
+      expect_effort: "high"
+    },
+    %{
+      name: "api token out of the repo",
+      description: "move the api token out of the repo into the vault",
+      expect_harness: "claude",
+      expect_effort: "high"
+    },
+    %{
       name: "leaked credential",
       description: "someone leaked the shared secret into a public channel",
       expect_harness: "claude",

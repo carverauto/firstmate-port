@@ -56,6 +56,15 @@ defmodule FirstmatePort.RouterTest do
     assert Router.classify("the shared secret leaked into a public channel").risk == :high
   end
 
+  test "storing or moving an api token is credential work, not cheap chat" do
+    assert Router.classify("store the openrouter api token in the vault").risk == :high
+    assert Router.classify("move the api token out of the repo into the vault").risk == :high
+
+    got = Router.route("store the openrouter api token in the vault")
+    assert got.harness == "claude"
+    assert got.checkpoint == "human-review"
+  end
+
   test "credential rotation gets a human-review checkpoint" do
     got = Router.route("rotate the openrouter api token")
 

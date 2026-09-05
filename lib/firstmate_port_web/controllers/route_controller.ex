@@ -16,7 +16,7 @@ defmodule FirstmatePortWeb.RouteController do
   alias FirstmatePort.Tenancy
 
   def create(conn, params) do
-    description = params["description"] || params["task"] || ""
+    description = text(params["description"]) || text(params["task"]) || ""
 
     if String.trim(description) == "" do
       conn
@@ -34,6 +34,9 @@ defmodule FirstmatePortWeb.RouteController do
       )
     end
   end
+
+  defp text(value) when is_binary(value), do: value
+  defp text(_), do: nil
 
   # Explicit string tables: no String.to_atom on request input, and no
   # dependency on another module having interned the atoms first.

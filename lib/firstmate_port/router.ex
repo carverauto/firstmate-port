@@ -411,6 +411,7 @@ defmodule FirstmatePort.Router do
     match_any?(text, [
       "password",
       "api key",
+      "api token",
       "private key",
       "customer data",
       "pii",
