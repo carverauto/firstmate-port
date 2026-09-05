@@ -187,8 +187,8 @@ defmodule FirstmatePortWeb.CredentialsLive do
       <section class="plate">
         <h2>Stored</h2>
         <p :if={@credentials == []} class="empty-state">
-          Nothing stored yet. Discord inbound keeps using the bootstrap key until this tenant saves
-          its own <span class="kind">discord/public_key</span>.
+          Nothing stored yet. Save this tenant's <span class="kind">discord/public_key</span>
+          here before configuring Discord interactions. Environment keys are not accepted.
         </p>
         <ol class="rows">
           <li :for={credential <- @credentials}>

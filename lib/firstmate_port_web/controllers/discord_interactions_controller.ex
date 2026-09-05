@@ -6,9 +6,9 @@ defmodule FirstmatePortWeb.DiscordInteractionsController do
 
   Discord sends no tenant context, so the signature supplies it: the request is
   checked against every tenant's stored `discord`/`public_key` credential, and
-  whichever key verifies names the tenant the payload is published for. See
-  `FirstmatePort.Credentials.Discord` for the bootstrap path when no tenant has
-  stored a key yet.
+  verification must match exactly one tenant before its payload is published.
+  Tenants must store their key through the portal UI or API; environment keys
+  are not accepted. See `FirstmatePort.Credentials.Discord`.
   """
 
   use FirstmatePortWeb, :controller
