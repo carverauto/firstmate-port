@@ -114,23 +114,6 @@ go_test(
 )
 
 go_library(
-    name = "firstmatectl_lib",
-    srcs = ["cmd/firstmatectl/main.go"],
-    importpath = "github.com/mfreeman451/firstmate-port/cmd/firstmatectl",
-)
-
-go_binary(
-    name = "firstmatectl",
-    embed = [":firstmatectl_lib"],
-)
-
-go_test(
-    name = "firstmatectl_test",
-    srcs = ["cmd/firstmatectl/main_test.go"],
-    embed = [":firstmatectl_lib"],
-)
-
-go_library(
     name = "fm-steer_lib",
     srcs = ["cmd/fm-steer/main.go"],
     importpath = "github.com/mfreeman451/firstmate-port/cmd/fm-steer",
@@ -185,16 +168,16 @@ go_binary(
 )
 
 pkg_tar(
-    name = "firstmatectl_layer",
-    srcs = [":firstmatectl"],
+    name = "fm-steer_layer",
+    srcs = [":fm-steer"],
     package_dir = "/usr/local/bin",
 )
 
 oci_image(
-    name = "firstmatectl_image",
+    name = "fm-steer_image",
     base = "@debian_bookworm_slim",
-    entrypoint = ["/usr/local/bin/firstmatectl"],
-    tars = [":firstmatectl_layer"],
+    entrypoint = ["/usr/local/bin/fm-steer"],
+    tars = [":fm-steer_layer"],
 )
 
 oci_image(
@@ -218,9 +201,9 @@ oci_push(
 )
 
 oci_push(
-    name = "firstmatectl_image_push",
-    image = ":firstmatectl_image",
-    repository = "registry.example.com/firstmate/firstmatectl",
+    name = "fm-steer_image_push",
+    image = ":fm-steer_image",
+    repository = "registry.example.com/firstmate/fm-steer",
 )
 
 

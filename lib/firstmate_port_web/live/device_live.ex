@@ -1,5 +1,5 @@
 defmodule FirstmatePortWeb.DeviceLive do
-  @moduledoc "Browser approval for firstmatectl device-code login."
+  @moduledoc "Browser approval for fm-steer device-code login."
   use FirstmatePortWeb, :live_view
 
   alias FirstmatePort.Auth.DeviceCode
@@ -51,7 +51,7 @@ defmodule FirstmatePortWeb.DeviceLive do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user}>
       <header class="page-head">
-        <h1>Authorize firstmatectl</h1>
+        <h1>Authorize fm-steer</h1>
       </header>
       <p :if={@status == :pending} class="lede">
         Confirm this code matches the CLI, then approve. The CLI talks only to this API.

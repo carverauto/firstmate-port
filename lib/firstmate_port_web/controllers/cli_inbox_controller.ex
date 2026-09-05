@@ -1,5 +1,5 @@
 defmodule FirstmatePortWeb.CliInboxController do
-  @moduledoc "HTTP inbox port. firstmatectl never dials NATS."
+  @moduledoc "HTTP inbox port. fm-steer never dials NATS."
   use FirstmatePortWeb, :controller
 
   alias FirstmatePort.Inbox

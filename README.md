@@ -21,12 +21,12 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP, Bandit, U
 
 Prefix every `npm` invocation with `sfw`.
 
-CLI: `firstmatectl` authenticates with RFC 8628 device-code against this API and drives inbox put/next/ack/list over HTTP. It does not dial NATS. JWT is stored at `$XDG_CONFIG_HOME/firstmatectl/credentials.json` (mode 0600).
+CLI: `fm-steer` authenticates with RFC 8628 device-code against this API and drives inbox put/next/ack/list over HTTP. It does not dial NATS. JWT is stored at `$XDG_CONFIG_HOME/fm-steer/credentials.json` (mode 0600).
 
 ## Layout
 
 - `lib/` Phoenix/Ash portal
-- `cmd/fm-steer` JetStream inbox port
+- `cmd/fm-steer` HTTP inbox CLI (device-code; does not dial NATS)
 - `cmd/nats-tail`, `cmd/discord-inbound`, `cmd/discord-interactions`
 - `k8s/` portal + 3-node NATS + CNPG
 - `docker-compose.yml` portal + Postgres + single-node JetStream

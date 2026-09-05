@@ -12,7 +12,7 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 
 ## Boundaries
 
-- `firstmatectl` is the captain CLI. Device-code against this API. It must not import or dial NATS.
+- `fm-steer` is the captain CLI. Device-code against this API. It must not import or dial NATS.
 - One Postgres schema (`t_<slug>`) and one NATS JetStream account per tenant. Seed tenant `local`.
 - Do not add `notify.py`, `watch.py`, or the launchd plist. Those stay in firstmate-notify.
 - Site hostnames, Authentik, Harbor, and email allowlists belong in env samples / compose overrides / `deploy/examples`. Defaults run on localhost.

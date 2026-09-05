@@ -1,5 +1,5 @@
 defmodule FirstmatePortWeb.CliAuthController do
-  @moduledoc "RFC 8628 device-code endpoints for firstmatectl."
+  @moduledoc "RFC 8628 device-code endpoints for fm-steer."
   use FirstmatePortWeb, :controller
 
   alias FirstmatePort.Accounts.User

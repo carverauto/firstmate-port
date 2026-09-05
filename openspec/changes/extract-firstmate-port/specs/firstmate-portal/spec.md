@@ -23,11 +23,11 @@ The site SHALL use Tailwind v4 and a self-hosted Geist stack, with one accent co
 - **WHEN** a browser opens `/`
 - **THEN** they are sent to `/login` rather than bouncing straight into OIDC
 
-### Requirement: firstmatectl uses device-code against the API
-The captain CLI SHALL be `firstmatectl`. Login SHALL be RFC 8628 device-code against this Phoenix API. Inbox put/next/ack/list SHALL be HTTP to this API. The CLI SHALL NOT dial NATS. The JWT file SHALL be mode 0600.
+### Requirement: fm-steer uses device-code against the API
+The captain CLI SHALL be `fm-steer`. Login SHALL be RFC 8628 device-code against this Phoenix API. Inbox put/next/ack/list SHALL be HTTP to this API. The CLI SHALL NOT dial NATS. The JWT file SHALL be mode 0600.
 
 #### Scenario: CLI login
-- **WHEN** an operator runs `firstmatectl auth login --instance http://localhost:4000`
+- **WHEN** an operator runs `fm-steer auth login --instance http://localhost:4000`
 - **THEN** they receive a verification URL and user code, and after browser approval the CLI stores a JWT
 
 ### Requirement: Schema and JetStream account per tenant

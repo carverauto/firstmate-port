@@ -24,6 +24,6 @@ jobs:
             echo "build:remote_base --remote_executor=grpcs://cloud.buildbuddy.io"
           } > .bazelrc.remote
       - name: Bazel build CLI
-        run: bazel --output_base=/tmp/fm-fm-port/bazel build //:firstmatectl //:fm-steer //:nats-tail
+        run: bazel --output_base=/tmp/fm-fm-port/bazel build //:fm-steer //:nats-tail
       - name: Bazel test Go
-        run: bazel --output_base=/tmp/fm-fm-port/bazel test //:firstmatectl_test //:fm-steer_test //:nats-tail_test //:natsutil_test
+        run: bazel --output_base=/tmp/fm-fm-port/bazel test //:fm-steer_test //:nats-tail_test //:natsutil_test

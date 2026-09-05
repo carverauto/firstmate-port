@@ -10,6 +10,13 @@ docker compose up --build
 
 Open http://localhost:4000/login. With `DEV_AUTH=true`, sign in as `captain@localhost`.
 
+CLI (HTTP only, no NATS):
+
+```sh
+fm-steer auth login --instance http://localhost:4000
+fm-steer inbox put --task fm-port --body "hello"
+```
+
 Postgres and NATS JetStream (single node) are in the compose file. The Kubernetes NATS shape is a 3-node cluster (headless service, port 6222, PVCs, durable streams).
 
 To run Mix against compose Postgres/NATS only:
