@@ -15,7 +15,7 @@ Every task is classified on six axes:
 | ambiguity | low, medium, high | "figure out", "unknown", long briefs |
 | blast_radius | low, medium, high | production, deploy, delete, customer |
 | citations_required | boolean | "cite", "audit report", compliance |
-| risk | low, medium, high | secrets, payments, customer data |
+| risk | low, medium, high | "rotate the token", payments, customer data |
 | live_web_required | boolean | "latest", "news", "this week" |
 
 Classification is a deterministic keyword heuristic (v1, in

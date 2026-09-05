@@ -29,6 +29,23 @@ defmodule FirstmatePort.RouterTest do
     assert axes.risk == :high
   end
 
+  test "credential nouns need a handling verb before they raise risk" do
+    assert Router.classify("add a token usage counter to the portal").risk == :low
+    assert Router.classify("fix the failing test for the auth token parser").risk == :low
+    assert Router.classify("write user docs for the billing page").blast_radius == :low
+
+    assert Router.classify("rotate the shared secret").risk == :high
+    assert Router.classify("someone leaked the api token in a public log").risk == :high
+  end
+
+  test "a token counter task stays in the cheap lane" do
+    got = Router.route("add a token usage counter to the portal")
+
+    refute got.harness == "claude"
+    assert got.effort == "low"
+    assert got.checkpoint == nil
+  end
+
   test "route sends standard code work to codex at medium effort" do
     got = Router.route("fix the failing test in the portal ingest controller")
 

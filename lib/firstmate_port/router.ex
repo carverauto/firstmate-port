@@ -350,11 +350,9 @@ defmodule FirstmatePort.Router do
       "rollback",
       "customer",
       "money",
-      "billing",
       "payment",
       "dns",
       "firewall",
-      "secret",
       "credential",
       "auth system",
       "migrate production"
@@ -411,9 +409,7 @@ defmodule FirstmatePort.Router do
 
   defp risk_high(text) do
     match_any?(text, [
-      "secret",
       "password",
-      "token",
       "api key",
       "private key",
       "customer data",
@@ -426,7 +422,24 @@ defmodule FirstmatePort.Router do
       "publish publicly",
       "datacenter",
       "root access"
-    ])
+    ]) or credential_handling?(text)
+  end
+
+  # "token" and "secret" are homonyms in ordinary work ("token usage
+  # counter", "the secret sauce"), so they need a handling verb to raise
+  # risk on their own.
+  defp credential_handling?(text) do
+    match_any?(text, ["secret", "token"]) and
+      match_any?(text, [
+        "rotate",
+        "revoke",
+        "leak",
+        "expose",
+        "exfiltrate",
+        "hardcode",
+        "hard-code",
+        "steal"
+      ])
   end
 
   defp risk_medium(text) do

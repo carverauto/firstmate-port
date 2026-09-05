@@ -51,6 +51,30 @@ defmodule FirstmatePort.Router.Evals do
       expect_model: "gpt-6-astra"
     },
     %{
+      name: "token counter feature",
+      description: "implement a token usage counter in the portal",
+      expect_harness: "codex",
+      expect_effort: "medium"
+    },
+    %{
+      name: "token parser bugfix",
+      description: "fix the failing test for the auth token parser",
+      expect_harness: "codex",
+      expect_effort: "medium"
+    },
+    %{
+      name: "billing page docs",
+      description: "write user docs for the billing page",
+      expect_harness: "opencode",
+      expect_effort: "low"
+    },
+    %{
+      name: "leaked credential",
+      description: "someone leaked the shared secret into a public channel",
+      expect_harness: "claude",
+      expect_effort: "high"
+    },
+    %{
       name: "ambiguous investigation",
       description:
         "figure out why the fleet rolls are flaky on farm01; the cause is unknown, " <>
