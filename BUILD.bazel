@@ -9,6 +9,8 @@ load(
     "elixir_release",
 )
 load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
+load("@aspect_bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
+load("//build:phoenix_digest.bzl", "phoenix_digest")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -106,6 +108,165 @@ elixir_release(
     erts_otp_root = SHIPPED_ERTS_OTP_ROOT,
     erts_root_marker = SHIPPED_ERTS_ROOT_MARKER,
     mix_env = "prod",
+    overlays = {
+        ":static": "priv",
+    },
+)
+
+# Browser assets, built by Bazel instead of inside the release action. Same
+# `mix assets.deploy` flow as the Dockerfile (tailwind --minify, esbuild
+# --bundle --minify, phx.digest) with pinned standalone binaries instead of
+# `mix assets.setup` downloads. Pattern from serviceradar //elixir/web-ng/assets.
+
+filegroup(
+    name = "asset_srcs",
+    srcs = glob(["assets/**"]),
+)
+
+# css/app.css @sources the HEEx templates, so Tailwind reads them to decide
+# which utilities to emit. Without these the stylesheet builds clean and ships
+# almost empty.
+filegroup(
+    name = "web_templates",
+    srcs = glob(["lib/firstmate_port_web/**"]),
+)
+
+# Static files that are committed rather than generated. The generated
+# priv/static/assets tree and cache_manifest.json come from :static below,
+# never from source (compile_srcs excludes them for the same reason). The
+# **/*.gz exclude is the same rule: a local `mix phx.digest` writes compressed
+# siblings next to the sources, and the digest step regenerates them.
+filegroup(
+    name = "static_files",
+    srcs = glob(
+        ["priv/static/**"],
+        exclude = [
+            "priv/static/assets/**",
+            "priv/static/cache_manifest.json",
+            "priv/static/**/*.gz",
+        ],
+    ),
+)
+
+# Selected on the target platform: under --config=remote target == exec ==
+# linux x86_64; on a workstation target == exec == host.
+alias(
+    name = "tailwind_bin",
+    actual = select({
+        "//build/platforms:target_linux_arm64": "@tailwind_linux_arm64//file:file",
+        "//build/platforms:target_linux_x86_64": "@tailwind_linux_x86_64//file:file",
+        "//build/platforms:target_darwin_arm64": "@tailwind_darwin_arm64//file:file",
+        "//build/platforms:target_darwin_x86_64": "@tailwind_darwin_x86_64//file:file",
+    }),
+)
+
+alias(
+    name = "esbuild_bin",
+    actual = select({
+        "//build/platforms:target_linux_arm64": "@esbuild_linux_arm64//:bin",
+        "//build/platforms:target_linux_x86_64": "@esbuild_linux_x86_64//:bin",
+        "//build/platforms:target_darwin_arm64": "@esbuild_darwin_arm64//:bin",
+        "//build/platforms:target_darwin_x86_64": "@esbuild_darwin_x86_64//:bin",
+    }),
+)
+
+# The SVGs the vendor/heroicons tailwind shim reads (see MODULE.bazel).
+copy_to_directory(
+    name = "heroicons_opt",
+    srcs = ["@heroicons//:optimized"],
+    include_external_repositories = ["+http_archive+heroicons"],
+)
+
+genrule(
+    name = "css_bundle",
+    srcs = [
+        ":asset_srcs",
+        ":web_templates",
+        ":heroicons_opt",
+    ],
+    outs = ["static_build/css/app.css"],
+    tools = [":tailwind_bin"],
+    # The heroicons shim resolves `../../deps/heroicons` from its own path
+    # (assets/vendor/), so recreate the Mix deps/ layout beside the sources.
+    cmd = """
+        set -euo pipefail
+        ROOT=$$PWD
+        rm -rf "$$ROOT/deps"
+        mkdir -p "$$ROOT/deps"
+        ln -s "$$ROOT/$(location :heroicons_opt)" "$$ROOT/deps/heroicons"
+        "$(location :tailwind_bin)" --input=assets/css/app.css --output=$(OUTS) --minify
+    """,
+)
+
+# One directory per Hex package so esbuild sees the same deps/ layout Mix
+# gives it (one NODE_PATH entry per package directory).
+copy_to_directory(
+    name = "dep_phoenix",
+    srcs = ["@hex_phoenix//:sources"],
+    include_external_repositories = ["+hex+hex_phoenix"],
+)
+
+copy_to_directory(
+    name = "dep_phoenix_html",
+    srcs = ["@hex_phoenix_html//:sources"],
+    include_external_repositories = ["+hex+hex_phoenix_html"],
+)
+
+copy_to_directory(
+    name = "dep_phoenix_live_view",
+    srcs = ["@hex_phoenix_live_view//:sources"],
+    include_external_repositories = ["+hex+hex_phoenix_live_view"],
+)
+
+genrule(
+    name = "js_bundle",
+    srcs = [
+        ":asset_srcs",
+        ":dep_phoenix",
+        ":dep_phoenix_html",
+        ":dep_phoenix_live_view",
+        "//build:phoenix-colocated-index.js",
+    ],
+    outs = ["static_build/js/app.js"],
+    tools = [":esbuild_bin"],
+    cmd = """
+        set -euo pipefail
+        ROOT=$$PWD
+        ESBUILD="$$ROOT/$(location :esbuild_bin)"
+        OUT="$$ROOT/$(OUTS)"
+        W="$$ROOT/js_bundle_work"
+        rm -rf "$$W"
+        mkdir -p "$$W/deps" "$$W/bp/phoenix-colocated/firstmate_port"
+        ln -s "$$ROOT/$(location :dep_phoenix)" "$$W/deps/phoenix"
+        ln -s "$$ROOT/$(location :dep_phoenix_html)" "$$W/deps/phoenix_html"
+        ln -s "$$ROOT/$(location :dep_phoenix_live_view)" "$$W/deps/phoenix_live_view"
+        cp "$$ROOT/$(location //build:phoenix-colocated-index.js)" "$$W/bp/phoenix-colocated/firstmate_port/index.js"
+        cd assets
+        NODE_PATH="$$W/deps:$$W/bp" "$$ESBUILD" js/app.js --bundle --target=es2022 --outfile="$$OUT" --external:'/fonts/*' --external:'/images/*' --alias:@=. --minify
+    """,
+)
+
+# The undigested static tree: generated bundles plus the committed files.
+# config/prod.exs sets cache_static_manifest, so the release needs the
+# digested tree, not this one; it exists only as the digest input.
+copy_to_directory(
+    name = "static_undigested",
+    srcs = [
+        ":css_bundle",
+        ":js_bundle",
+        ":static_files",
+    ],
+    replace_prefixes = {
+        "static_build/": "",
+        "priv/static/": "",
+    },
+)
+
+phoenix_digest(
+    name = "static",
+    src = ":static_undigested",
+    out = "static.tar.gz",
+    prefix = "static",
 )
 
 go_library(

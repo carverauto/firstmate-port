@@ -4,6 +4,7 @@ exports_files([
     "hex_compile_env.bzl",
     "elixir_release.bzl",
     "phoenix_digest.bzl",
+    "phoenix-colocated-index.js",
 ])
 
 # Inputs every Mix compile in this repository needs. Resolved as a toolchain
