@@ -112,8 +112,8 @@ filegroup(
 
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(
-    name = "debian_bookworm_slim",
-    digest = "sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171",
+    name = "debian_trixie_slim",
+    digest = "sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132",
     image = "docker.io/library/debian",
     platforms = [
         "linux/amd64",
@@ -123,5 +123,5 @@ oci.pull(
         "linux/ppc64le",
     ],
 )
-use_repo(oci, "debian_bookworm_slim", "debian_bookworm_slim_linux_amd64")
+use_repo(oci, "debian_trixie_slim", "debian_trixie_slim_linux_amd64")
 

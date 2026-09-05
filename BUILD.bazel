@@ -148,7 +148,7 @@ pkg_tar(
 
 oci_image(
     name = "fm-steer_image",
-    base = "@debian_bookworm_slim",
+    base = "@debian_trixie_slim",
     entrypoint = ["/usr/local/bin/fm-steer"],
     tars = [":fm-steer_layer"],
 )
@@ -181,7 +181,7 @@ pkg_tar(
 
 oci_image(
     name = "portal_image",
-    base = "@debian_bookworm_slim",
+    base = "@debian_trixie_slim",
     entrypoint = ["/app/oci-entrypoint.sh"],
     env = {
         "PHX_SERVER": "true",
