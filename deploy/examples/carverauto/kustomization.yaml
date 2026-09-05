@@ -14,7 +14,7 @@ resources:
 images:
   - name: firstmate-port
     newName: ghcr.io/carverauto/firstmate-port
-    newTag: sha-507f7ff
+    newTag: sha-1332602
 patches:
   - path: deployment-patch.yaml
   - path: portal-httproute-patch.yaml

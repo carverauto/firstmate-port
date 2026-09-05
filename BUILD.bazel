@@ -8,6 +8,7 @@ load(
     "SHIPPED_ERTS_ROOT_MARKER",
     "elixir_release",
 )
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -161,11 +162,21 @@ pkg_tar(
     strip_prefix = "deploy",
 )
 
+# Mozilla CA bundle where Erlang's :pubkey_os_cacerts looks for it.
+# oidcc/httpc verifies OIDC discovery TLS against OS paths, not
+# SSL_CERT_FILE, and trixie-slim ships no bundle -- without this exact
+# path :firstmate_authentik dies with :no_cacerts_found at boot.
+# Pattern from serviceradar release_images (ca-certificates.crt).
+pkg_files(
+    name = "portal_cabundle_files",
+    srcs = ["priv/ssl/cacert.pem"],
+    prefix = "/etc/ssl/certs",
+    renames = {"priv/ssl/cacert.pem": "ca-certificates.crt"},
+)
+
 pkg_tar(
     name = "portal_cacert_layer",
-    srcs = ["priv/ssl/cacert.pem"],
-    package_dir = "/etc/ssl/certs",
-    strip_prefix = "priv/ssl",
+    srcs = [":portal_cabundle_files"],
 )
 
 # Re-root the Mix release tar under /app. Layering :release directly
@@ -186,7 +197,7 @@ oci_image(
     env = {
         "PHX_SERVER": "true",
         "PORT": "4000",
-        "SSL_CERT_FILE": "/etc/ssl/certs/cacert.pem",
+        "SSL_CERT_FILE": "/etc/ssl/certs/ca-certificates.crt",
         "LANG": "C.UTF-8",
         "LC_ALL": "C.UTF-8",
     },
