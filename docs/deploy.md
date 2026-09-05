@@ -93,10 +93,11 @@ optional extra restriction for sites that want one; it is unset by default and
 never gates the local account.
 
 OIDC is optional and fails soft. Incomplete settings leave OIDC disabled. A
-configured provider without a loaded discovery document is shown as unreachable;
-its sign-in button appears only once discovery is ready. Transient load errors
-retry with backoff. An exception that kills the provider leaves it stopped;
-correct the configuration or trust store and restart the portal to retry.
+configured provider is shown as unreachable until both its discovery document
+and signing keys (JWKS) are loaded; only then does its sign-in button appear.
+Transient load errors retry with backoff. An exception that kills the provider
+leaves it stopped; correct the configuration or trust store and restart the
+portal to retry.
 `/healthz`, the endpoint, and local sign-in (when enabled) stay up. Missing OIDC
 settings and a missing OS CA bundle do not take the node down.
 

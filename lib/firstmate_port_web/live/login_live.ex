@@ -3,9 +3,9 @@ defmodule FirstmatePortWeb.LoginLive do
   Editorial sign-in.
 
   Offers whatever is actually available: the local account when local auth is on,
-  an identity provider once its discovery document is loaded, and an honest
-  message when neither is. A configured-but-unreachable provider is called out
-  as unreachable rather than unconfigured, because those need different fixes.
+  an identity provider when `FirstmatePort.Auth.OIDC.ready?/1` permits it, and an
+  honest message when neither is. A configured-but-unreachable provider is called
+  out as unreachable rather than unconfigured, because those need different fixes.
   """
   use FirstmatePortWeb, :live_view
 

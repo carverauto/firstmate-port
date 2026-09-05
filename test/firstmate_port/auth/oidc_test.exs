@@ -157,7 +157,7 @@ defmodule FirstmatePort.Auth.OIDCTest do
 
       :ets.insert(
         table,
-        {:provider_configuration, Oidcc.ProviderConfiguration.to_record(configuration)}
+        {:provider_configuration, Oidcc.ProviderConfiguration.struct_to_record(configuration)}
       )
 
       refute OIDC.ready?(name)

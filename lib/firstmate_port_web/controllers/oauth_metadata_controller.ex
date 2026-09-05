@@ -7,8 +7,9 @@ defmodule FirstmatePortWeb.OAuthMetadataController do
   provider, and guessing them hands MCP clients a document that points nowhere.
 
   Authorization-server discovery returns HTTP 503 with `oidc_not_configured`
-  until provider configuration is available. Protected-resource discovery
-  omits `authorization_servers` when no issuer is configured.
+  until `FirstmatePort.Auth.OIDC.ready?/1` reports the provider ready.
+  Protected-resource discovery omits `authorization_servers` when no issuer is
+  configured.
   """
 
   use FirstmatePortWeb, :controller
