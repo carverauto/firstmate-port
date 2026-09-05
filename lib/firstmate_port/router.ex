@@ -426,21 +426,12 @@ defmodule FirstmatePort.Router do
   end
 
   # "token" and "secret" are homonyms in ordinary work ("token usage
-  # counter", "the secret sauce"), so they need a handling verb to raise
-  # risk on their own.
-  defp credential_handling?(text) do
-    match_any?(text, ["secret", "token"]) and
-      match_any?(text, [
-        "rotate",
-        "revoke",
-        "leak",
-        "expose",
-        "exfiltrate",
-        "hardcode",
-        "hard-code",
-        "steal"
-      ])
-  end
+  # counter", "the memory leak in the token bucket"), so they raise risk
+  # only when a handling verb governs them directly: the verb and the noun
+  # must be adjacent, not merely both present.
+  @credential_handling ~r/(rotat|revok|leak|exfiltrat|hardcod|hard-cod|steal|dump)\w*\s+((the|a|an|our|your|my|this|that|all|any)\s+)?([\w-]+\s+)?(secret|token)s?\b/
+
+  defp credential_handling?(text), do: Regex.match?(@credential_handling, text)
 
   defp risk_medium(text) do
     match_any?(text, [

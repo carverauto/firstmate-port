@@ -38,6 +38,15 @@ defmodule FirstmatePort.RouterTest do
     assert Router.classify("someone leaked the api token in a public log").risk == :high
   end
 
+  test "a handling verb only raises risk when it governs the credential" do
+    assert Router.classify("fix the memory leak in the token bucket cache").risk == :low
+    assert Router.classify("implement the usage page that exposes token counts").risk == :low
+    assert Router.classify("dump the request log and fix the token parser").risk == :low
+
+    assert Router.classify("dump the token to stdout while debugging").risk == :high
+    assert Router.classify("we hardcoded a secret in the repo").risk == :high
+  end
+
   test "a token counter task stays in the cheap lane" do
     got = Router.route("add a token usage counter to the portal")
 

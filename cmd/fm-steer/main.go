@@ -333,18 +333,15 @@ func usageRun(args []string) {
 		if err := postJSON(c.Instance+"/api/usage/sync", c.Token, map[string]any{}, &res); err != nil {
 			log.Fatal(err)
 		}
-		if *asJSON {
-			printJSON(res)
-			return
-		}
-		for _, r := range res.Data {
-			mark := "ok"
-			if !r.Synced {
-				mark = "skip"
+		if !*asJSON {
+			for _, r := range res.Data {
+				mark := "ok"
+				if !r.Synced {
+					mark = "skip"
+				}
+				fmt.Printf("%s %s/%s: %s\n", mark, r.Account.Provider, r.Account.Label, r.Note)
 			}
-			fmt.Printf("%s %s/%s: %s\n", mark, r.Account.Provider, r.Account.Label, r.Note)
 		}
-		return
 	}
 	var out usageResponse
 	if err := getJSON(c.Instance+"/api/usage", c.Token, &out); err != nil {

@@ -66,7 +66,8 @@ fm-steer usage --json
 
 `--sync` asks the portal to refresh syncable accounts first (provider keys
 stay server-side; only configured providers refresh, the rest report why
-they were skipped).
+they were skipped), then prints the refreshed ledger. With `--json` the
+refresh notes are omitted and only the ledger is printed.
 
 ## Tenancy
 

@@ -154,9 +154,9 @@ func TestUsageListsAccountsFromPortal(t *testing.T) {
 func TestUsageSyncPostsToPortal(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
-	var gotPath string
+	var gotPaths []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath = r.URL.Path
+		gotPaths = append(gotPaths, r.URL.Path)
 		_ = json.NewEncoder(w).Encode(map[string]any{"tenant": "local", "data": []any{}})
 	}))
 	defer srv.Close()
@@ -164,8 +164,8 @@ func TestUsageSyncPostsToPortal(t *testing.T) {
 		t.Fatal(err)
 	}
 	usageRun([]string{"--instance", srv.URL, "--sync"})
-	if gotPath != "/api/usage/sync" {
-		t.Fatalf("path %s", gotPath)
+	if len(gotPaths) != 2 || gotPaths[0] != "/api/usage/sync" || gotPaths[1] != "/api/usage" {
+		t.Fatalf("--sync must refresh then list the ledger, got %v", gotPaths)
 	}
 }
 

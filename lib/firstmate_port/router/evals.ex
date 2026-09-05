@@ -69,6 +69,18 @@ defmodule FirstmatePort.Router.Evals do
       expect_effort: "low"
     },
     %{
+      name: "memory leak fix",
+      description: "fix the memory leak in the token bucket cache",
+      expect_harness: "codex",
+      expect_effort: "medium"
+    },
+    %{
+      name: "token counts on the usage page",
+      description: "implement the usage page that exposes token counts",
+      expect_harness: "codex",
+      expect_effort: "medium"
+    },
+    %{
       name: "leaked credential",
       description: "someone leaked the shared secret into a public channel",
       expect_harness: "claude",
