@@ -1,17 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_cross_binary", "go_library", "go_test")
 load("@rules_elixir//:mix_app.bzl", "mix_app")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_push")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load(
     "//build:elixir_release.bzl",
     "SHIPPED_ERTS_OTP_ROOT",
     "SHIPPED_ERTS_ROOT_MARKER",
     "elixir_release",
 )
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_cross_binary", "go_library", "go_test")
-load("@rules_oci//oci:defs.bzl", "oci_image", "oci_push")
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["mix.lock", "go.mod", "go.sum"])
+exports_files([
+    "mix.lock",
+    "go.mod",
+    "go.sum",
+])
 
 filegroup(
     name = "srcs",
@@ -52,12 +56,14 @@ filegroup(
 PORT_DEPS = [
     "@hexpm//:ash",
     "@hexpm//:ash_ai",
+    "@hexpm//:ash_cloak",
     "@hexpm//:ash_events",
     "@hexpm//:ash_oban",
     "@hexpm//:ash_paper_trail",
     "@hexpm//:ash_phoenix",
     "@hexpm//:ash_postgres",
     "@hexpm//:bandit",
+    "@hexpm//:cloak",
     "@hexpm//:dns_cluster",
     "@hexpm//:ecto_sql",
     "@hexpm//:esbuild",
@@ -93,12 +99,12 @@ mix_app(
 
 elixir_release(
     name = "release",
-    app = ":erlang_app",
-    out = "firstmate-port-release.tar.gz",
     srcs = [":compile_srcs"],
-    mix_env = "prod",
+    out = "firstmate-port-release.tar.gz",
+    app = ":erlang_app",
     erts_otp_root = SHIPPED_ERTS_OTP_ROOT,
     erts_root_marker = SHIPPED_ERTS_ROOT_MARKER,
+    mix_env = "prod",
 )
 
 go_library(
@@ -191,5 +197,3 @@ oci_push(
     image = ":fm-steer_image",
     repository = "ghcr.io/OWNER/fm-steer",
 )
-
-

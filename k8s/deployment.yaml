@@ -44,11 +44,12 @@ spec:
                 secretKeyRef:
                   name: firstmate-nats
                   key: token
-            - name: DISCORD_PUBLIC_KEY
+            # Vault key setup and optional fallback: docs/credentials.md.
+            - name: CLOAK_KEY
               valueFrom:
                 secretKeyRef:
-                  name: firstmate-discord
-                  key: public-key
+                  name: firstmate-cloak
+                  key: key
                   optional: true
             - name: DATABASE_URL
               valueFrom:

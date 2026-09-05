@@ -88,7 +88,28 @@ if config_env() == :prod do
     password: System.get_env("NATS_PASSWORD"),
     replicas: String.to_integer(System.get_env("NATS_REPLICAS") || "1")
 
-  config :firstmate_port, :discord_public_key, System.get_env("DISCORD_PUBLIC_KEY")
+  # Preserve boot compatibility through key derivation. Before changing keys,
+  # follow docs/credentials.md to keep existing ciphertext readable.
+  cloak_key =
+    System.get_env("CLOAK_KEY") ||
+      Base.encode64(:crypto.hash(:sha256, "firstmate-port cloak v1:" <> secret_key_base))
+
+  config :firstmate_port, FirstmatePort.Vault,
+    key: cloak_key,
+    # Each key generation needs its own tag; see docs/credentials.md.
+    tag: System.get_env("CLOAK_KEY_TAG") || "AES.GCM.V1",
+    retired_keys:
+      System.get_env("CLOAK_KEYS_RETIRED", "")
+      |> String.split(",", trim: true)
+      |> Enum.map(fn pair ->
+        case String.split(pair, "=", parts: 2) do
+          [tag, key] ->
+            {String.trim(tag), String.trim(key)}
+
+          _ ->
+            raise "CLOAK_KEYS_RETIRED must be comma-separated tag=base64key pairs"
+        end
+      end)
 
   issuers =
     if is_binary(oidc_issuer) and oidc_issuer != "" do

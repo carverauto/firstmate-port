@@ -48,6 +48,21 @@ else
     --from-literal=token="fmh_$(openssl rand -hex 24)"
 fi
 
+# Encrypts every tenant credential typed into the portal. Losing it means every
+# stored credential has to be re-entered, so back it up with the database.
+if kubectl -n "$NS" get secret firstmate-cloak >/dev/null 2>&1; then
+  echo "reusing firstmate-cloak"
+else
+  APP_SECRET_BASE="$(kubectl -n "$NS" get secret firstmate-app -o jsonpath='{.data.secret-key-base}' | base64 -d)"
+  if [[ -z "$APP_SECRET_BASE" ]]; then
+    echo "firstmate-app is missing secret-key-base; refusing to provision firstmate-cloak" >&2
+    exit 1
+  fi
+  CLOAK_DERIVED_KEY="$(printf 'firstmate-port cloak v1:%s' "$APP_SECRET_BASE" | openssl dgst -sha256 -binary | openssl base64 -A)"
+  kubectl -n "$NS" create secret generic firstmate-cloak \
+    --from-literal=key="$CLOAK_DERIVED_KEY"
+fi
+
 if kubectl -n "$NS" get secret firstmate-nats >/dev/null 2>&1; then
   echo "reusing firstmate-nats"
 else
@@ -57,6 +72,7 @@ fi
 
 echo "GitHub PAT (optional until poll is enabled):"
 echo "  kubectl -n $NS create secret generic github-token --from-literal=GITHUB_TOKEN=<fine-grained-pat>"
-echo "Discord interactions (captain):"
-echo "  kubectl -n $NS create secret generic firstmate-discord --from-literal=public-key=<hex> --from-literal=bot-token=<token>"
+echo "Discord and other per-tenant credentials are NOT kubectl secrets."
+echo "  Each tenant enters its own at https://<host>/settings/credentials"
+echo "  or through PUT /api/credentials/<provider>/<key>. See docs/credentials.md."
 echo "done. OIDC secret is created by deploy/bootstrap-authentik-oidc.sh"

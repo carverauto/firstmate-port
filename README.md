@@ -2,6 +2,8 @@
 
 Phoenix/Ash companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, NATS queues, and no-mistakes runs in one LiveView UI. Discord inbound is served by Phoenix at POST `/interactions`.
 
+Each tenant stores its own credentials - Discord keys, GitHub tokens, provider API keys - in the portal, encrypted with AshCloak before they reach Postgres. No per-tenant `kubectl create secret`.
+
 ## Local
 
 ```sh
@@ -19,6 +21,7 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`,
 
 ## Docs
 
+- [docs/credentials.md](docs/credentials.md) how a tenant stores Discord and other secrets
 - [docs/deploy.md](docs/deploy.md) image publishing, compose, Kubernetes
 - [docs/bazel.md](docs/bazel.md) rules_elixir / BuildBuddy, `--output_base=/tmp/fm-fm-port/bazel`
 

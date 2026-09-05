@@ -74,6 +74,17 @@ defmodule FirstmatePortWeb.Router do
     post "/auth/token", CliAuthController, :token
   end
 
+  scope "/api", FirstmatePortWeb.Api do
+    pipe_through :cli
+
+    get "/credentials", CredentialsController, :index
+    get "/credentials/slots", CredentialsController, :slots
+    post "/credentials", CredentialsController, :create
+    put "/credentials/:provider/:key", CredentialsController, :put
+    patch "/credentials/:provider/:key", CredentialsController, :patch
+    delete "/credentials/:provider/:key", CredentialsController, :delete
+  end
+
   scope "/api/cli", FirstmatePortWeb do
     pipe_through :cli
 
@@ -121,6 +132,7 @@ defmodule FirstmatePortWeb.Router do
     live "/issues", BoardLive
     live "/rolls/:id", RollLive
     live "/no-mistakes", NoMistakesLive
+    live "/settings/credentials", CredentialsLive
   end
 
   if Application.compile_env(:firstmate_port, :dev_routes) do

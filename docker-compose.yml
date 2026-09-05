@@ -40,6 +40,8 @@ services:
       PUBLIC_URL: http://localhost:4000
       DATABASE_URL: ecto://firstmate:firstmate@postgres/firstmate
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:?set SECRET_KEY_BASE in .env}
+      # Local-only default; production key setup and rotation: docs/credentials.md.
+      CLOAK_KEY: ${CLOAK_KEY:-Zmlyc3RtYXRlLXBvcnQgZGV2IHZhdWx0IGtleSAhISE=}
       DEV_AUTH: "true"
       ALLOWED_EMAIL_DOMAIN: localhost
       NATS_ENABLED: "true"
