@@ -105,10 +105,6 @@ config :firstmate_port, FirstmatePort.NATS.Connection,
   password: nil,
   replicas: 1
 
-# Bootstrap only. A tenant's real Discord public key lives in its
-# `discord`/`public_key` credential; see `docs/credentials.md`.
-config :firstmate_port, :discord_public_key, nil
-
 config :ueberauth_oidcc, issuers: []
 
 config :ueberauth, Ueberauth,

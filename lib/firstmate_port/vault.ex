@@ -11,6 +11,8 @@ defmodule FirstmatePort.Vault do
     * `CLOAK_KEY` - base64 of 32 random bytes, used to encrypt new values. When
       it is unset, `config/runtime.exs` derives one from `SECRET_KEY_BASE` so a
       deployment that has not created the secret still boots.
+      `deploy/bootstrap-secrets.sh` preserves that derived key when creating
+      `firstmate-cloak`, keeping existing ciphertext readable.
     * `CLOAK_KEY_TAG` - the tag written into new ciphertext, `AES.GCM.V1` by
       default. Each key generation needs its own tag, because the tag is how a
       stored value finds the key that can read it.

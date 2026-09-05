@@ -70,36 +70,53 @@ defmodule FirstmatePort.Credentials.DiscordTest do
     assert :error = Discord.verify(sign(alpha, "1710000000", body), "1710000001", body)
   end
 
-  test "the bootstrap env key resolves to the default tenant" do
-    {public, _} = keypair = :crypto.generate_key(:eddsa, :ed25519)
-
-    Application.put_env(:firstmate_port, :discord_public_key, Base.encode16(public, case: :lower))
-
-    body = ~s({"type":1})
-    ts = "1710000000"
-
-    assert {:ok, "local"} = Discord.verify(sign(keypair, ts, body), ts, body)
-  end
-
-  test "a tenant's stored key works alongside the bootstrap key" do
-    {bootstrap_public, _} = bootstrap = :crypto.generate_key(:eddsa, :ed25519)
-
-    Application.put_env(
-      :firstmate_port,
-      :discord_public_key,
-      Base.encode16(bootstrap_public, case: :lower)
-    )
-
-    stored = :crypto.generate_key(:eddsa, :ed25519)
-    store_key(tenant("alpha"), stored)
-
+  test "environment keys are never accepted, including after rotation and deletion" do
+    {public, _} = original = :crypto.generate_key(:eddsa, :ed25519)
+    Application.put_env(:firstmate_port, :discord_public_key, Base.encode16(public))
     body = ~s({"type":2})
     ts = "1710000000"
 
-    # Each resolves to its own tenant: bootstrapping never locks a tenant out,
-    # and a tenant storing a key never breaks the bootstrap path.
-    assert {:ok, "alpha"} = Discord.verify(sign(stored, ts, body), ts, body)
-    assert {:ok, "local"} = Discord.verify(sign(bootstrap, ts, body), ts, body)
+    refute Discord.configured?()
+    assert :error = Discord.verify(sign(original, ts, body), ts, body)
+
+    user = tenant("alpha")
+    {:ok, credential} = store_key(user, original)
+    assert {:ok, "alpha"} = Discord.verify(sign(original, ts, body), ts, body)
+
+    {replacement_public, _} = replacement = :crypto.generate_key(:eddsa, :ed25519)
+
+    {:ok, rotated} =
+      Credential.rotate(
+        credential,
+        %{value: Base.encode16(replacement_public)},
+        Tenancy.opts(user)
+      )
+
+    assert :error = Discord.verify(sign(original, ts, body), ts, body)
+    assert {:ok, "alpha"} = Discord.verify(sign(replacement, ts, body), ts, body)
+
+    :ok = Credential.destroy(rotated, Tenancy.opts(user))
+    assert :error = Discord.verify(sign(original, ts, body), ts, body)
+    assert :error = Discord.verify(sign(replacement, ts, body), ts, body)
+    refute Discord.configured?()
+  end
+
+  test "routing includes tenants beyond the first 200 keys" do
+    for index <- 1..200 do
+      store_key(tenant("tenant-#{index}"), :crypto.generate_key(:eddsa, :ed25519))
+    end
+
+    last = :crypto.generate_key(:eddsa, :ed25519)
+    store_key(tenant("last"), last)
+    body = ~s({"type":2})
+    ts = "1710000000"
+
+    assert {:ok, "last"} = Discord.verify(sign(last, ts, body), ts, body)
+
+    {:ok, duplicate} = store_key(tenant("duplicate"), last)
+    assert :error = Discord.verify(sign(last, ts, body), ts, body)
+    :ok = Credential.destroy(duplicate, authorize?: false, tenant: "duplicate")
+    assert {:ok, "last"} = Discord.verify(sign(last, ts, body), ts, body)
   end
 
   test "nothing configured verifies nothing" do

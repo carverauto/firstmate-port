@@ -31,7 +31,7 @@ defmodule FirstmatePort.Credentials do
   end
 
   resources do
-    resource FirstmatePort.Credentials.Credential
+    resource(FirstmatePort.Credentials.Credential)
   end
 
   alias FirstmatePort.Credentials.Credential
@@ -86,9 +86,9 @@ defmodule FirstmatePort.Credentials do
 
   Inbound requests from a provider that knows nothing about our tenants - a
   Discord interaction, say - are matched against these to work out who they
-  belong to. `limit` bounds the work an unauthenticated request can cause.
+  belong to. Every stored row is considered so routing has no tenant cutoff.
   """
-  def slot_across_tenants(provider, key, limit \\ 200) do
+  def slot_across_tenants(provider, key) do
     Credential
     |> Ash.Query.for_read(:every_tenant_slot, %{provider: provider, key: key},
       authorize?: false,
@@ -96,7 +96,6 @@ defmodule FirstmatePort.Credentials do
     )
     |> Ash.Query.set_context(DecryptGuard.context())
     |> Ash.Query.load([:value])
-    |> Ash.Query.limit(limit)
     |> Ash.read()
     |> case do
       {:ok, rows} ->

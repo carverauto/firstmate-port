@@ -2,19 +2,11 @@ defmodule FirstmatePort.Credentials.Discord do
   @moduledoc """
   Resolves a Discord interaction to the tenant that owns the app which signed it.
 
-  Discord sends no tenant context, but every interaction is signed with the
-  application's Ed25519 key - and each tenant stores its own key in the
-  `discord`/`public_key` slot. So the signature itself picks the tenant: we try
-  the stored keys, and the one that verifies names the owner. Failing to verify
-  against any key is an unauthorized request, exactly as before.
-
-  ## Bootstrap
-
-  Before any tenant has filled the slot - a fresh install, or local development -
-  `DISCORD_PUBLIC_KEY` still works and resolves to the default tenant. It is
-  checked last, so a tenant that stores its own key immediately takes over
-  without an environment change or a redeploy. Nothing needs a
-  `kubectl create secret firstmate-discord`.
+  Discord sends no tenant context. Verification considers every stored
+  `discord`/`public_key` and succeeds only when exactly one tenant matches.
+  Shared keys are allowed in storage but ambiguous signatures are unauthorized.
+  Keys are read on every request, so portal rotation and deletion revoke them
+  immediately. Environment keys are not accepted.
   """
 
   require Logger
@@ -27,7 +19,7 @@ defmodule FirstmatePort.Credentials.Discord do
   @doc """
   Verifies a Discord signature and returns the tenant it belongs to.
 
-  `{:ok, tenant_slug}` when some configured key verifies `timestamp <> body`,
+  `{:ok, tenant_slug}` when exactly one tenant's key verifies `timestamp <> body`,
   `:error` otherwise.
   """
   def verify(signature, timestamp, body)
@@ -36,11 +28,16 @@ defmodule FirstmatePort.Credentials.Discord do
          @signature_bytes <- byte_size(raw) do
       signed = timestamp <> body
 
-      Enum.find_value(verification_keys(), :error, fn {tenant, public_key} ->
-        if :crypto.verify(:eddsa, :none, signed, raw, [public_key, :ed25519]) do
-          {:ok, tenant}
-        end
+      verification_keys()
+      |> Enum.filter(fn {_tenant, public_key} ->
+        :crypto.verify(:eddsa, :none, signed, raw, [public_key, :ed25519])
       end)
+      |> Enum.map(fn {tenant, _public_key} -> tenant end)
+      |> Enum.uniq()
+      |> case do
+        [tenant] -> {:ok, tenant}
+        _ -> :error
+      end
     else
       _ -> :error
     end
@@ -49,13 +46,13 @@ defmodule FirstmatePort.Credentials.Discord do
   def verify(_signature, _timestamp, _body), do: :error
 
   @doc """
-  Every usable `{tenant_slug, public_key}` pair, tenant-stored keys first.
+  Every usable tenant-stored `{tenant_slug, public_key}` pair.
 
   A malformed stored key is skipped and logged by slot, never by value, so one
   bad paste cannot take the endpoint down for other tenants.
   """
   def verification_keys do
-    stored() ++ bootstrap()
+    stored()
   end
 
   @doc "Whether any tenant has stored a Discord public key yet."
@@ -77,19 +74,6 @@ defmodule FirstmatePort.Credentials.Discord do
           []
       end
     end)
-  end
-
-  defp bootstrap do
-    case Application.get_env(:firstmate_port, :discord_public_key) do
-      hex when is_binary(hex) and hex != "" ->
-        case public_key(hex) do
-          {:ok, key} -> [{FirstmatePort.Tenancy.default_slug(), key}]
-          :error -> []
-        end
-
-      _ ->
-        []
-    end
   end
 
   defp public_key(hex) do

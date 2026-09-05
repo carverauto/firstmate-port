@@ -114,10 +114,6 @@ if config_env() == :prod do
         end
       end)
 
-  # Bootstrap only, for a cluster with no tenant Discord credential yet. A tenant
-  # that stores its own `discord`/`public_key` in the portal takes over from it.
-  config :firstmate_port, :discord_public_key, System.get_env("DISCORD_PUBLIC_KEY")
-
   issuers =
     if is_binary(oidc_issuer) and oidc_issuer != "" do
       [%{name: :firstmate_authentik, issuer: oidc_issuer}]

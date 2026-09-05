@@ -53,8 +53,14 @@ fi
 if kubectl -n "$NS" get secret firstmate-cloak >/dev/null 2>&1; then
   echo "reusing firstmate-cloak"
 else
+  APP_SECRET_BASE="$(kubectl -n "$NS" get secret firstmate-app -o jsonpath='{.data.secret-key-base}' | base64 -d)"
+  if [[ -z "$APP_SECRET_BASE" ]]; then
+    echo "firstmate-app is missing secret-key-base; refusing to provision firstmate-cloak" >&2
+    exit 1
+  fi
+  CLOAK_DERIVED_KEY="$(printf 'firstmate-port cloak v1:%s' "$APP_SECRET_BASE" | openssl dgst -sha256 -binary | openssl base64 -A)"
   kubectl -n "$NS" create secret generic firstmate-cloak \
-    --from-literal=key="$(openssl rand -base64 32)"
+    --from-literal=key="$CLOAK_DERIVED_KEY"
 fi
 
 if kubectl -n "$NS" get secret firstmate-nats >/dev/null 2>&1; then

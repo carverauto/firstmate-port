@@ -17,13 +17,10 @@ the others.
 | `firstmate-cloak` / `key` (`CLOAK_KEY`) | It is what encrypts tenant credentials; it cannot live inside them. |
 | `firstmate-pg-app`, `firstmate-app`, `firstmate-nats`, `firstmate-agent` | Infrastructure the app needs before any tenant exists. |
 
-`deploy/bootstrap-secrets.sh` creates `firstmate-cloak` for you. To make one by
-hand:
-
-```sh
-kubectl -n firstmate create secret generic firstmate-cloak \
-  --from-literal=key="$(openssl rand -base64 32)"
-```
+`deploy/bootstrap-secrets.sh` creates `firstmate-cloak` using the same SHA-256
+derivation as the running portal: `"firstmate-port cloak v1:" <> SECRET_KEY_BASE`.
+It reads the existing `firstmate-app` secret and preserves an existing
+`firstmate-cloak`. This keeps credentials written before bootstrap readable.
 
 Back it up with the database. Losing the key means every stored credential has to
 be entered again; there is no recovery path, by design.
@@ -37,8 +34,9 @@ manifest marks the `firstmate-cloak` reference optional for exactly this reason.
 
 The catch is that stored credentials are then tied to `SECRET_KEY_BASE`:
 rotating it without setting `CLOAK_KEY` first makes them unreadable. Set an
-explicit `CLOAK_KEY` before you rely on the store, and the two become
-independent.
+explicit `CLOAK_KEY` equal to the existing derived key (the bootstrap script
+does this), and the two become independent. To replace it with a random key,
+follow the tagged rotation procedure below; never replace a key under the same tag.
 
 `config/dev.exs` and `config/test.exs` carry a fixed, non-secret key so the dev
 and test databases hold real ciphertext without any setup.
@@ -106,15 +104,15 @@ to configure an identity provider.
 
 Discord posts interactions to `POST /interactions` on this Phoenix app - there is
 no sidecar and no separate service. Discord sends no tenant context, so the
-**signature picks the tenant**: the request is verified against every tenant's
-stored `discord`/`public_key`, and whichever key verifies names the tenant whose
-`<tenant>.discord.inbound` subject the payload is published to. A signature no
-stored key verifies is a 401, exactly as before.
+**signature must match exactly one tenant**: the request is verified against every
+tenant's stored `discord`/`public_key`. Only a unique matching tenant receives
+the payload on its `<tenant>.discord.inbound` subject. Zero matches or multiple
+matching tenants return 401 without publishing. Tenants can store the same app
+key, but interactions remain unauthorized until the ambiguity is removed.
 
-Verification is bounded: at most 200 stored keys are tried per request, so an
-unauthenticated caller cannot make the endpoint do unbounded work. The keys are
-read fresh on each interaction, which is one indexed query - storing or rotating
-a key takes effect immediately, with no cache to invalidate and no restart.
+All stored keys are considered, with no tenant cutoff. Keys are read fresh on
+each interaction, so storing, rotating, or deleting a key takes effect
+immediately, with no cache to invalidate and no restart.
 
 To point a Discord app at a tenant:
 
@@ -122,18 +120,9 @@ To point a Discord app at a tenant:
 2. Set the app's interactions endpoint to `https://<discord host>/interactions`.
 3. Discord's own PING verification will now pass against the stored key.
 
-### Bootstrap
-
-Before any tenant has filled the slot - a fresh install, or local development -
-`DISCORD_PUBLIC_KEY` in the environment still works and resolves to the default
-tenant (`default_tenant_slug`, `local`). It is checked last, so the moment a
-tenant stores its own key that key takes over, with no environment change and no
-redeploy. Both keep working side by side, each resolving to its own tenant, which
-is what makes the migration off the environment variable a non-event.
-
-`k8s/deployment.yaml` no longer sets `DISCORD_PUBLIC_KEY`. It stays in
-`.env.example` for local development and for a first boot before anyone can sign
-in to store a key.
+Environment `DISCORD_PUBLIC_KEY` values are not accepted. Enter the key through
+the portal UI or API, including on a fresh install. Portal login and cluster
+startup do not require a Discord credential.
 
 ## How the secret is protected
 

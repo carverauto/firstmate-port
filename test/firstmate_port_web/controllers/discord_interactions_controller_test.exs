@@ -8,9 +8,14 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
   setup do
     {pub, priv} = :crypto.generate_key(:eddsa, :ed25519)
     hex = Base.encode16(pub, case: :lower)
-    previous = Application.get_env(:firstmate_port, :discord_public_key)
-    Application.put_env(:firstmate_port, :discord_public_key, hex)
-    on_exit(fn -> Application.put_env(:firstmate_port, :discord_public_key, previous) end)
+    {:ok, _} = Tenant.seed(%{slug: "local", name: "local"}, authorize?: false)
+
+    {:ok, _} =
+      Credential.create(%{provider: "discord", key: "public_key", value: hex},
+        authorize?: false,
+        tenant: "local"
+      )
+
     {:ok, pub: pub, priv: priv}
   end
 
@@ -67,9 +72,7 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
     assert conn.status == 502
   end
 
-  test "a tenant's stored public key verifies without the bootstrap env", %{conn: conn} do
-    Application.put_env(:firstmate_port, :discord_public_key, nil)
-
+  test "a tenant's stored public key verifies", %{conn: conn} do
     {pub, priv} = :crypto.generate_key(:eddsa, :ed25519)
     {:ok, _} = Tenant.seed(%{slug: "alpha", name: "alpha"}, authorize?: false)
 
@@ -98,10 +101,30 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
   end
 
   test "a signature no tenant can verify is 401", %{conn: conn} do
-    Application.put_env(:firstmate_port, :discord_public_key, nil)
-
     {_pub, priv} = :crypto.generate_key(:eddsa, :ed25519)
     body = ~s({"type":1})
+    ts = "1710000000"
+
+    conn =
+      conn
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("x-signature-ed25519", sign(priv, ts, body))
+      |> put_req_header("x-signature-timestamp", ts)
+      |> post("/interactions", body)
+
+    assert conn.status == 401
+  end
+
+  test "a shared app key is rejected before publishing", %{conn: conn, pub: pub, priv: priv} do
+    {:ok, _} = Tenant.seed(%{slug: "other", name: "other"}, authorize?: false)
+
+    {:ok, _} =
+      Credential.create(%{provider: "discord", key: "public_key", value: Base.encode16(pub)},
+        authorize?: false,
+        tenant: "other"
+      )
+
+    body = ~s({"type":2,"data":{"name":"ping"}})
     ts = "1710000000"
 
     conn =

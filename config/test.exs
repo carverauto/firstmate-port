@@ -2,7 +2,6 @@ import Config
 config :firstmate_port, :public_url, "http://localhost:4002"
 config :firstmate_port, Oban, testing: :inline
 config :firstmate_port, FirstmatePort.NATS.Connection, enabled: false, replicas: 1
-config :firstmate_port, :discord_public_key, nil
 
 config :firstmate_port, FirstmatePort.Vault, key: "Zmlyc3RtYXRlLXBvcnQgdGVzdCB2YXVsdCBrZXkgISE="
 
