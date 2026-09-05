@@ -76,28 +76,27 @@ defmodule FirstmatePortWeb.Layouts do
   end
 
   @doc """
-  Ship's-wheel mark. Strokes use `currentColor` so the mark follows the
-  surrounding text color (ink in light mode, paper in dark mode).
+  Ship's-wheel mark from the captain's SVG. Served as two static files so
+  the mark renders black in light mode and white in dark mode.
   """
   def wheel_mark(assigns) do
     ~H"""
-    <svg
-      viewBox="0 0 48 48"
-      fill="none"
-      stroke="currentColor"
-      stroke-linecap="round"
-      aria-hidden="true"
-      focusable="false"
-      class="brand-wheel"
-    >
-      <circle cx="24" cy="24" r="12" stroke-width="3" />
-      <path
-        d="M24 4v16M24 28v16M4 24h16M28 24h16M9.9 9.9l11.3 11.3M26.8 26.8l11.3 11.3M38.1 9.9L26.8 21.2M21.2 26.8L9.9 38.1"
-        stroke-width="2.5"
+    <span class="brand-wheel" aria-hidden="true">
+      <img
+        src={~p"/images/steering-wheel-black.svg"}
+        alt=""
+        width="22"
+        height="22"
+        class="brand-wheel-light"
       />
-      <circle cx="24" cy="24" r="4" stroke-width="2.5" />
-      <circle cx="24" cy="24" r="1.4" fill="currentColor" stroke="none" />
-    </svg>
+      <img
+        src={~p"/images/steering-wheel-white.svg"}
+        alt=""
+        width="22"
+        height="22"
+        class="brand-wheel-dark"
+      />
+    </span>
     """
   end
 
@@ -109,7 +108,7 @@ defmodule FirstmatePortWeb.Layouts do
     ~H"""
     <div class="shell">
       <header class="topbar">
-        <.link navigate={~p"/"} class="brand"><.wheel_mark />firstmate port</.link>
+        <.link navigate={~p"/"} class="brand"><.wheel_mark /><span class="brand-text">firstmate port</span></.link>
         <nav class="nav" aria-label="Primary">
           <.link navigate={~p"/"}>Log</.link>
           <.link navigate={~p"/prs"}>PRs</.link>
@@ -139,7 +138,7 @@ defmodule FirstmatePortWeb.Layouts do
     ~H"""
     <div class="auth-shell">
       <header class="auth-top">
-        <.link href={~p"/login"} class="brand"><.wheel_mark />firstmate port</.link>
+        <.link href={~p"/login"} class="brand"><.wheel_mark /><span class="brand-text">firstmate port</span></.link>
         <.theme_toggle />
       </header>
       <.flash_group flash={@flash} />

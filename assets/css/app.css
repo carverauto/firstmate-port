@@ -118,6 +118,8 @@ a:hover {
 
 .brand {
   display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.5rem;
   color: var(--ink);
@@ -125,13 +127,58 @@ a:hover {
   letter-spacing: -0.03em;
   text-decoration: none;
   flex: none;
+  white-space: nowrap;
+}
+
+.brand-text {
+  line-height: 1;
 }
 
 .brand-wheel {
+  position: relative;
   width: 22px;
   height: 22px;
-  flex: none;
+  flex: 0 0 22px;
   display: block;
+  overflow: hidden;
+}
+
+.brand-wheel img {
+  position: absolute;
+  inset: 0;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.brand-wheel-dark {
+  opacity: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-wheel-light {
+    opacity: 0;
+  }
+
+  :root:not([data-theme="light"]) .brand-wheel-dark {
+    opacity: 1;
+  }
+}
+
+[data-theme="dark"] .brand-wheel-light {
+  opacity: 0;
+}
+
+[data-theme="dark"] .brand-wheel-dark {
+  opacity: 1;
+}
+
+[data-theme="light"] .brand-wheel-light {
+  opacity: 1;
+}
+
+[data-theme="light"] .brand-wheel-dark {
+  opacity: 0;
 }
 
 .brand:hover {
