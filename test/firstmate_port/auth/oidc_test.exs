@@ -141,6 +141,41 @@ defmodule FirstmatePort.Auth.OIDCTest do
   end
 
   describe "ready?/1" do
+    test "discovery alone stays unavailable until signing keys are loaded" do
+      name = :"oidc_partial_#{System.unique_integer([:positive])}"
+      Process.register(self(), name)
+      table = :ets.new(name, [:named_table, :protected])
+
+      cfg = [
+        issuer: "https://idp.example.test",
+        client_id: "portal",
+        client_secret: "secret",
+        provider_name: name
+      ]
+
+      configuration = %Oidcc.ProviderConfiguration{issuer: cfg[:issuer]}
+
+      :ets.insert(
+        table,
+        {:provider_configuration, Oidcc.ProviderConfiguration.to_record(configuration)}
+      )
+
+      refute OIDC.ready?(name)
+      refute OIDC.enabled?(cfg)
+      assert OIDC.status(cfg) == :unavailable
+
+      jwks = JOSE.JWK.from_map(%{"kty" => "oct", "k" => Base.url_encode64("test-signing-key")})
+      :ets.insert(table, {:jwks, JOSE.JWK.to_record(jwks)})
+
+      assert OIDC.ready?(name)
+      assert OIDC.enabled?(cfg)
+      assert OIDC.status(cfg) == :ready
+
+      :ets.delete(table)
+      refute OIDC.ready?(name)
+      assert OIDC.status(cfg) == :unavailable
+    end
+
     test "false when no provider process is running" do
       refute OIDC.ready?(:"oidc_never_started_#{System.unique_integer([:positive])}")
     end

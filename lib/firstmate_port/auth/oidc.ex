@@ -69,7 +69,7 @@ defmodule FirstmatePort.Auth.OIDC do
   end
 
   @doc """
-  Whether the provider has a discovery document loaded and can serve a sign-in.
+  Whether the provider has discovery configuration and signing keys loaded.
 
   Reads the worker's own ETS table rather than calling it, so this is safe to
   ask on a request path and while the provider is down.
@@ -78,7 +78,8 @@ defmodule FirstmatePort.Auth.OIDC do
   def ready?(name \\ @provider_name) when is_atom(name) do
     with pid when is_pid(pid) <- Process.whereis(name),
          table when table != :undefined <- :ets.whereis(name),
-         [_ | _] <- :ets.lookup(table, :provider_configuration) do
+         [_ | _] <- :ets.lookup(table, :provider_configuration),
+         [_ | _] <- :ets.lookup(table, :jwks) do
       true
     else
       _ -> false
