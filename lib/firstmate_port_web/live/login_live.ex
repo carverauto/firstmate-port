@@ -68,7 +68,8 @@ defmodule FirstmatePortWeb.LoginLive do
               required
             />
             <p class="hint">
-              The first-run account and its password are printed in the portal log on first boot.
+              For Docker Compose, find generated first-run credentials in <code>docker compose logs portal</code>.
+              For Kubernetes, read the bootstrap admin secret, <code>firstmate-admin</code>.
             </p>
             <button type="submit" class="btn btn-primary">Enter the port</button>
           </form>
