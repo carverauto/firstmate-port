@@ -6,9 +6,12 @@ Phoenix LiveView companion portal for firstmate. Crew reviews Archify diagrams, 
 
 ```sh
 cp .env.example .env
-# SECRET_KEY_BASE=$(mix phx.gen.secret)
+export SECRET_KEY_BASE="$(openssl rand -base64 48)"
 docker compose up --build
 ```
+
+OpenSSL generates the secret without compiling Mix dependencies. To reuse it across
+shell sessions, save the generated value as `SECRET_KEY_BASE` in `.env`.
 
 http://localhost:4000/login. With `DEV_AUTH=true`, use `captain@localhost`.
 

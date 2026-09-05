@@ -4,9 +4,18 @@
 
 ```sh
 cp .env.example .env
-# fill SECRET_KEY_BASE: mix phx.gen.secret
+export SECRET_KEY_BASE="$(openssl rand -base64 48)"
 docker compose up --build
 ```
+
+OpenSSL generates a 64-character secret without compiling Mix dependencies. The
+export makes it available to Compose in this shell; save the generated value as
+`SECRET_KEY_BASE` in `.env` to reuse it across shell sessions. Host-side
+`mix deps.get` is not required for the Docker Compose build.
+
+Avoid capturing `mix phx.gen.secret` with `$(...)` during initial setup: Mix may
+compile dependencies to load the task, and command substitution hides standard
+output (including compilation progress) while warnings remain visible on stderr.
 
 Open http://localhost:4000/login. With `DEV_AUTH=true`, sign in as `captain@localhost`.
 
