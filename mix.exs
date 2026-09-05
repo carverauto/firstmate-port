@@ -59,6 +59,11 @@ defmodule FirstmatePort.MixProject do
       {:gnat, "~> 1.15"},
       {:igniter, "~> 0.6", only: [:dev, :test]},
       {:phoenix, "~> 1.8.1"},
+      # Optional Hex deps that Bazel hex stubs require as hard deps:
+      {:castore, "~> 1.0"},
+      {:phoenix_view, "~> 2.0"},
+      {:cowboy, "~> 2.12"},
+      {:gen_smtp, "~> 1.2"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
       {:postgrex, ">= 0.0.0"},
