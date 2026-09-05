@@ -93,11 +93,12 @@ mix_app(
 
 elixir_release(
     name = "release",
+    app = ":erlang_app",
+    out = "firstmate-port-release.tar.gz",
+    srcs = [":compile_srcs"],
     mix_env = "prod",
-    recipe = [":compile_srcs"],
-    include_erts_otp_root = SHIPPED_ERTS_OTP_ROOT,
-    include_erts_root_marker = SHIPPED_ERTS_ROOT_MARKER,
-    deps = [":erlang_app"],
+    erts_otp_root = SHIPPED_ERTS_OTP_ROOT,
+    erts_root_marker = SHIPPED_ERTS_ROOT_MARKER,
 )
 
 go_library(
