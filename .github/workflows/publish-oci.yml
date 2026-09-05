@@ -1,7 +1,8 @@
 name: Publish OCI Images
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       extra_tag:
@@ -35,15 +36,7 @@ jobs:
           fi
 
           umask 077
-          cat <<'EOF' | sed 's/^ *//' > .bazelrc.remote
-            build --bes_results_url=https://carverauto.buildbuddy.io/invocation/
-            build --bes_backend=grpcs://carverauto.buildbuddy.io
-            build --remote_cache=grpcs://cache-proxy.carverauto.dev:443
-            build --remote_executor=grpcs://carverauto.buildbuddy.io
-            build --remote_timeout=15m
-            build --remote_download_minimal
-          EOF
-          printf 'common --remote_header=x-buildbuddy-api-key=%s\n' "${BUILDBUDDY_ORG_API_KEY}" >> .bazelrc.remote
+          printf 'common --remote_header=x-buildbuddy-api-key=%s\n' "${BUILDBUDDY_ORG_API_KEY}" > .bazelrc.remote
       - name: Login to Harbor
         if: ${{ env.OCI_USERNAME != '' && env.OCI_TOKEN != '' }}
         run: |
@@ -51,11 +44,15 @@ jobs:
       - name: Push portal image
         env:
           EXTRA_TAG: ${{ github.event.inputs.extra_tag }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           repo="${OCI_REGISTRY}/${OCI_PROJECT}/firstmate-port"
           tag="sha-$(git rev-parse --short HEAD)"
           bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${tag}"
+          if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
+            bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${REF_NAME}"
+          fi
           if [ -n "${EXTRA_TAG}" ]; then
             bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
           fi
