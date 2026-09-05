@@ -149,4 +149,11 @@ kubectl apply -k k8s
 ./deploy/bootstrap-secrets.sh
 ```
 
+OSS login is the local `DEV_AUTH` form, not a SaaS OIDC wall: no
+`ALLOWED_EMAIL_DOMAIN` is set by default (`localhost`), and one
+`BOOTSTRAP_ADMIN_EMAIL` is admitted regardless of domain. It comes from the
+optional `firstmate-bootstrap-admin` secret
+(`kubectl -n firstmate create secret generic firstmate-bootstrap-admin --from-literal=email=<you@example.org>`,
+or `BOOTSTRAP_ADMIN_EMAIL=<you@example.org> ./deploy/bootstrap-secrets.sh`).
+
 `fm-steer` is the HTTP inbox port (`put` / `next` / `ack` / `list`). It does not dial NATS. The Phoenix API is the only JetStream client. The on-disk firstmate inbox stays until dual-write is wired.

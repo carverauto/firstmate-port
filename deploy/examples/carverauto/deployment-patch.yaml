@@ -1,6 +1,7 @@
 # Site identity for the portal container plus the ghcr pull secret.
-# ghcr.io/mfreeman451/firstmate-port is private because the source repo is;
-# the namespace needs `ghcr-io-cred` (a docker-registry secret) before applying.
+# ghcr.io/carverauto/firstmate-port; the namespace pulls it with `ghcr-io-cred`
+# (a docker-registry secret). Local sign-in (DEV_AUTH) and the bootstrap admin
+# secret come from the OSS base manifests; no site email wall is set here.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

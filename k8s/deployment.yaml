@@ -57,6 +57,18 @@ spec:
               value: "true"
             - name: NATS_HOST
               value: firstmate-nats
+            # OSS k8s signs in through the local DEV_AUTH form, not a SaaS OIDC
+            # wall. The one BOOTSTRAP_ADMIN_EMAIL is admitted regardless of
+            # ALLOWED_EMAIL_DOMAIN; it comes from the firstmate-bootstrap-admin
+            # secret (optional: local @localhost/@example.com still works).
+            - name: DEV_AUTH
+              value: "true"
+            - name: BOOTSTRAP_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-bootstrap-admin
+                  key: email
+                  optional: true
             - name: NATS_TOKEN
               valueFrom:
                 secretKeyRef:
