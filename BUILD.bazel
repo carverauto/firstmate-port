@@ -184,7 +184,7 @@ genrule(
         ":web_templates",
         ":heroicons_opt",
     ],
-    outs = ["static_build/css/app.css"],
+    outs = ["static_build/assets/css/app.css"],
     tools = [":tailwind_bin"],
     # The heroicons shim resolves `../../deps/heroicons` from its own path
     # (assets/vendor/), so recreate the Mix deps/ layout beside the sources.
@@ -227,7 +227,7 @@ genrule(
         ":dep_phoenix_live_view",
         "//build:phoenix-colocated-index.js",
     ],
-    outs = ["static_build/js/app.js"],
+    outs = ["static_build/assets/js/app.js"],
     tools = [":esbuild_bin"],
     cmd = """
         set -euo pipefail
