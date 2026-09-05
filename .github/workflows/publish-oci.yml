@@ -41,6 +41,37 @@ jobs:
         run: |
           set -euo pipefail
           echo "${GITHUB_TOKEN}" | docker login "${OCI_REGISTRY}" -u "${GITHUB_ACTOR}" --password-stdin
+      # Two publish runs hung ~1h with bazelisk stalled on the Bazel
+      # distribution download (zero output, zero BuildBuddy invocations),
+      # so fetch the pinned binary with curl (retries, timeouts, fail-fast)
+      # and invoke it by absolute path instead of the bazelisk shim.
+      - name: Prefetch Bazel distribution
+        run: |
+          set -euo pipefail
+          ver="$(tr -d '[:space:]' < .bazelversion)"
+          url="https://releases.bazel.build/${ver}/release/bazel-${ver}-linux-x86_64"
+          echo "fetching Bazel ${ver}"
+          curl --fail --show-error --location \
+            --retry 5 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 20 --max-time 900 \
+            -o "${RUNNER_TEMP}/bazel" "${url}"
+          chmod +x "${RUNNER_TEMP}/bazel"
+          size="$(wc -c < "${RUNNER_TEMP}/bazel")"
+          echo "bazel binary bytes: ${size}"
+          test "${size}" -gt 50000000
+          echo "BAZEL_BIN=${RUNNER_TEMP}/bazel" >> "${GITHUB_ENV}"
+      # Temporary publish diagnostics. Never print .bazelrc.remote (it holds
+      # the BuildBuddy API key header).
+      - name: Diagnose Bazel remote reachability
+        run: |
+          set -euo pipefail
+          echo "--- remote endpoints (DNS) ---"
+          getent hosts carverauto.buildbuddy.io || echo "WARN: carverauto.buildbuddy.io does not resolve"
+          getent hosts cache-proxy.carverauto.dev || echo "WARN: cache-proxy.carverauto.dev does not resolve"
+          echo "--- bazel server startup (bounded) ---"
+          timeout 180 "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel version
+          echo "--- execution root (proves server is up) ---"
+          timeout 120 "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel info execution_root
       - name: Push portal image
         env:
           EXTRA_TAG: ${{ github.event.inputs.extra_tag }}
@@ -51,12 +82,12 @@ jobs:
           tag="sha-$(git rev-parse --short HEAD)"
           echo "IMAGE_REPO=${repo}" >> "${GITHUB_ENV}"
           echo "IMAGE_TAG=${tag}" >> "${GITHUB_ENV}"
-          bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${tag}"
+          "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel --announce_rc run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${tag}"
           if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
-            bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${REF_NAME}"
+            "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel --announce_rc run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${REF_NAME}"
           fi
           if [ -n "${EXTRA_TAG}" ]; then
-            bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
+            "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel --announce_rc run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
           fi
       - name: Push fm-steer image
         env:
@@ -68,12 +99,12 @@ jobs:
           tag="sha-$(git rev-parse --short HEAD)"
           echo "STEER_IMAGE_REPO=${repo}" >> "${GITHUB_ENV}"
           echo "STEER_IMAGE_TAG=${tag}" >> "${GITHUB_ENV}"
-          bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${tag}"
+          "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel --announce_rc run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${tag}"
           if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
-            bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${REF_NAME}"
+            "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel --announce_rc run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${REF_NAME}"
           fi
           if [ -n "${EXTRA_TAG}" ]; then
-            bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
+            "${BAZEL_BIN}" --output_base=/tmp/fm-fm-port/bazel --announce_rc run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
           fi
       - name: Verify pushed manifests
         run: |
