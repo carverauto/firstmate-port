@@ -1,0 +1,174 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firstmate-discord-interactions
+  namespace: firstmate
+  labels:
+    app: firstmate-discord-interactions
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: firstmate-discord-interactions
+  template:
+    metadata:
+      labels:
+        app: firstmate-discord-interactions
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: interactions
+          image: python:3.12-slim
+          command:
+            - sh
+            - -c
+            - pip install --target /tmp/py pynacl && PYTHONPATH=/tmp/py exec python /app/server.py
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: DISCORD_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-discord
+                  key: public-key
+            - name: NATS_URL
+              value: nats://firstmate-nats:4222
+            - name: NATS_SUBJECT
+              value: firstmate.discord.inbound
+            - name: NATS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-nats
+                  key: token
+                  optional: true
+          volumeMounts:
+            - name: app
+              mountPath: /app
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 40
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      volumes:
+        - name: app
+          configMap:
+            name: firstmate-discord-interactions
+            items:
+              - key: server.py
+                path: server.py
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: firstmate-discord-interactions
+  namespace: firstmate
+spec:
+  selector:
+    app: firstmate-discord-interactions
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: discord-firstmate
+  namespace: firstmate
+  labels:
+    app.kubernetes.io/name: firstmate-discord-interactions
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: interactions.example.com
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+    external-dns.alpha.kubernetes.io/ttl: "60"
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: shared-gateway
+      namespace: gateway-system
+      sectionName: https
+  hostnames:
+    - interactions.example.com
+  rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /interactions
+        - path:
+            type: Exact
+            value: /healthz
+      backendRefs:
+        - name: firstmate-discord-interactions
+          port: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: discord-firstmate-http-redirect
+  namespace: firstmate
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: shared-gateway
+      namespace: gateway-system
+      sectionName: http
+  hostnames:
+    - interactions.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: discord-firstmate-rate-limit
+  namespace: firstmate
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: discord-firstmate
+  rateLimit:
+    type: Local
+    local:
+      rules:
+        - clientSelectors:
+            - sourceCIDR:
+                value: 0.0.0.0/0
+                type: Distinct
+          limit:
+            requests: 60
+            unit: Second

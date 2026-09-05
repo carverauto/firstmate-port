@@ -1,0 +1,47 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: firstmate-pg
+  namespace: firstmate
+  labels:
+    app.kubernetes.io/name: firstmate
+    app.kubernetes.io/component: database
+spec:
+  instances: 2
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.4
+  enableSuperuserAccess: true
+  postgresql:
+    parameters:
+      shared_buffers: 128MB
+      max_connections: "100"
+      password_encryption: scram-sha-256
+    pg_hba:
+      - host all all all scram-sha-256
+  storage:
+    size: 20Gi
+    storageClass: local-path-cnpg
+  bootstrap:
+    initdb:
+      database: firstmate
+      owner: firstmate
+      secret:
+        name: firstmate-db-credentials
+  managed:
+    roles:
+      - name: firstmate
+        ensure: present
+        login: true
+        inherit: true
+        passwordSecret:
+          name: firstmate-db-credentials
+  monitoring:
+    enablePodMonitor: true
+  affinity:
+    nodeSelector:
+      cnpg.io/dedicated: "true"
+    podAntiAffinityType: preferred
+    tolerations:
+      - key: cnpg.io/dedicated
+        operator: Equal
+        value: "true"
+        effect: NoSchedule

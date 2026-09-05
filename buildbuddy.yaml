@@ -1,0 +1,29 @@
+# BazelCI on BuildBuddy. --config=ci belongs on the workflow runner only.
+# Isolate local work with ./tools/bazel (output_base /tmp/fm-fm-port/bazel).
+#
+# Self-hosted pool, runner image, and Harbor hostname are site-specific.
+# Copy deploy/examples/carverauto.md values into the BuildBuddy workspace
+# settings rather than compiling them into this file as the only identity.
+actions:
+  - name: BazelCI
+    env:
+      OCI_REGISTRY: "${OCI_REGISTRY:-registry.example.com}"
+    self_hosted: true
+    pool: workflows
+    platform_properties:
+      OSFamily: "linux"
+      Arch: "amd64"
+      dockerNetwork: "bridge"
+    triggers:
+      pull_request:
+        branches:
+          - main
+      push:
+        branches:
+          - main
+    resource_requests:
+      memory: "8GB"
+      disk: "20GB"
+    steps:
+      - run: bazel build -c opt --config=ci //...
+      - run: bazel test -c opt --config=ci //... --test_tag_filters=-integration_test

@@ -1,0 +1,14 @@
+# Copy to .bazelrc.remote (gitignored). Harbor/BuildBuddy hostnames belong here,
+# not in the committed .bazelrc defaults.
+#
+# Example (carverauto):
+# build:cache_only --remote_bytestream_uri_prefix=carverauto.buildbuddy.io
+# build:cache_only --remote_cache=grpcs://cache-proxy.carverauto.dev:443
+# build:cache_only --bes_backend=grpcs://carverauto.buildbuddy.io
+# build:cache_only --bes_results_url=https://carverauto.buildbuddy.io/invocation/
+# build:remote_base --remote_executor=grpcs://carverauto.buildbuddy.io
+#
+# Generic BuildBuddy Cloud:
+# build:cache_only --bes_backend=grpcs://cloud.buildbuddy.io
+# build:cache_only --remote_cache=grpcs://cloud.buildbuddy.io
+# build:remote_base --remote_executor=grpcs://cloud.buildbuddy.io

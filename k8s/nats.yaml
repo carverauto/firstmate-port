@@ -1,0 +1,184 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: firstmate-nats
+  namespace: firstmate
+  labels:
+    app: firstmate-nats
+spec:
+  selector:
+    app: firstmate-nats
+  ports:
+    - name: client
+      port: 4222
+      targetPort: client
+    - name: monitor
+      port: 8222
+      targetPort: monitor
+    - name: cluster
+      port: 6222
+      targetPort: cluster
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: firstmate-nats-headless
+  namespace: firstmate
+  labels:
+    app: firstmate-nats
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app: firstmate-nats
+  ports:
+    - name: client
+      port: 4222
+      targetPort: client
+    - name: monitor
+      port: 8222
+      targetPort: monitor
+    - name: cluster
+      port: 6222
+      targetPort: cluster
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: firstmate-nats
+  namespace: firstmate
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: firstmate-nats
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: firstmate-nats
+  namespace: firstmate
+  labels:
+    app: firstmate-nats
+spec:
+  serviceName: firstmate-nats-headless
+  replicas: 3
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app: firstmate-nats
+  template:
+    metadata:
+      labels:
+        app: firstmate-nats
+    spec:
+      securityContext:
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: nats
+          image: nats:2.14.0-alpine
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              set -euo pipefail
+              if [ -z "${NATS_TOKEN:-}" ]; then
+                echo "NATS_TOKEN is required" >&2
+                exit 1
+              fi
+              ROUTES_BLOCK=""
+              for i in 0 1 2; do
+                peer="firstmate-nats-${i}.firstmate-nats-headless.${POD_NAMESPACE}.svc.cluster.local"
+                self="${POD_NAME}.firstmate-nats-headless.${POD_NAMESPACE}.svc.cluster.local"
+                if [ "${peer}" != "${self}" ]; then
+                  ROUTES_BLOCK="${ROUTES_BLOCK}        nats://${peer}:6222"$'\n'
+                fi
+              done
+              cat >/tmp/nats-server.conf <<EOF
+              server_name: ${POD_NAME}
+              listen: 0.0.0.0:4222
+              http: 0.0.0.0:8222
+
+              authorization {
+                token: "${NATS_TOKEN}"
+              }
+
+              jetstream {
+                store_dir: /data/jetstream
+                max_memory_store: 256M
+                max_file_store: 8G
+              }
+
+              cluster {
+                name: firstmate
+                listen: 0.0.0.0:6222
+                advertise: ${POD_NAME}.firstmate-nats-headless.${POD_NAMESPACE}.svc.cluster.local:6222
+                authorization {
+                  token: "${NATS_TOKEN}"
+                }
+                routes: [
+              ${ROUTES_BLOCK}    ]
+              }
+              EOF
+              exec nats-server -c /tmp/nats-server.conf
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NATS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-nats
+                  key: token
+          ports:
+            - name: client
+              containerPort: 4222
+            - name: monitor
+              containerPort: 8222
+            - name: cluster
+              containerPort: 6222
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+          volumeMounts:
+            - name: nats-data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: monitor
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /varz
+              port: monitor
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: nats-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 10Gi

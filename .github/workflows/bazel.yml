@@ -1,0 +1,29 @@
+name: bazel
+on:
+  pull_request:
+  push:
+    branches: [main, "fm/**"]
+jobs:
+  bazel:
+    runs-on: ubuntu-latest
+    env:
+      BUILDBUDDY_ORG_API_KEY: ${{ secrets.BUILDBUDDY_ORG_API_KEY || secrets.BUILDBUDDY_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-version: "1.25.0"
+      - name: Configure BuildBuddy remote
+        if: ${{ env.BUILDBUDDY_ORG_API_KEY != '' }}
+        run: |
+          umask 077
+          {
+            echo "common --remote_header=x-buildbuddy-api-key=${BUILDBUDDY_ORG_API_KEY}"
+            echo "build:cache_only --bes_backend=grpcs://cloud.buildbuddy.io"
+            echo "build:cache_only --remote_cache=grpcs://cloud.buildbuddy.io"
+            echo "build:remote_base --remote_executor=grpcs://cloud.buildbuddy.io"
+          } > .bazelrc.remote
+      - name: Bazel build CLI
+        run: bazel --output_base=/tmp/fm-fm-port/bazel build //:firstmatectl //:fm-steer //:nats-tail
+      - name: Bazel test Go
+        run: bazel --output_base=/tmp/fm-fm-port/bazel test //:firstmatectl_test //:fm-steer_test //:nats-tail_test //:natsutil_test

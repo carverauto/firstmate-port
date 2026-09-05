@@ -1,0 +1,26 @@
+# Proposed Argo Application for ~/src/gitops. Do not apply from this worktree.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: firstmate
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    description: firstmate-port companion portal
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:mfreeman451/firstmate-port.git
+    targetRevision: HEAD
+    path: k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: firstmate
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true

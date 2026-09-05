@@ -1,0 +1,226 @@
+load("@rules_elixir//:mix_app.bzl", "mix_app")
+load(
+    "//build:elixir_release.bzl",
+    "SHIPPED_ERTS_OTP_ROOT",
+    "SHIPPED_ERTS_ROOT_MARKER",
+    "elixir_release",
+)
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_push")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["mix.lock", "go.mod", "go.sum"])
+
+filegroup(
+    name = "srcs",
+    srcs = glob(
+        ["**"],
+        exclude = [
+            "bazel-*",
+            "_build/**",
+            "deps/**",
+            "node_modules/**",
+            "tmp/**",
+            ".git/**",
+        ],
+    ),
+)
+
+filegroup(
+    name = "compile_srcs",
+    srcs = glob(
+        [
+            "lib/**",
+            "config/**",
+            "priv/**",
+            "assets/**",
+            "mix.exs",
+            "mix.lock",
+        ],
+        exclude = [
+            "priv/static/assets/**",
+            "priv/static/cache_manifest.json",
+        ],
+    ) + glob(
+        ["test/support/**"],
+        allow_empty = True,
+    ),
+)
+
+PORT_DEPS = [
+    "@hexpm//:ash",
+    "@hexpm//:ash_ai",
+    "@hexpm//:ash_events",
+    "@hexpm//:ash_oban",
+    "@hexpm//:ash_paper_trail",
+    "@hexpm//:ash_phoenix",
+    "@hexpm//:ash_postgres",
+    "@hexpm//:bandit",
+    "@hexpm//:dns_cluster",
+    "@hexpm//:ecto_sql",
+    "@hexpm//:esbuild",
+    "@hexpm//:gettext",
+    "@hexpm//:gnat",
+    "@hexpm//:guardian",
+    "@hexpm//:jason",
+    "@hexpm//:oban",
+    "@hexpm//:phoenix",
+    "@hexpm//:phoenix_ecto",
+    "@hexpm//:phoenix_html",
+    "@hexpm//:phoenix_live_dashboard",
+    "@hexpm//:phoenix_live_view",
+    "@hexpm//:postgrex",
+    "@hexpm//:req",
+    "@hexpm//:req_llm",
+    "@hexpm//:simple_sat",
+    "@hexpm//:swoosh",
+    "@hexpm//:tailwind",
+    "@hexpm//:telemetry_metrics",
+    "@hexpm//:telemetry_poller",
+    "@hexpm//:ueberauth",
+    "@hexpm//:ueberauth_oidcc",
+    "@rules_elixir//elixir",
+]
+
+mix_app(
+    name = "erlang_app",
+    srcs = [":compile_srcs"],
+    app_name = "firstmate_port",
+    deps = PORT_DEPS,
+)
+
+elixir_release(
+    name = "release",
+    mix_env = "prod",
+    recipe = [":compile_srcs"],
+    include_erts_otp_root = SHIPPED_ERTS_OTP_ROOT,
+    include_erts_root_marker = SHIPPED_ERTS_ROOT_MARKER,
+    deps = [":erlang_app"],
+)
+
+go_library(
+    name = "natsutil",
+    srcs = ["internal/natsutil/connect.go"],
+    importpath = "github.com/mfreeman451/firstmate-port/internal/natsutil",
+    deps = ["@com_github_nats_io_nats_go//:nats_go"],
+)
+
+go_test(
+    name = "natsutil_test",
+    srcs = ["internal/natsutil/connect_test.go"],
+    embed = [":natsutil"],
+)
+
+go_library(
+    name = "firstmatectl_lib",
+    srcs = ["cmd/firstmatectl/main.go"],
+    importpath = "github.com/mfreeman451/firstmate-port/cmd/firstmatectl",
+)
+
+go_binary(
+    name = "firstmatectl",
+    embed = [":firstmatectl_lib"],
+)
+
+go_test(
+    name = "firstmatectl_test",
+    srcs = ["cmd/firstmatectl/main_test.go"],
+    embed = [":firstmatectl_lib"],
+)
+
+go_library(
+    name = "fm-steer_lib",
+    srcs = ["cmd/fm-steer/main.go"],
+    importpath = "github.com/mfreeman451/firstmate-port/cmd/fm-steer",
+)
+
+go_binary(
+    name = "fm-steer",
+    embed = [":fm-steer_lib"],
+)
+
+go_test(
+    name = "fm-steer_test",
+    srcs = ["cmd/fm-steer/main_test.go"],
+    embed = [":fm-steer_lib"],
+)
+
+go_library(
+    name = "nats-tail_lib",
+    srcs = ["cmd/nats-tail/main.go"],
+    importpath = "github.com/mfreeman451/firstmate-port/cmd/nats-tail",
+    deps = [
+        ":natsutil",
+        "@com_github_nats_io_nats_go//:nats_go",
+    ],
+)
+
+go_binary(
+    name = "nats-tail",
+    embed = [":nats-tail_lib"],
+)
+
+go_test(
+    name = "nats-tail_test",
+    srcs = ["cmd/nats-tail/main_test.go"],
+    embed = [":nats-tail_lib"],
+)
+
+go_library(
+    name = "discord-inbound_lib",
+    srcs = ["cmd/discord-inbound/main.go"],
+    importpath = "github.com/mfreeman451/firstmate-port/cmd/discord-inbound",
+    deps = [
+        ":natsutil",
+        "@com_github_bwmarrin_discordgo//:discordgo",
+        "@com_github_nats_io_nats_go//:nats_go",
+    ],
+)
+
+go_binary(
+    name = "discord-inbound",
+    embed = [":discord-inbound_lib"],
+)
+
+pkg_tar(
+    name = "firstmatectl_layer",
+    srcs = [":firstmatectl"],
+    package_dir = "/usr/local/bin",
+)
+
+oci_image(
+    name = "firstmatectl_image",
+    base = "@debian_bookworm_slim",
+    entrypoint = ["/usr/local/bin/firstmatectl"],
+    tars = [":firstmatectl_layer"],
+)
+
+oci_image(
+    name = "portal_image",
+    base = "@debian_bookworm_slim",
+    cmd = ["start"],
+    entrypoint = ["/app/bin/firstmate_port"],
+    env = {
+        "PHX_SERVER": "true",
+        "PORT": "4000",
+    },
+    exposed_ports = ["4000/tcp"],
+    tars = [":release"],
+    workdir = "/app",
+)
+
+oci_push(
+    name = "portal_image_push",
+    image = ":portal_image",
+    repository = "registry.example.com/firstmate/firstmate-port",
+)
+
+oci_push(
+    name = "firstmatectl_image_push",
+    image = ":firstmatectl_image",
+    repository = "registry.example.com/firstmate/firstmatectl",
+)
+
+
