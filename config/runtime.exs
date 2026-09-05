@@ -47,7 +47,7 @@ if config_env() == :prod do
     System.get_env("SECRET_KEY_BASE") ||
       raise """
       environment variable SECRET_KEY_BASE is missing.
-      You can generate one by calling: mix phx.gen.secret
+      You can generate one by calling: openssl rand -base64 48
       """
 
   host = System.get_env("PHX_HOST") || "localhost"
