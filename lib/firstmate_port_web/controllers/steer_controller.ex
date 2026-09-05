@@ -12,15 +12,13 @@ defmodule FirstmatePortWeb.SteerController do
     render(conn, :docs_index, page_title: "docs")
   end
 
-  def doc_fm_steer(conn, _params) do
-    render(conn, :doc_fm_steer, page_title: "fm-steer CLI")
-  end
+  def doc(conn, %{"page" => slug}) do
+    case FirstmatePortWeb.SteerDocs.fetch(slug) do
+      {:ok, doc} ->
+        render(conn, :doc, page_title: doc.title, doc: doc)
 
-  def doc_routing(conn, _params) do
-    render(conn, :doc_routing, page_title: "routing")
-  end
-
-  def doc_usage(conn, _params) do
-    render(conn, :doc_usage, page_title: "usage and billing")
+      :error ->
+        conn |> put_status(:not_found) |> text("not found")
+    end
   end
 end

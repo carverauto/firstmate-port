@@ -702,6 +702,14 @@ pre {
   overflow-x: auto;
 }
 
+.doc pre.md {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 0.84rem;
+  line-height: 1.75;
+}
+
 .doc code {
   font-family: "Geist Mono", ui-monospace, monospace;
   font-size: 0.88em;

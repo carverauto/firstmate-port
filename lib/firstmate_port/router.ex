@@ -103,7 +103,7 @@ defmodule FirstmatePort.Router do
       effort,
       [
         "kind=#{axes.kind} is hard-routed to #{pinned.harness} with #{pinned.model_display}: " <>
-          "code review never goes to Muse or Grok"
+          "code review never goes to a chat or docs lane"
       ],
       axes,
       intel,
@@ -427,9 +427,26 @@ defmodule FirstmatePort.Router do
 
   # "token" and "secret" are homonyms in ordinary work ("token usage
   # counter", "the memory leak in the token bucket"), so they raise risk
-  # only when a handling verb governs them directly: the verb and the noun
-  # must be adjacent, not merely both present.
-  @credential_handling ~r/(rotat|revok|leak|exfiltrat|hardcod|hard-cod|steal|dump)\w*\s+((the|a|an|our|your|my|this|that|all|any)\s+)?([\w-]+\s+)?(secret|token)s?\b/
+  # only when a handling verb governs them: either the verb heads the noun
+  # phrase the credential ends ("rotate the openrouter api token") or the
+  # credential is the subject of the verb ("the api token was leaked").
+  # A credential that only modifies another noun ("token counts", "token
+  # bucket") is never the thing being handled.
+  @credential_handling ~r/
+    (?:rotat|revok|leak|exfiltrat|hardcod|hard-cod|steal|stole|expos)\w*\s+
+    (?:(?:the|a|an|our|your|my|its|this|that|all|any)\s+)?
+    (?:[\w-]+\s+){0,3}
+    (?:secret|token)s?
+    (?=
+      [\s.,;:!?)]*$
+      | [.,;:!?)]
+      | \s+(?:in|into|to|from|on|at|for|with|and|or|via|by|before|after|so|because|when|while|if|that|which|but|then)\b
+    )
+    |
+    (?:secret|token)s?\s+
+    (?:(?:was|were|is|are|got|been|being|has|have|had)\s+){0,3}
+    (?:rotat|revok|leak|exfiltrat|hardcod|hard-cod|stolen|expos)\w*
+  /x
 
   defp credential_handling?(text), do: Regex.match?(@credential_handling, text)
 

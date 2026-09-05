@@ -24,4 +24,22 @@ defmodule FirstmatePortWeb.SteerControllerTest do
     assert conn |> get(~p"/steer/docs/routing") |> html_response(200) =~ "blast_radius"
     assert conn |> get(~p"/steer/docs/usage") |> html_response(200) =~ "spend priority"
   end
+
+  test "every served doc page is the repo markdown, not a second copy", %{conn: conn} do
+    for page <- FirstmatePortWeb.SteerDocs.index() do
+      html = conn |> get(~p"/steer/docs/#{page.slug}") |> html_response(200)
+
+      served =
+        page.path
+        |> File.read!()
+        |> Phoenix.HTML.html_escape()
+        |> Phoenix.HTML.safe_to_string()
+
+      assert html =~ served, "#{page.slug} does not serve #{page.path} verbatim"
+    end
+  end
+
+  test "an unknown doc slug is a 404", %{conn: conn} do
+    assert conn |> get("/steer/docs/nope") |> response(404)
+  end
 end

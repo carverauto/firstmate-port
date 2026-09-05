@@ -80,7 +80,7 @@ defmodule FirstmatePort.Router.Matrix do
   def harnesses, do: Enum.map(@lanes, & &1.harness)
 
   # Captain-pinned hard routes: {kind => %{harness:, model:, model_display:}}.
-  # Code review always goes to Codex with GPT-6-Astra, never Muse or Grok.
+  # Code review always goes to Codex with GPT-6-Astra, never a chat lane.
   @hard_routes %{
     review: %{harness: "codex", model: "gpt-6-astra", model_display: "GPT-6-Astra"}
   }

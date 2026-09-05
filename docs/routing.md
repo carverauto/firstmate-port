@@ -44,7 +44,7 @@ a `human-review` checkpoint to the response.
 
 Code review (`kind: review`) bypasses the matrix: it always returns
 `harness: codex`, `model: gpt-6-astra` (displayed as GPT-6-Astra), with
-`model_source: fleet_hard_route`. Review never goes to Muse or Grok, even
+`model_source: fleet_hard_route`. Review never goes to a chat or docs lane, even
 with provider intel enabled. Other kinds still use the matrix.
 
 ## Provider intel

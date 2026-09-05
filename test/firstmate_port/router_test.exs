@@ -38,13 +38,30 @@ defmodule FirstmatePort.RouterTest do
     assert Router.classify("someone leaked the api token in a public log").risk == :high
   end
 
-  test "a handling verb only raises risk when it governs the credential" do
+  test "a credential that only modifies another noun does not raise risk" do
     assert Router.classify("fix the memory leak in the token bucket cache").risk == :low
     assert Router.classify("implement the usage page that exposes token counts").risk == :low
-    assert Router.classify("dump the request log and fix the token parser").risk == :low
+    assert Router.classify("dump the token counts for the usage page to a csv").risk == :low
+    assert Router.classify("the rate limiter leaks tokens under load").risk == :low
+    assert Router.classify("fix the failing test for the auth token parser").risk == :low
+  end
 
-    assert Router.classify("dump the token to stdout while debugging").risk == :high
+  test "a credential is risky on either side of its handling verb" do
+    assert Router.classify("rotate the openrouter api token").risk == :high
+    assert Router.classify("expose the auth token in the api response").risk == :high
     assert Router.classify("we hardcoded a secret in the repo").risk == :high
+
+    assert Router.classify("the api token was leaked in a public log").risk == :high
+    assert Router.classify("our openrouter secret got exposed in the repo").risk == :high
+    assert Router.classify("the shared secret leaked into a public channel").risk == :high
+  end
+
+  test "credential rotation gets a human-review checkpoint" do
+    got = Router.route("rotate the openrouter api token")
+
+    assert got.harness == "claude"
+    assert got.effort == "high"
+    assert got.checkpoint == "human-review"
   end
 
   test "a token counter task stays in the cheap lane" do

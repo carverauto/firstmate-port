@@ -81,6 +81,30 @@ defmodule FirstmatePort.Router.Evals do
       expect_effort: "medium"
     },
     %{
+      name: "token counts export",
+      description: "dump the token counts for the usage page to a csv",
+      expect_harness: "codex",
+      expect_effort: "medium"
+    },
+    %{
+      name: "credential rotation",
+      description: "rotate the openrouter api token",
+      expect_harness: "claude",
+      expect_effort: "high"
+    },
+    %{
+      name: "leaked token incident",
+      description: "the api token was leaked in a public log",
+      expect_harness: "claude",
+      expect_effort: "high"
+    },
+    %{
+      name: "exposed auth token",
+      description: "expose the auth token in the api response",
+      expect_harness: "claude",
+      expect_effort: "high"
+    },
+    %{
       name: "leaked credential",
       description: "someone leaked the shared secret into a public channel",
       expect_harness: "claude",
