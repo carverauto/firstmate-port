@@ -1,6 +1,6 @@
 # firstmate-port
 
-Phoenix/Ash companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, runs, and usage in one LiveView UI. Discord inbound is served by Phoenix at POST `/interactions`.
+Phoenix/Ash companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, NATS queues, and no-mistakes runs in one LiveView UI. Discord inbound is served by Phoenix at POST `/interactions`.
 
 ## Local
 
@@ -17,15 +17,9 @@ http://localhost:4000/login. With `DEV_AUTH=true`, use `captain@localhost`.
 
 Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`, Bandit, Ueberauth OIDC, Gnat/JetStream, Tailwind v4 + Geist.
 
-Tenancy: shared Postgres and one NATS account. Streams are `<tenant>.steer` / `<tenant>.inbound` (seed tenant `local`). The API is the tenant wall and the only JetStream client.
-
-Images: Harbor is the internal registry; ghcr.io is a later public mirror.
-
-Workstation notification stays in firstmate-notify until Elixir outbound replaces it.
-
 ## Docs
 
-- [docs/deploy.md](docs/deploy.md) ghcr.io publish, compose, Kubernetes
+- [docs/deploy.md](docs/deploy.md) image publishing, compose, Kubernetes
 - [docs/bazel.md](docs/bazel.md) rules_elixir / BuildBuddy, `--output_base=/tmp/fm-fm-port/bazel`
 
 Prefix every `npm` invocation with `sfw`.

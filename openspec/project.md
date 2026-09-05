@@ -1,7 +1,7 @@
 # Project Context
 
 ## Purpose
-firstmate-port is the OSS companion portal for firstmate: a Phoenix LiveView site where a captain and crew review Archify diagrams, PRs, issues, farm/demo rolls, NATS queues, and no-mistakes runs. Discord webhook sending on the captain Mac stays in firstmate-notify.
+firstmate-port is the OSS companion portal for firstmate: a Phoenix LiveView site where a captain and crew review Archify diagrams, PRs, issues, NATS queues, and no-mistakes runs. Discord inbound is served by Phoenix at POST `/interactions`.
 
 ## Tech Stack
 - Elixir 1.19 / Phoenix 1.8 LiveView / Bandit
