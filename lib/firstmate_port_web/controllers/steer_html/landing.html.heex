@@ -1,0 +1,125 @@
+<section class="mkt-hero">
+  <div>
+    <h1>Send every task to the right worker.</h1>
+    <p class="sub">
+      fm-steer routes work by difficulty, tracks token spend per account, and shows its reasons. One CLI, one portal, no guessing.
+    </p>
+    <div class="mkt-cta">
+      <.link href={~p"/steer#install"} class="btn btn-primary">Install fm-steer</.link>
+      <.link href={~p"/steer#routing"} class="btn btn-quiet">How routing works</.link>
+    </div>
+  </div>
+  <div class="term" role="img" aria-label="Example fm-steer route and usage output">
+    <div><span class="p">$</span> fm-steer route "fix the failing test"</div>
+    <div>harness codex</div>
+    <div>model harness-default (harness_default)</div>
+    <div>effort medium</div>
+    <div><span class="c">- codex wins on quality x cost x latency</span></div>
+    <div>&nbsp;</div>
+    <div><span class="p">$</span> fm-steer usage</div>
+    <div>openrouter&nbsp;&nbsp;captain&nbsp;&nbsp;100.00&nbsp;&nbsp;25.00&nbsp;&nbsp;75.00&nbsp;&nbsp;ok</div>
+  </div>
+</section>
+
+<section class="mkt-section" id="routing">
+  <h2>Routing with reasons attached</h2>
+  <p class="lede">
+    The portal classifies each task on six axes, filters the fleet capability
+    matrix on hard constraints, and picks the cheapest lane that qualifies.
+    Every answer names its harness, model, effort, and why.
+  </p>
+  <div class="flow">
+    <div>
+      <h3>Classify</h3>
+      <p>Kind, ambiguity, blast radius, citations, risk, and whether live web is required. A rater agent can override any axis.</p>
+    </div>
+    <div>
+      <h3>Filter</h3>
+      <p>Lanes that miss a constraint drop out with a note. OpenRouter and Artificial Analysis only refine the model inside the surviving lane.</p>
+    </div>
+    <div>
+      <h3>Pick</h3>
+      <p>Cheapest qualifier wins, ties break on latency. High blast radius or risk adds a human review checkpoint before side effects.</p>
+    </div>
+  </div>
+</section>
+
+<section class="mkt-section" id="usage">
+  <h2>Spend you can see</h2>
+  <p class="lede">
+    One ledger per tenant for every provider account: allowance, used,
+    remaining, and runway from real burn rate. Unknown allowances stay
+    unknown. Nothing is guessed.
+  </p>
+  <table class="sample-table" aria-label="Sample usage ledger">
+    <thead>
+      <tr><th>Account</th><th>Used</th><th>Remaining</th><th>Status</th><th>Runway</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>openrouter / captain</td>
+        <td class="num">25.00 / 100.00 USD</td>
+        <td class="num">75.00</td>
+        <td>ok</td>
+        <td class="num">14.0d</td>
+      </tr>
+      <tr>
+        <td>anthropic / direct</td>
+        <td class="num">82.10 / 100.00 USD</td>
+        <td class="num">17.90</td>
+        <td>low</td>
+        <td class="num">3.2d</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="lede" style="margin-top: 1rem; margin-bottom: 0;">Sample rows. Lower spend priority burns first. OpenRouter syncs live, everything else is manual or agent posted.</p>
+</section>
+
+<section class="mkt-section" id="commands">
+  <h2>Four verbs</h2>
+  <p class="lede">Device code login once. Everything after that is one command.</p>
+  <div class="cmd-grid">
+    <div>
+      <h3>Auth and inbox</h3>
+      <pre>fm-steer auth login
+fm-steer inbox put --task fm-port --body "hello"
+fm-steer inbox next --task fm-port</pre>
+    </div>
+    <div>
+      <h3>Route and usage</h3>
+      <pre>fm-steer route "deploy the portal to production"
+fm-steer usage
+fm-steer usage --sync</pre>
+    </div>
+  </div>
+</section>
+
+<section class="mkt-section" id="docs">
+  <h2>Docs</h2>
+  <p class="lede">Short pages for operators and for agents calling the API.</p>
+  <div class="doc-rows">
+    <.link navigate={~p"/steer/docs/fm-steer"}>
+      <span><strong>fm-steer CLI</strong><p>Install, auth, inbox, route, and usage commands.</p></span>
+      <span aria-hidden="true">-&gt;</span>
+    </.link>
+    <.link navigate={~p"/steer/docs/routing"}>
+      <span><strong>Routing</strong><p>Axes, capability matrix, provider intel, eval set, API.</p></span>
+      <span aria-hidden="true">-&gt;</span>
+    </.link>
+    <.link navigate={~p"/steer/docs/usage"}>
+      <span><strong>Usage and billing</strong><p>Accounts, windows, spend priority, runway, sync.</p></span>
+      <span aria-hidden="true">-&gt;</span>
+    </.link>
+  </div>
+</section>
+
+<section class="mkt-section" id="install">
+  <h2>Install</h2>
+  <p class="lede">Build from this repo. Point at your portal. Log in once.</p>
+  <div class="term" role="img" aria-label="Example fm-steer install commands">
+    <div><span class="p">$</span> go build -o fm-steer ./cmd/fm-steer</div>
+    <div><span class="p">$</span> export FIRSTMATE_INSTANCE=http://localhost:4000</div>
+    <div><span class="p">$</span> fm-steer auth login</div>
+  </div>
+  <p class="lede" style="margin-top: 1rem; margin-bottom: 0;">Credentials land at $XDG_CONFIG_HOME/fm-steer/credentials.json with mode 0600. The CLI only calls the portal API, so your tenant follows your login.</p>
+</section>

@@ -26,13 +26,17 @@ func main() {
 		cmdAuth(os.Args[2:])
 	case "inbox":
 		cmdInbox(os.Args[2:])
+	case "route":
+		routeRun(os.Args[2:])
+	case "usage":
+		usageRun(os.Args[2:])
 	default:
 		usage()
 	}
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: fm-steer auth login|status|logout | inbox put|next|ack|list\n")
+	fmt.Fprintf(os.Stderr, "usage: fm-steer auth login|status|logout | inbox put|next|ack|list | route \"<task>\" | usage [--sync]\n")
 	os.Exit(2)
 }
 
@@ -250,6 +254,156 @@ type creds struct {
 	Instance string `json:"instance"`
 	Token    string `json:"token"`
 	Tenant   string `json:"tenant"`
+}
+
+// routeRun asks the portal router which worker to use. All ranking lives
+// server-side; this command only renders the answer.
+func routeRun(args []string) {
+	fs := flag.NewFlagSet("route", flag.ExitOnError)
+	instance := fs.String("instance", env("FIRSTMATE_INSTANCE", ""), "API base URL")
+	intel := fs.Bool("intel", false, "fold in live provider intel (OpenRouter / Artificial Analysis)")
+	asJSON := fs.Bool("json", false, "print the full route response as JSON")
+	_ = fs.Parse(args)
+
+	description := strings.Join(fs.Args(), " ")
+	if description == "" {
+		raw, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			log.Fatal(err)
+		}
+		description = strings.TrimSpace(string(raw))
+		if description == "" {
+			log.Fatal("route requires a task description argument or stdin")
+		}
+	}
+	c := mustCreds(*instance)
+	var out routeResponse
+	if err := postJSON(c.Instance+"/api/route", c.Token, map[string]any{
+		"description": description,
+		"intel":       *intel,
+	}, &out); err != nil {
+		log.Fatal(err)
+	}
+	if *asJSON {
+		printJSON(out)
+		return
+	}
+	display := out.ModelDisplay
+	if display == "" {
+		display = out.Model
+	}
+	fmt.Printf("harness %s\nmodel %s (%s)\neffort %s\n", out.Harness, display, out.Model, out.Effort)
+	if out.Checkpoint != "" {
+		fmt.Printf("checkpoint %s\n", out.Checkpoint)
+	}
+	for _, r := range out.Reasons {
+		fmt.Printf("- %s\n", r)
+	}
+}
+
+type routeResponse struct {
+	Tenant       string         `json:"tenant"`
+	Harness      string         `json:"harness"`
+	Model        string         `json:"model"`
+	ModelDisplay string         `json:"model_display"`
+	ModelSource  string         `json:"model_source"`
+	Effort       string         `json:"effort"`
+	Reasons      []string       `json:"reasons"`
+	Axes         map[string]any `json:"axes"`
+	Intel        []string       `json:"intel_sources"`
+	Checkpoint   string         `json:"checkpoint"`
+}
+
+// usageRun shows per-account token usage and remaining allowance from the
+// portal ledger. With --sync it first refreshes syncable accounts through
+// the portal (provider keys stay server-side). No quota math lives here.
+func usageRun(args []string) {
+	fs := flag.NewFlagSet("usage", flag.ExitOnError)
+	instance := fs.String("instance", env("FIRSTMATE_INSTANCE", ""), "API base URL")
+	sync := fs.Bool("sync", false, "refresh syncable accounts before listing")
+	asJSON := fs.Bool("json", false, "print the full usage response as JSON")
+	_ = fs.Parse(args)
+
+	c := mustCreds(*instance)
+	if *sync {
+		var res usageSyncResponse
+		if err := postJSON(c.Instance+"/api/usage/sync", c.Token, map[string]any{}, &res); err != nil {
+			log.Fatal(err)
+		}
+		if *asJSON {
+			printJSON(res)
+			return
+		}
+		for _, r := range res.Data {
+			mark := "ok"
+			if !r.Synced {
+				mark = "skip"
+			}
+			fmt.Printf("%s %s/%s: %s\n", mark, r.Account.Provider, r.Account.Label, r.Note)
+		}
+		return
+	}
+	var out usageResponse
+	if err := getJSON(c.Instance+"/api/usage", c.Token, &out); err != nil {
+		log.Fatal(err)
+	}
+	if *asJSON {
+		printJSON(out)
+		return
+	}
+	fmt.Printf("%-12s %-20s %12s %12s %12s %-6s %8s\n", "provider", "label", "allowance", "used", "remaining", "status", "runway")
+	for _, a := range out.Data {
+		fmt.Printf("%-12s %-20s %12s %12s %12s %-6s %8s\n",
+			a.Provider, a.Label, numOrDash(a.Allowance), numOrDash(a.Used),
+			numOrDash(a.Remaining), a.Status, runwayOrDash(a.RunwayDays))
+	}
+}
+
+type usageAccount struct {
+	Provider   string   `json:"provider"`
+	Label      string   `json:"label"`
+	Unit       string   `json:"unit"`
+	Allowance  *float64 `json:"allowance"`
+	Used       *float64 `json:"used"`
+	Remaining  *float64 `json:"remaining"`
+	Status     string   `json:"status"`
+	RunwayDays *float64 `json:"runway_days"`
+	Window     string   `json:"window"`
+	Source     string   `json:"source"`
+}
+
+type usageResponse struct {
+	Tenant string         `json:"tenant"`
+	Data   []usageAccount `json:"data"`
+}
+
+type usageSyncResponse struct {
+	Tenant string `json:"tenant"`
+	Data   []struct {
+		Account usageAccount `json:"account"`
+		Synced  bool         `json:"synced"`
+		Note    string       `json:"note"`
+	} `json:"data"`
+}
+
+func numOrDash(f *float64) string {
+	if f == nil {
+		return "-"
+	}
+	return fmt.Sprintf("%.2f", *f)
+}
+
+func runwayOrDash(f *float64) string {
+	if f == nil {
+		return "-"
+	}
+	return fmt.Sprintf("%.1fd", *f)
+}
+
+func printJSON(v any) {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(v)
 }
 
 func credsDir() string {

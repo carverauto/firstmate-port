@@ -92,3 +92,78 @@ func TestInboxPutGoesToHTTP(t *testing.T) {
 		t.Fatalf("task %q", gotTask)
 	}
 }
+
+func TestRoutePostsDescriptionToPortal(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	var gotDesc string
+	var gotIntel bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/route" {
+			t.Errorf("path %s", r.URL.Path)
+		}
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		gotDesc, _ = body["description"].(string)
+		gotIntel, _ = body["intel"].(bool)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"tenant": "local", "harness": "codex", "model": "harness-default",
+			"model_source": "harness_default", "effort": "medium",
+			"reasons":       []string{"kind=code matches codex lane"},
+			"intel_sources": []string{"fleet_matrix", "fleet_evals"},
+		})
+	}))
+	defer srv.Close()
+	if err := writeCreds(srv.URL, "jwt", "local"); err != nil {
+		t.Fatal(err)
+	}
+	routeRun([]string{"--instance", srv.URL, "--intel", "fix the portal test"})
+	if gotDesc != "fix the portal test" {
+		t.Fatalf("description %q", gotDesc)
+	}
+	if !gotIntel {
+		t.Fatal("intel flag was not forwarded")
+	}
+}
+
+func TestUsageListsAccountsFromPortal(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"tenant": "local",
+			"data": []map[string]any{
+				{"provider": "openrouter", "label": "captain", "allowance": 100.0,
+					"used": 25.0, "remaining": 75.0, "status": "ok"},
+			},
+		})
+	}))
+	defer srv.Close()
+	if err := writeCreds(srv.URL, "jwt", "local"); err != nil {
+		t.Fatal(err)
+	}
+	usageRun([]string{"--instance", srv.URL})
+	if gotPath != "/api/usage" {
+		t.Fatalf("path %s", gotPath)
+	}
+}
+
+func TestUsageSyncPostsToPortal(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_ = json.NewEncoder(w).Encode(map[string]any{"tenant": "local", "data": []any{}})
+	}))
+	defer srv.Close()
+	if err := writeCreds(srv.URL, "jwt", "local"); err != nil {
+		t.Fatal(err)
+	}
+	usageRun([]string{"--instance", srv.URL, "--sync"})
+	if gotPath != "/api/usage/sync" {
+		t.Fatalf("path %s", gotPath)
+	}
+}

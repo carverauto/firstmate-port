@@ -32,6 +32,7 @@ defmodule FirstmatePort.Jobs.DiscordFanoutTest do
 
   test "generic no-mistakes copy never includes findings text" do
     previous = Application.get_env(:firstmate_port, :discord_webhook_url)
+    on_exit(fn -> Application.put_env(:firstmate_port, :discord_webhook_url, previous) end)
     actor = %{role: :agent, email: "agent@localhost", tenant_slug: "local"}
     marker = "UNIQUE-FINDINGS-SHOULD-NOT-LEAK-#{System.unique_integer([:positive])}"
 
@@ -47,7 +48,7 @@ defmodule FirstmatePort.Jobs.DiscordFanoutTest do
              )
 
     {:ok, server} = Bandit.start_link(plug: {CapturePlug, self()}, port: 0, startup_log: false)
-    {:ok, %{port: port}} = ThousandIsland.listener_info(server)
+    {:ok, {_ip, port}} = ThousandIsland.listener_info(server)
     url = "http://127.0.0.1:#{port}/hook"
     Application.put_env(:firstmate_port, :discord_webhook_url, url)
 
@@ -59,7 +60,5 @@ defmodule FirstmatePort.Jobs.DiscordFanoutTest do
     assert_receive {:posted, body}, 1_000
     refute body =~ marker
     assert body =~ "failed" or body =~ "no-mistakes"
-  after
-    Application.put_env(:firstmate_port, :discord_webhook_url, previous)
   end
 end

@@ -433,6 +433,327 @@ pre {
   }
 }
 
+.meter {
+  display: block;
+  height: 0.35rem;
+  margin-top: 0.35rem;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.meter > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.grid-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.grid-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: var(--muted);
+}
+
+.mkt {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1.5rem 4rem;
+}
+
+.mkt-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 4rem;
+  max-height: 4.5rem;
+}
+
+.mkt-top .brand {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.mkt-top .brand span {
+  color: var(--muted);
+  font-weight: 450;
+}
+
+.mkt-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.mkt-hero {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 3rem;
+  align-items: center;
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+}
+
+.mkt-hero h1 {
+  font-size: clamp(2.25rem, 4.5vw, 3.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin: 0 0 1rem;
+}
+
+.mkt-hero p.sub {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 34rem;
+  margin: 0 0 1.5rem;
+}
+
+.mkt-cta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.mkt-section {
+  padding: 3.5rem 0;
+}
+
+.mkt-section h2 {
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.75rem;
+}
+
+.mkt-section .lede {
+  color: var(--muted);
+  max-width: 40rem;
+  line-height: 1.6;
+  margin: 0 0 2rem;
+}
+
+.term {
+  background: #101214;
+  color: #e8ecef;
+  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem;
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+
+.term .p {
+  color: #7dd3c8;
+}
+
+.term .c {
+  color: #8a94a0;
+}
+
+.flow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.flow > div {
+  padding: 1.5rem;
+}
+
+.flow > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.flow h3 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.flow p {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.cmd-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+}
+
+.cmd-grid h3 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+}
+
+.cmd-grid pre {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 0.8rem;
+  line-height: 1.75;
+  overflow-x: auto;
+  margin: 0;
+}
+
+.doc-rows > a {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.doc-rows > a:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.doc-rows > a:hover strong {
+  text-decoration: underline;
+}
+
+.doc-rows p {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin: 0.25rem 0 0;
+}
+
+.sample-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.sample-table th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 500;
+  padding: 0.6rem 0.75rem;
+}
+
+.sample-table td {
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.sample-table td.num {
+  font-family: "Geist Mono", ui-monospace, monospace;
+}
+
+.doc {
+  max-width: 44rem;
+  padding: 3rem 0 4rem;
+}
+
+.doc h1 {
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.5rem;
+}
+
+.doc h2 {
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+  margin: 2.5rem 0 0.75rem;
+}
+
+.doc p,
+.doc li {
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+.doc p.muted {
+  color: var(--muted);
+}
+
+.doc pre {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+
+.doc code {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 0.88em;
+}
+
+.doc table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.doc th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 500;
+  padding: 0.5rem 0.75rem 0.5rem 0;
+}
+
+.doc td {
+  padding: 0.5rem 0.75rem 0.5rem 0;
+  border-top: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.doc .back {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .mkt-hero {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding-top: 2.5rem;
+  }
+
+  .flow {
+    grid-template-columns: 1fr;
+  }
+
+  .flow > div + div {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .cmd-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
   .auth-shell,
   .axi-split {
