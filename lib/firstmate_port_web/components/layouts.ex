@@ -117,7 +117,9 @@ defmodule FirstmatePortWeb.Layouts do
         <.theme_toggle />
       </header>
       <.flash_group flash={@flash} />
-      {render_slot(@inner_block)}
+      <div class="auth-main">
+        {render_slot(@inner_block)}
+      </div>
     </div>
     """
   end

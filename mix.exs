@@ -69,6 +69,9 @@ defmodule FirstmatePort.MixProject do
       {:ash, "~> 3.31"},
       {:simple_sat, "~> 0.1.4"},
       {:guardian, "~> 2.3"},
+      # Direct use: optional BOOTSTRAP_ADMIN_PASSWORD_HASH check on /auth/dev.
+      # Already in mix.lock via ash_events; no new closure for Bazel.
+      {:bcrypt_elixir, "~> 3.0"},
       {:ueberauth, "~> 0.10"},
       {:ueberauth_oidcc, "~> 0.4"},
       {:gnat, "~> 1.15"},

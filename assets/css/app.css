@@ -350,22 +350,35 @@ pre {
 
 .auth-shell {
   min-height: 100dvh;
-  display: grid;
-  grid-template-columns: 1fr 22rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .auth-top {
-  position: absolute;
-  inset: 0 0 auto 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.25rem;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-elev);
+}
+
+/* Only hero + sign-in live in this grid. The header and flashes are flex
+   siblings above it, so they can never steal a grid cell. */
+.auth-main {
+  flex: 1;
+  width: 100%;
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 3rem 1.25rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(19rem, 22rem);
+  gap: 3rem;
+  align-items: center;
 }
 
 .auth-hero {
-  padding: 7rem 3rem 3rem;
-  border-right: 1px solid var(--line);
+  padding: 0;
 }
 
 .auth-hero h1 {
@@ -389,7 +402,13 @@ pre {
 }
 
 .auth-panel {
-  padding: 7rem 1.5rem 3rem;
+  width: 100%;
+  max-width: 22rem;
+  justify-self: end;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.5rem;
 }
 
 .auth-panel h2 {
@@ -397,13 +416,36 @@ pre {
   font-size: 1rem;
 }
 
-.auth-cta,
-.auth-form .btn {
+.auth-cta {
   width: 100%;
+  min-height: 2.5rem;
 }
 
 .auth-form {
+  display: grid;
+  gap: 0.15rem;
   margin-top: 1.25rem;
+}
+
+.auth-form label {
+  margin-bottom: 0;
+}
+
+.auth-form input[type="email"],
+.auth-form input[type="password"] {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.5rem;
+}
+
+.auth-form .hint {
+  margin: 0.35rem 0 0.9rem;
+}
+
+/* Bounded by the 22rem card: never a page-wide bar. */
+.auth-form .btn {
+  width: 100%;
+  min-height: 2.5rem;
 }
 
 .empty-state {
@@ -434,19 +476,24 @@ pre {
 }
 
 @media (max-width: 768px) {
-  .auth-shell,
   .axi-split {
     grid-template-columns: 1fr;
   }
 
-  .auth-hero {
-    padding: 5rem 1.25rem 1.5rem;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
+  .auth-main {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+    align-items: start;
+    padding: 2rem 1.25rem 3rem;
+  }
+
+  .auth-hero h1 {
+    font-size: clamp(1.8rem, 8vw, 2.4rem);
   }
 
   .auth-panel {
-    padding: 1.5rem 1.25rem 3rem;
+    max-width: none;
+    justify-self: stretch;
   }
 
   .topbar {

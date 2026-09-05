@@ -10,7 +10,7 @@ the portal. Copy them into GitOps overlays, `.env`, or `docker-compose.override.
 | OIDC issuer (Authentik) | `https://auth.carverauto.dev/application/o/firstmate/` |
 | Image | `ghcr.io/carverauto/firstmate-port` |
 | Discord interactions | `discord-firstmate.carverauto.dev` |
-| Local sign-in | `DEV_AUTH=true` plus `BOOTSTRAP_ADMIN_EMAIL` from the `firstmate-bootstrap-admin` secret (no site email wall) |
+| Local sign-in | `DEV_AUTH=true` plus `BOOTSTRAP_ADMIN_EMAIL` from the `firstmate-bootstrap-admin` secret (no site email wall). Optional `password-hash` key in the same secret (bcrypt hash via `BOOTSTRAP_ADMIN_PASSWORD_HASH`) adds a shared local password to the sign-in form; unset means email-only |
 | BuildBuddy | `carverauto.buildbuddy.io` |
 
 ghcr.io is the registry for this product; Harbor is not used. The namespace pulls

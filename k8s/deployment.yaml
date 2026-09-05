@@ -69,6 +69,14 @@ spec:
                   name: firstmate-bootstrap-admin
                   key: email
                   optional: true
+            # Optional bcrypt hash for the shared local password on the
+            # DEV_AUTH form. Absent means the form stays email-only.
+            - name: BOOTSTRAP_ADMIN_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-bootstrap-admin
+                  key: password-hash
+                  optional: true
             - name: NATS_TOKEN
               valueFrom:
                 secretKeyRef:
