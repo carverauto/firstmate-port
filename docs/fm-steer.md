@@ -79,7 +79,7 @@ Approval is a human step in a browser. Do not ask an agent to do it for you.
 | --- | --- | --- |
 | `inbox put` | `--task <id>` (required), `--body <text>` (stdin when omitted) | Prints the stored item as JSON, including its `ack` token |
 | `inbox next` | `--task <id>` (optional) | Prints the oldest pending item as JSON; exit 1 and no output when the inbox is empty |
-| `inbox ack` | `--ack <token>` (required) | Marks that item handled; prints `acked` |
+| `inbox ack` | `--ack <token>` (required) | Marks that item handled; prints `acked` and exits 0 even when the portal rejected the token (`{"error":"not_found"}`), so confirm with `inbox list` |
 | `inbox list` | `--task <id>` (optional) | Prints `{"data":[...]}` — everything pending or delivered-but-unacked |
 
 Bodies may be multi-line; omit `--body` and pipe them in:
@@ -107,13 +107,22 @@ session only, pasting it into chat works the same way.
 
 Replace `<INSTANCE_URL>` with your portal:
 
-```markdown
+````markdown
 ## Portal mirror (fm-steer)
 
 - My firstmate-port portal is <INSTANCE_URL>. `fm-steer` is on PATH and logged in.
 - After a steer to a task succeeds through `bin/fm-send.sh`, mirror the same text
-  to the portal:
-  `fm-steer inbox put --task <task-id> --body "<the same text I sent>"`
+  to the portal by piping the body in on stdin with a quoted heredoc:
+
+  ```sh
+  fm-steer inbox put --task <task-id> <<'FMSTEER'
+  <the same text I sent, verbatim>
+  FMSTEER
+  ```
+
+  Never pass the text with `--body "..."`. Steers are routinely multi-line and
+  contain quotes, backticks, and `$`, all of which the shell would mangle or
+  expand; the quoted heredoc sends exactly what I sent.
 - Mirror after the on-disk enqueue, never instead of it. `state/<id>.inbox/` is
   the delivery record; fm-steer is only a copy for the portal. Never delete,
   move, or edit anything under `state/<id>.inbox/` because of fm-steer.
@@ -124,18 +133,24 @@ Replace `<INSTANCE_URL>` with your portal:
   to log in on my behalf.
 - `fm-steer` speaks HTTP to the portal only. Never give it a NATS URL, NATS
   credentials, or a token on the command line.
-```
+````
 
 Add this second block if you also want firstmate to pick up steers you filed
 from another machine (from a phone, from a laptop away from the fleet):
 
 ```markdown
-- When I ask you to check the portal, run `fm-steer inbox next --task <task-id>`
-  (drop `--task` to take the oldest across every task). Exit 1 with no output
-  means nothing is pending.
-- Otherwise deliver that item's `body` to the task with `bin/fm-send.sh`, and
-  only after that send succeeds run `fm-steer inbox ack --ack <the item's ack>`.
-  Never ack something you have not delivered.
+- When I ask you to check the portal, run
+  `fm-steer inbox next --task <task-id>` for the task this session is working.
+  Always pass `--task`: without it the portal hands back the oldest item across
+  every task, and taking an item is what removes it from the queue, so a steer
+  meant for another task would be consumed here and never delivered there.
+  Exit 1 with no output means nothing is pending.
+- Otherwise deliver that item's `body` with `bin/fm-send.sh` to the task named in
+  the item's own `task` field, and only after that send succeeds run
+  `fm-steer inbox ack --ack <the item's ack>`. Never ack something you have not
+  delivered.
+- `fm-steer inbox ack` prints `acked` even when the portal rejected the token, so
+  confirm with `fm-steer inbox list --task <task-id>` that the item is gone.
 ```
 
 Nothing polls on its own — firstmate checks when a session runs and you ask it
@@ -165,12 +180,11 @@ inbox stays the record of what was steered.
 
 ## About the Carverauto fork
 
-Carverauto runs a private fork of firstmate whose overlay patches `fm-send` to
-dual-write steers straight onto JetStream through a *different* tool that also
-happens to be called `fm-steer` — a bash script needing `natscli`, a stream, a
-pre-created durable pull consumer, and NATS credentials.
+Name collision, nothing more. Carverauto's private firstmate overlay has its own
+`fm-steer`: a bash dual-write onto NATS from a patched `fm-send`. It is an
+optional overlay, not a prerequisite for anything on this page, and it is not
+what this repo ships.
 
-That overlay is not a prerequisite for anything on this page, and it is not what
-this repo ships. The product CLI is the Go `fm-steer` in `cmd/fm-steer`; it
-speaks HTTP to the portal and nothing else. A standing instruction, as above,
-gets you the portal mirror without forking firstmate or replacing `fm-send`.
+The product CLI is the Go `fm-steer` in `cmd/fm-steer`; it speaks HTTP to the
+portal and nothing else. A standing instruction, as above, gets you the portal
+mirror without forking firstmate or replacing `fm-send`.
