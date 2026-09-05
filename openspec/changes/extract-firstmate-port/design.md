@@ -7,7 +7,7 @@ Compiled defaults run locally: `localhost`, `DEV_AUTH`, `ALLOWED_EMAIL_DOMAIN=lo
 OIDC via Ueberauth when `OIDC_ISSUER` / client secret are set. `DEV_AUTH=true` offers a local email form for compose. Agents use `FIRSTMATE_AGENT_TOKEN` (hashed) for MCP and ingest writes.
 
 ## NATS
-Kubernetes: 3-replica FileStorage cluster, headless service, port 6222, PVCs, durable streams `firstmate-steer` (`firstmate.steer.>`) and `captain-inbound` (`firstmate.discord.inbound`). No `firstmate.>` catch-all. Compose: one nats-server with JetStream.
+Kubernetes: 3-replica FileStorage cluster, headless service, port 6222, PVCs. One NATS account. Per-tenant streams `<tenant>.steer` (`<tenant>.steer.>`) and `<tenant>.inbound` (`<tenant>.discord.inbound`). No `<tenant>.>` catch-all. Compose: one nats-server with JetStream. The Phoenix API is the only JetStream client.
 
 ## UI
 Operator product UI. Login and empty fleet can be editorial. PR/issue/run boards stay dense product tables. Tailwind v4, Geist, teal accent, dual theme, WCAG AA, `prefers-reduced-motion`.

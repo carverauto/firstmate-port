@@ -8,7 +8,13 @@ defmodule FirstmatePort.Changes.FanoutDiscord do
 
     Ash.Changeset.after_action(changeset, fn cs, record ->
       if notify?(cs) do
-        %{kind: Atom.to_string(kind), id: record.id}
+        tenant =
+          case cs.tenant do
+            t when is_binary(t) and t != "" -> t
+            _ -> Map.get(record, :tenant_slug) || FirstmatePort.Tenancy.default_slug()
+          end
+
+        %{kind: Atom.to_string(kind), id: record.id, tenant: tenant}
         |> FirstmatePort.Jobs.DiscordFanout.new()
         |> Oban.insert()
       end

@@ -43,20 +43,33 @@ defmodule FirstmatePortWeb.CliAuthControllerTest do
         authorize?: false
       )
 
-    {:ok, token, _} = FirstmatePort.Auth.Guardian.encode_and_sign(a, %{"typ" => "cli"})
+    {:ok, b} =
+      User.upsert_oidc(%{email: "b@localhost", name: "B", tenant_slug: "acme"},
+        authorize?: false
+      )
+
+    {:ok, token_a, _} = FirstmatePort.Auth.Guardian.encode_and_sign(a, %{"typ" => "cli"})
+    {:ok, token_b, _} = FirstmatePort.Auth.Guardian.encode_and_sign(b, %{"typ" => "cli"})
 
     conn =
       conn
-      |> put_req_header("authorization", "Bearer " <> token)
+      |> put_req_header("authorization", "Bearer " <> token_a)
       |> post(~p"/api/cli/inbox/put", %{"task" => "fm-port", "body" => "hello"})
 
     assert json_response(conn, 200)["task"] == "fm-port"
 
     conn =
       build_conn()
-      |> put_req_header("authorization", "Bearer " <> token)
+      |> put_req_header("authorization", "Bearer " <> token_a)
       |> get(~p"/api/cli/inbox")
 
     assert [%{"body" => "hello"}] = json_response(conn, 200)["data"]
+
+    conn =
+      build_conn()
+      |> put_req_header("authorization", "Bearer " <> token_b)
+      |> get(~p"/api/cli/inbox")
+
+    assert json_response(conn, 200)["data"] == []
   end
 end

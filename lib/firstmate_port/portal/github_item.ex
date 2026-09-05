@@ -23,6 +23,7 @@ defmodule FirstmatePort.Portal.GithubItem do
     change_tracking_mode(:changes_only)
     store_action_name?(true)
     ignore_attributes([:inserted_at, :updated_at])
+    attributes_as_attributes([:tenant_slug])
   end
 
   events do
@@ -89,7 +90,8 @@ defmodule FirstmatePort.Portal.GithubItem do
   end
 
   multitenancy do
-    strategy :context
+    strategy :attribute
+    attribute :tenant_slug
   end
 
   attributes do
@@ -143,6 +145,11 @@ defmodule FirstmatePort.Portal.GithubItem do
     attribute :firewall_verdict, :atom do
       constraints one_of: [:none, :allowed, :blocked]
       default :none
+      public? true
+    end
+
+    attribute :tenant_slug, :string do
+      allow_nil? false
       public? true
     end
 

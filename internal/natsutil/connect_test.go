@@ -3,8 +3,8 @@ package natsutil
 import "testing"
 
 func TestUniqueDropsDuplicateSubjects(t *testing.T) {
-	got := unique([]string{"firstmate.discord.inbound", "firstmate.discord.inbound", " firstmate.discord.inbound "})
-	if len(got) != 1 || got[0] != "firstmate.discord.inbound" {
+	got := unique([]string{"local.discord.inbound", "local.discord.inbound", " local.discord.inbound "})
+	if len(got) != 1 || got[0] != "local.discord.inbound" {
 		t.Fatalf("got %v", got)
 	}
 }

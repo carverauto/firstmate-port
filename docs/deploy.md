@@ -17,7 +17,7 @@ fm-steer auth login --instance http://localhost:4000
 fm-steer inbox put --task fm-port --body "hello"
 ```
 
-Postgres and NATS JetStream (single node) are in the compose file. The Kubernetes NATS shape is a 3-node cluster (headless service, port 6222, PVCs, durable streams).
+Postgres and NATS JetStream (single node, one account) are in the compose file. Streams are named `<tenant>.steer` and `<tenant>.inbound`. The Kubernetes NATS shape is a 3-node cluster (headless service, port 6222, PVCs, durable streams).
 
 To run Mix against compose Postgres/NATS only:
 
@@ -57,4 +57,4 @@ kubectl apply -k k8s
 # optional OIDC: ./deploy/bootstrap-authentik-oidc.sh
 ```
 
-`fm-steer` is the JetStream inbox port (`put` / `next` / `ack` / `list`). The on-disk firstmate inbox stays until dual-write is wired.
+`fm-steer` is the HTTP inbox port (`put` / `next` / `ack` / `list`). It does not dial NATS. The Phoenix API is the only JetStream client. The on-disk firstmate inbox stays until dual-write is wired.

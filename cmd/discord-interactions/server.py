@@ -15,7 +15,7 @@ MAX_BODY = 64 * 1024
 PUB = os.environ.get("DISCORD_PUBLIC_KEY", "").strip()
 NATS_URL = os.environ.get("NATS_URL", "").strip()
 NATS_TOKEN = os.environ.get("NATS_TOKEN", "").strip()
-NATS_SUBJECT = os.environ.get("NATS_SUBJECT", "firstmate.discord.inbound")
+NATS_SUBJECT = os.environ.get("NATS_SUBJECT", "local.discord.inbound")
 if not PUB:
     print("error: DISCORD_PUBLIC_KEY is not set", file=sys.stderr)
     sys.exit(2)

@@ -20,6 +20,7 @@ defmodule FirstmatePort.Portal.Diagram do
     change_tracking_mode(:changes_only)
     store_action_name?(true)
     ignore_attributes([:inserted_at, :updated_at, :html, :png, :svg])
+    attributes_as_attributes([:tenant_slug])
   end
 
   events do
@@ -77,7 +78,8 @@ defmodule FirstmatePort.Portal.Diagram do
   end
 
   multitenancy do
-    strategy :context
+    strategy :attribute
+    attribute :tenant_slug
   end
 
   attributes do
@@ -104,6 +106,11 @@ defmodule FirstmatePort.Portal.Diagram do
 
     attribute :png, :binary
     attribute :svg, :binary
+
+    attribute :tenant_slug, :string do
+      allow_nil? false
+      public? true
+    end
 
     timestamps()
   end

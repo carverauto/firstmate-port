@@ -19,9 +19,18 @@ defmodule FirstmatePort.Events.EventLog do
     primary_key_type(Ash.Type.UUIDv7)
     record_id_type(:string)
     persist_actor_primary_key(:user_id, FirstmatePort.Accounts.User)
+    advisory_lock_key_generator(FirstmatePort.Events.AdvisoryLockKey)
   end
 
   multitenancy do
-    strategy :context
+    strategy :attribute
+    attribute :tenant_slug
+  end
+
+  attributes do
+    attribute :tenant_slug, :string do
+      allow_nil? false
+      public? true
+    end
   end
 end

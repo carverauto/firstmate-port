@@ -17,8 +17,8 @@ import (
 func main() {
 	token := os.Getenv("DISCORD_BOT_TOKEN")
 	channelID := os.Getenv("DISCORD_CHANNEL_ID")
-	stream := getenv("NATS_STREAM", "captain-inbound")
-	subject := getenv("NATS_SUBJECT", "firstmate.discord.inbound")
+	stream := getenv("NATS_STREAM", "local.inbound")
+	subject := getenv("NATS_SUBJECT", "local.discord.inbound")
 	server := getenv("NATS_URL", nats.DefaultURL)
 	if token == "" || channelID == "" {
 		log.Fatal("DISCORD_BOT_TOKEN and DISCORD_CHANNEL_ID are required")

@@ -7,4 +7,4 @@
 - [x] Docker Compose (portal, Postgres, JetStream) and Harbor publish docs
 - [x] Tailwind v4 operator UI with Geist, login, empty/loading/error states
 - [x] fm-steer device-code + HTTP inbox (no NATS in the CLI)
-- [x] Schema-per-tenant Postgres and per-tenant NATS account; seed tenant local
+- [x] Attribute tenancy on shared Postgres and one NATS account; streams `<tenant>.steer` / `<tenant>.inbound`; seed tenant local as example

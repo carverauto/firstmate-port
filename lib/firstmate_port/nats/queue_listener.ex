@@ -1,7 +1,7 @@
 defmodule FirstmatePort.NATS.QueueListener do
   @moduledoc """
-  Durable JetStream consumers for firstmate.steer.> and firstmate.discord.inbound.
-  Broadcasts to PubSub for LiveView. Resubscribes when the Gnat pid dies.
+  Durable JetStream consumers for `<tenant>.steer.>` and `<tenant>.discord.inbound`.
+  Broadcasts to tenant-scoped PubSub. Resubscribes when the Gnat pid dies.
   """
 
   use GenServer
@@ -28,24 +28,26 @@ defmodule FirstmatePort.NATS.QueueListener do
       {:ok, conn} ->
         ref = Process.monitor(conn)
 
-        _ = JetstreamConsumer.ensure_owned_streams(conn)
+        for tenant <- tenant_slugs() do
+          _ = JetstreamConsumer.ensure_owned_streams(conn, tenant)
 
-        _ =
-          JetstreamConsumer.ensure_durable(conn,
-            stream_name: JetstreamConsumer.steer_stream(),
-            consumer_name: "firstmate-port-ui-steer",
-            subjects: JetstreamConsumer.steer_subjects()
-          )
+          _ =
+            JetstreamConsumer.ensure_durable(conn,
+              stream_name: JetstreamConsumer.steer_stream(tenant),
+              consumer_name: "firstmate-port-ui-steer",
+              subjects: JetstreamConsumer.steer_subjects(tenant)
+            )
 
-        _ =
-          JetstreamConsumer.ensure_durable(conn,
-            stream_name: JetstreamConsumer.inbound_stream(),
-            consumer_name: "firstmate-port-ui-discord",
-            subjects: JetstreamConsumer.inbound_subjects()
-          )
+          _ =
+            JetstreamConsumer.ensure_durable(conn,
+              stream_name: JetstreamConsumer.inbound_stream(tenant),
+              consumer_name: "firstmate-port-ui-discord",
+              subjects: JetstreamConsumer.inbound_subjects(tenant)
+            )
+        end
 
-        {:ok, _} = Gnat.sub(conn, self(), "firstmate.steer.>")
-        {:ok, _} = Gnat.sub(conn, self(), "firstmate.discord.inbound")
+        {:ok, _} = Gnat.sub(conn, self(), "*.steer.>")
+        {:ok, _} = Gnat.sub(conn, self(), "*.discord.inbound")
         {:noreply, %{state | conn_ref: ref}}
 
       {:error, reason} ->
@@ -71,7 +73,8 @@ defmodule FirstmatePort.NATS.QueueListener do
       at: DateTime.utc_now()
     }
 
-    Phoenix.PubSub.broadcast(@pubsub, @topic, {:nats_event, event})
+    tenant = subject_tenant(subject)
+    Phoenix.PubSub.broadcast(@pubsub, topic(tenant), {:nats_event, event})
     _ = maybe_assign(subject, body)
     _ = ack(msg)
     recent = Enum.take([event | state.recent], 100)
@@ -80,7 +83,15 @@ defmodule FirstmatePort.NATS.QueueListener do
 
   def handle_info(_other, state), do: {:noreply, state}
 
-  def topic, do: @topic
+  def topic, do: topic(FirstmatePort.Tenancy.default_slug())
+  def topic(tenant) when is_binary(tenant), do: @topic <> ":" <> tenant
+
+  defp subject_tenant(subject) when is_binary(subject) do
+    case String.split(subject, ".", parts: 2) do
+      [tenant, _] -> FirstmatePort.Tenancy.slug(tenant)
+      _ -> FirstmatePort.Tenancy.default_slug()
+    end
+  end
 
   defp ack(%{reply_to: reply}) when is_binary(reply) and reply != "" do
     case FirstmatePort.NATS.Connection.get() do
@@ -97,10 +108,14 @@ defmodule FirstmatePort.NATS.QueueListener do
   defp truncate(body), do: body
 
   defp maybe_assign(subject, body) when is_binary(subject) and is_binary(body) do
-    if String.starts_with?(subject, "firstmate.steer.") do
+    if String.contains?(subject, ".steer.") do
       case Jason.decode(body) do
-        {:ok, map} -> FirstmatePort.Portal.Assignment.apply(map)
-        _ -> :ok
+        {:ok, map} ->
+          map = Map.put(map, "tenant_slug", subject_tenant(subject))
+          FirstmatePort.Portal.Assignment.apply(map)
+
+        _ ->
+          :ok
       end
     else
       :ok
@@ -108,4 +123,14 @@ defmodule FirstmatePort.NATS.QueueListener do
   end
 
   defp maybe_assign(_, _), do: :ok
+
+  defp tenant_slugs do
+    case FirstmatePort.Accounts.Tenant.list(authorize?: false) do
+      {:ok, tenants} ->
+        Enum.uniq([FirstmatePort.Tenancy.default_slug() | Enum.map(tenants, & &1.slug)])
+
+      _ ->
+        [FirstmatePort.Tenancy.default_slug()]
+    end
+  end
 end

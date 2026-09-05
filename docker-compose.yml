@@ -46,8 +46,6 @@ services:
       NATS_HOST: nats
       NATS_PORT: "4222"
       NATS_REPLICAS: "1"
-      NATS_USER: local
-      NATS_PASSWORD: local
     ports:
       - "4000:4000"
 

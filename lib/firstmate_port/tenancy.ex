@@ -1,22 +1,32 @@
 defmodule FirstmatePort.Tenancy do
   @moduledoc """
-  Schema-per-tenant helpers. Ash context tenant is the Postgres schema name.
+  Attribute-based tenancy. Postgres is shared; NATS is one account.
+  Streams are named `<tenant>.steer` and `<tenant>.inbound`.
+  The Phoenix API is the tenant wall and the only JetStream client.
   """
 
-  @prefix "t_"
+  @slug ~r/^[a-z][a-z0-9-]{0,62}$/
 
-  def schema(%{tenant_schema: schema}) when is_binary(schema) and schema != "", do: schema
-  def schema(%{tenant_slug: slug}) when is_binary(slug) and slug != "", do: schema_for(slug)
-  def schema(%{tenant: %{slug: slug}}) when is_binary(slug), do: schema_for(slug)
-  def schema(_), do: schema_for(default_slug())
+  def valid_slug?(s) when is_binary(s), do: Regex.match?(@slug, s)
+  def valid_slug?(_), do: false
 
-  def schema_for(slug) when is_binary(slug), do: @prefix <> slug
+  def slug(%{tenant_slug: s}) when is_binary(s), do: pick(s)
+  def slug(%{tenant: %{slug: s}}) when is_binary(s), do: pick(s)
+  def slug(s) when is_binary(s), do: pick(s)
+  def slug(_), do: default_slug()
 
   def default_slug do
     Application.get_env(:firstmate_port, :default_tenant_slug, "local")
   end
 
   def opts(actor, extra \\ []) do
-    Keyword.merge([actor: actor, tenant: schema(actor)], extra)
+    Keyword.merge([actor: actor, tenant: slug(actor)], extra)
   end
+
+  def steer_stream(tenant), do: "#{slug(tenant)}.steer"
+  def inbound_stream(tenant), do: "#{slug(tenant)}.inbound"
+  def steer_subjects(tenant), do: ["#{slug(tenant)}.steer.>"]
+  def inbound_subjects(tenant), do: ["#{slug(tenant)}.discord.inbound"]
+
+  defp pick(s), do: if(valid_slug?(s), do: s, else: default_slug())
 end

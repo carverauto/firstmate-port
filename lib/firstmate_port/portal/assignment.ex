@@ -17,7 +17,7 @@ defmodule FirstmatePort.Portal.Assignment do
     actor = %{
       role: :agent,
       email: "agent@localhost",
-      tenant_slug: FirstmatePort.Tenancy.default_slug()
+      tenant_slug: Map.get(map, "tenant_slug") || FirstmatePort.Tenancy.default_slug()
     }
 
     case GithubItem.list(FirstmatePort.Tenancy.opts(actor)) do

@@ -8,6 +8,18 @@ defmodule FirstmatePort.Release do
     for repo <- repos() do
       {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
     end
+
+    seed_example_tenant()
+  end
+
+  defp seed_example_tenant do
+    {:ok, _, _} =
+      Ecto.Migrator.with_repo(hd(repos()), fn _repo ->
+        FirstmatePort.Accounts.Tenant.seed(
+          %{slug: FirstmatePort.Tenancy.default_slug(), name: "Example"},
+          authorize?: false
+        )
+      end)
   end
 
   def rollback(repo, version) do

@@ -59,7 +59,12 @@ defmodule FirstmatePortWeb.DiscordInteractionsController do
   end
 
   defp publish(body) when is_binary(body) and body != "" do
-    FirstmatePort.NATS.Connection.publish("firstmate.discord.inbound", body)
+    subject =
+      FirstmatePort.Tenancy.default_slug()
+      |> FirstmatePort.Tenancy.inbound_subjects()
+      |> hd()
+
+    FirstmatePort.NATS.Connection.publish(subject, body)
   end
 
   defp publish(_), do: :ok

@@ -57,7 +57,7 @@ defmodule FirstmatePort.Inbox do
       }
 
       :ets.insert(state.table, {{tenant, seq}, :pending, item})
-      {:reply, {:ok, item}, %{state | seq: seq}}
+      {:reply, {:ok, item}, %{state | seq: seq}, {:continue, {:fanout, tenant, item}}}
     else
       {:reply, {:error, :invalid}, state}
     end
@@ -114,5 +114,25 @@ defmodule FirstmatePort.Inbox do
       )
 
     {:reply, {:ok, Enum.sort_by(items, & &1["seq"])}, state}
+  end
+
+  @impl true
+  def handle_continue({:fanout, tenant, item}, state) do
+    _ = fanout(tenant, item)
+    {:noreply, state}
+  end
+
+  defp fanout(tenant, item) do
+    subject = FirstmatePort.Tenancy.slug(tenant) <> ".steer.inbox"
+    payload = Jason.encode!(item)
+
+    case FirstmatePort.NATS.Connection.get() do
+      {:ok, conn} ->
+        _ = FirstmatePort.NATS.JetstreamConsumer.ensure_owned_streams(conn, tenant)
+        FirstmatePort.NATS.Connection.publish(subject, payload)
+
+      _ ->
+        :ok
+    end
   end
 end

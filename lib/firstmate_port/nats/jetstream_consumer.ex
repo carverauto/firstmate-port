@@ -4,26 +4,22 @@ defmodule FirstmatePort.NATS.JetstreamConsumer do
   Shape copied from ServiceRadar.NATS.JetstreamConsumer (ensure_durable).
   Firstmate subjects, not ServiceRadar subject names.
 
-  Stream ownership:
-  * `firstmate-steer` — subjects `firstmate.steer.>` only
-  * `captain-inbound` — subject `firstmate.discord.inbound` only
+  Stream ownership is per tenant on one NATS account:
+  * `<tenant>.steer` — subjects `<tenant>.steer.>` only
+  * `<tenant>.inbound` — subject `<tenant>.discord.inbound` only
 
-  The hub must not create a `firstmate.>` catch-all.
+  The API must not create a `<tenant>.>` catch-all.
   """
 
+  alias FirstmatePort.Tenancy
   alias Gnat.Jetstream.API.{Consumer, Stream}
 
   require Logger
 
-  @steer "firstmate-steer"
-  @inbound "captain-inbound"
-  @steer_subjects ["firstmate.steer.>"]
-  @inbound_subjects ["firstmate.discord.inbound"]
-
-  @spec ensure_owned_streams(atom() | pid()) :: :ok | {:error, term()}
-  def ensure_owned_streams(conn) do
-    with :ok <- ensure_stream(conn, @steer, @steer_subjects),
-         :ok <- ensure_stream(conn, @inbound, @inbound_subjects) do
+  @spec ensure_owned_streams(atom() | pid(), String.t()) :: :ok | {:error, term()}
+  def ensure_owned_streams(conn, tenant) when is_binary(tenant) do
+    with :ok <- ensure_stream(conn, steer_stream(tenant), steer_subjects(tenant)),
+         :ok <- ensure_stream(conn, inbound_stream(tenant), inbound_subjects(tenant)) do
       :ok
     end
   end
@@ -41,13 +37,18 @@ defmodule FirstmatePort.NATS.JetstreamConsumer do
     end
   end
 
-  def steer_stream, do: @steer
-  def inbound_stream, do: @inbound
-  def steer_subjects, do: @steer_subjects
-  def inbound_subjects, do: @inbound_subjects
+  defdelegate steer_stream(tenant), to: Tenancy
+  defdelegate inbound_stream(tenant), to: Tenancy
+  defdelegate steer_subjects(tenant), to: Tenancy
+  defdelegate inbound_subjects(tenant), to: Tenancy
 
-  defp subjects_for(@steer), do: @steer_subjects
-  defp subjects_for(@inbound), do: @inbound_subjects
+  defp subjects_for(name) do
+    case String.split(name, ".", parts: 2) do
+      [tenant, "steer"] -> steer_subjects(tenant)
+      [tenant, "inbound"] -> inbound_subjects(tenant)
+      _ -> []
+    end
+  end
 
   defp ensure_stream(conn, name, subjects) do
     case Stream.info(conn, name) do

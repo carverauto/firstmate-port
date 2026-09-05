@@ -1,5 +1,5 @@
 defmodule FirstmatePort.Accounts.Tenant do
-  @moduledoc "A tenant owns one Postgres schema and one NATS JetStream account."
+  @moduledoc "A tenant. Rows are attribute-scoped; JetStream streams are <slug>.steer and <slug>.inbound."
 
   import Ash.Expr
 
@@ -33,7 +33,7 @@ defmodule FirstmatePort.Accounts.Tenant do
     create :seed do
       upsert? true
       upsert_identity :unique_slug
-      accept [:slug, :name, :nats_account, :nats_user, :nats_password]
+      accept [:slug, :name]
     end
   end
 
@@ -49,25 +49,12 @@ defmodule FirstmatePort.Accounts.Tenant do
     attribute :slug, :string do
       allow_nil? false
       public? true
+      constraints min_length: 1, max_length: 63, match: ~r/^[a-z][a-z0-9-]*$/
     end
 
     attribute :name, :string do
       allow_nil? false
       public? true
-    end
-
-    attribute :nats_account, :string do
-      allow_nil? false
-      public? true
-    end
-
-    attribute :nats_user, :string do
-      allow_nil? false
-    end
-
-    attribute :nats_password, :string do
-      sensitive? true
-      allow_nil? false
     end
 
     timestamps()

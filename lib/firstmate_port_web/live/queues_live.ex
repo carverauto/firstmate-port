@@ -7,7 +7,12 @@ defmodule FirstmatePortWeb.QueuesLive do
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket) do
-      Phoenix.PubSub.subscribe(FirstmatePort.PubSub, FirstmatePort.NATS.QueueListener.topic())
+      tenant = FirstmatePort.Tenancy.slug(socket.assigns.current_user)
+
+      Phoenix.PubSub.subscribe(
+        FirstmatePort.PubSub,
+        FirstmatePort.NATS.QueueListener.topic(tenant)
+      )
     end
 
     {:ok,
@@ -31,7 +36,7 @@ defmodule FirstmatePortWeb.QueuesLive do
         <p class="meta">{if @connected, do: "NATS connected", else: "NATS not connected"}</p>
       </header>
       <p :if={@events == []} class="empty-state">
-        No queue traffic yet. Durable consumers watch firstmate.steer.&gt; and firstmate.discord.inbound.
+        No queue traffic yet. Durable consumers watch &lt;tenant&gt;.steer.&gt; and &lt;tenant&gt;.discord.inbound.
       </p>
       <ol class="rows">
         <li :for={e <- @events}>

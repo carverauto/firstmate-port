@@ -31,5 +31,5 @@ defmodule FirstmatePortWeb.CliInboxController do
     json(conn, %{data: items})
   end
 
-  defp slug(conn), do: Tenancy.schema(conn.assigns.current_user) |> String.trim_leading("t_")
+  defp slug(conn), do: Tenancy.slug(conn.assigns.current_user)
 end

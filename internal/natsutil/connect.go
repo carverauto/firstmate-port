@@ -11,7 +11,7 @@ import (
 )
 
 // Connect dials NATS. NATS_TOKEN is required against the cluster; anonymous
-// clients must not be able to publish firstmate.steer.* or firstmate.assign.*.
+// clients must not be able to publish <tenant>.steer.* or <tenant>.assign.*.
 func Connect(server, name string) (*nats.Conn, error) {
 	opts := []nats.Option{nats.Name(name)}
 	if tok := os.Getenv("NATS_TOKEN"); tok != "" {
@@ -33,8 +33,8 @@ func Replicas() int {
 }
 
 // EnsureStream creates a FileStorage stream if missing. Subjects must be unique.
-// Existing streams are left alone so we never overlap firstmate-steer and
-// captain-inbound.
+// Existing streams are left alone so we never overlap <tenant>.steer and
+// <tenant>.inbound.
 func EnsureStream(js nats.JetStreamContext, name string, subjects []string) error {
 	subjects = unique(subjects)
 	if len(subjects) == 0 {

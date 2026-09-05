@@ -23,6 +23,7 @@ defmodule FirstmatePort.Portal.NoMistakesRun do
     change_tracking_mode(:changes_only)
     store_action_name?(true)
     ignore_attributes([:inserted_at, :updated_at, :logs, :findings])
+    attributes_as_attributes([:tenant_slug])
   end
 
   events do
@@ -105,7 +106,8 @@ defmodule FirstmatePort.Portal.NoMistakesRun do
   end
 
   multitenancy do
-    strategy :context
+    strategy :attribute
+    attribute :tenant_slug
   end
 
   attributes do
@@ -183,6 +185,11 @@ defmodule FirstmatePort.Portal.NoMistakesRun do
     end
 
     attribute :respond_at, :utc_datetime_usec, public?: true
+
+    attribute :tenant_slug, :string do
+      allow_nil? false
+      public? true
+    end
 
     timestamps()
   end

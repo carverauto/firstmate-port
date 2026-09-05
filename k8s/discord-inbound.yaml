@@ -31,9 +31,9 @@ spec:
                   name: firstmate-nats
                   key: token
             - name: NATS_STREAM
-              value: captain-inbound
+              value: local.inbound
             - name: NATS_SUBJECT
-              value: firstmate.discord.inbound
+              value: local.discord.inbound
             - name: DISCORD_BOT_TOKEN
               valueFrom:
                 secretKeyRef:

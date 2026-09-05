@@ -20,6 +20,7 @@ defmodule FirstmatePort.Portal.ProgressItem do
     change_tracking_mode(:changes_only)
     store_action_name?(true)
     ignore_attributes([:inserted_at, :updated_at])
+    attributes_as_attributes([:tenant_slug])
   end
 
   events do
@@ -68,7 +69,8 @@ defmodule FirstmatePort.Portal.ProgressItem do
   end
 
   multitenancy do
-    strategy :context
+    strategy :attribute
+    attribute :tenant_slug
   end
 
   attributes do
@@ -100,6 +102,17 @@ defmodule FirstmatePort.Portal.ProgressItem do
       public? true
     end
 
+    attribute :tenant_slug, :string do
+      allow_nil? false
+      public? true
+    end
+
     timestamps()
+  end
+
+  identities do
+    identity :unique_url, [:url] do
+      where expr(url != "")
+    end
   end
 end

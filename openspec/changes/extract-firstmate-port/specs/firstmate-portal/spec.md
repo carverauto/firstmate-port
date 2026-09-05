@@ -30,10 +30,14 @@ The captain CLI SHALL be `fm-steer`. Login SHALL be RFC 8628 device-code against
 - **WHEN** an operator runs `fm-steer auth login --instance http://localhost:4000`
 - **THEN** they receive a verification URL and user code, and after browser approval the CLI stores a JWT
 
-### Requirement: Schema and JetStream account per tenant
-Each tenant SHALL have its own Postgres schema and NATS JetStream account. The API SHALL select both from the authenticated tenant. A seed tenant `local` SHALL exist. Rows and streams SHALL NOT leak across tenants.
+### Requirement: Attribute tenancy on shared Postgres and one NATS account
+Tenancy SHALL be attribute-based on a shared Postgres database and a single NATS account. Streams SHALL be named `<tenant>.whatever` (for example `acme.steer` and `acme.inbound`). The Phoenix API SHALL be the only JetStream client and the tenant wall. A seed tenant `local` SHALL exist as an example, not a compiled-in site identity. One tenant SHALL NOT see another tenant's rows, streams, or consumers.
 
 #### Scenario: Isolated inbox
 - **WHEN** two tenants put inbox items
 - **THEN** each list sees only its own items
+
+#### Scenario: Isolated rows
+- **WHEN** two tenants record portal rows
+- **THEN** each list sees only its own rows
 

@@ -2,14 +2,17 @@ defmodule FirstmatePort.NATS.JetstreamConsumerTest do
   use ExUnit.Case, async: true
 
   alias FirstmatePort.NATS.JetstreamConsumer
+  alias FirstmatePort.Tenancy
 
-  test "owned streams do not overlap and are not a firstmate.> catch-all" do
-    assert JetstreamConsumer.steer_stream() == "firstmate-steer"
-    assert JetstreamConsumer.inbound_stream() == "captain-inbound"
-    assert JetstreamConsumer.steer_subjects() == ["firstmate.steer.>"]
-    assert JetstreamConsumer.inbound_subjects() == ["firstmate.discord.inbound"]
-    refute "firstmate.>" in JetstreamConsumer.steer_subjects()
-    refute "firstmate.>" in JetstreamConsumer.inbound_subjects()
-    refute JetstreamConsumer.steer_subjects() == JetstreamConsumer.inbound_subjects()
+  test "owned streams do not overlap and are not a tenant.> catch-all" do
+    assert JetstreamConsumer.steer_stream("acme") == "acme.steer"
+    assert JetstreamConsumer.inbound_stream("acme") == "acme.inbound"
+    assert JetstreamConsumer.steer_subjects("acme") == ["acme.steer.>"]
+    assert JetstreamConsumer.inbound_subjects("acme") == ["acme.discord.inbound"]
+    refute "acme.>" in JetstreamConsumer.steer_subjects("acme")
+    refute "acme.>" in JetstreamConsumer.inbound_subjects("acme")
+    refute JetstreamConsumer.steer_subjects("acme") == JetstreamConsumer.inbound_subjects("acme")
+    refute JetstreamConsumer.steer_stream("acme") == JetstreamConsumer.steer_stream("beta")
+    assert Tenancy.steer_stream("local") == "local.steer"
   end
 end
