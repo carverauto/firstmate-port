@@ -1,6 +1,6 @@
 defmodule FirstmatePortWeb.Plugs.DiscordHostGuard do
   @moduledoc """
-  Confines the Discord interaction hostnames to `POST /interactions`.
+  Confines the public interactions hostnames to `POST /interactions`.
 
   The gateway already publishes only that path on those hostnames. This is the
   second lock: if an HTTPRoute is ever widened, or the app is reached by some
@@ -9,16 +9,16 @@ defmodule FirstmatePortWeb.Plugs.DiscordHostGuard do
   gets a bare 404 - the same answer an unrouted host gets, so the hostname
   reveals nothing about what else this deployment runs.
 
-  Inert until `:discord_host_suffix` is configured, because without it no
-  hostname is a Discord hostname and the single-tenant localhost default serves
-  everything from one host.
+  Inert until `:discord_interactions_hosts` is configured, because without it no
+  hostname is published for Discord and the single-origin localhost default
+  serves everything from one host. See `FirstmatePortWeb.DiscordHosts`.
   """
 
   @behaviour Plug
 
   import Plug.Conn
 
-  alias FirstmatePort.Tenancy.DiscordHost
+  alias FirstmatePortWeb.DiscordHosts
 
   @impl Plug
   def init(opts), do: opts
@@ -28,7 +28,7 @@ defmodule FirstmatePortWeb.Plugs.DiscordHostGuard do
 
   @impl Plug
   def call(conn, _opts) do
-    if DiscordHost.interactions_host?(conn.host) do
+    if DiscordHosts.interactions_host?(conn.host) do
       conn
       |> put_resp_content_type("text/plain")
       |> send_resp(:not_found, "not found")

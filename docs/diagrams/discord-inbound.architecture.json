@@ -27,13 +27,14 @@
         "label": "Which tenant signed this",
         "focus": [
           "controller",
+          "tenants",
           "creds"
         ],
-        "note": "The hostname names the tenant; only that tenant's key is ever read."
+        "note": "The payload's application_id names the tenant; only that tenant's key is ever read."
       },
       {
         "id": "refused",
-        "label": "What these hostnames refuse",
+        "label": "What this hostname refuses",
         "focus": [
           "gateway",
           "guard",
@@ -133,7 +134,7 @@
       "id": "controller",
       "type": "backend",
       "label": "DiscordInteractionsController",
-      "sublabel": "Host names tenant, then Ed25519",
+      "sublabel": "application_id, then Ed25519",
       "pos": [
         1090,
         240
@@ -156,6 +157,20 @@
         220,
         76
       ]
+    },
+    {
+      "id": "tenants",
+      "type": "database",
+      "label": "CNPG tenants",
+      "sublabel": "discord_application_id claim",
+      "pos": [
+        560,
+        240
+      ],
+      "size": [
+        220,
+        84
+      ]
     }
   ],
   "boundaries": [
@@ -167,13 +182,14 @@
         "guard",
         "rawbody",
         "creds",
+        "tenants",
         "controller",
         "nats"
       ]
     },
     {
       "kind": "security-group",
-      "label": "Discord hostnames: path-only",
+      "label": "Interactions hostname: path-only",
       "wraps": [
         "guard",
         "rawbody",
@@ -247,6 +263,16 @@
       "fromSide": "right",
       "toSide": "left",
       "labelDy": -34
+    },
+    {
+      "id": "tenants-to-controller",
+      "from": "tenants",
+      "to": "creds",
+      "label": "claim picks the tenant",
+      "variant": "security",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -34
     }
   ],
   "cards": [
@@ -262,8 +288,9 @@
       "dot": "violet",
       "title": "Tenant seam",
       "items": [
-        "discord-<tenant>.<suffix> names the tenant",
-        "Unknown hostname and unknown key both return a bare 401"
+        "One URL; the payload's application_id names the tenant",
+        "Unclaimed falls to the default tenant until it claims one",
+        "Unknown application and unknown key both return a bare 401"
       ]
     },
     {

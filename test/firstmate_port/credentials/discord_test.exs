@@ -89,8 +89,8 @@ defmodule FirstmatePort.Credentials.DiscordTest do
     ts = "1710000000"
     signature = sign(shared, ts, body)
 
-    # The hostname, not the key, decides who the interaction belongs to, so a
-    # duplicated key is no longer an ambiguity that takes both tenants down.
+    # The claimed application, not the key, decides who the interaction belongs
+    # to, so a duplicated key is not an ambiguity that takes both tenants down.
     assert Discord.verify?("alpha", signature, ts, body)
     assert Discord.verify?("beta", signature, ts, body)
     refute Discord.verify?("gamma", signature, ts, body)
@@ -209,5 +209,104 @@ defmodule FirstmatePort.Credentials.DiscordTest do
     refute Discord.verify?("alpha", "aa", nil, "{}")
     refute Discord.verify?("alpha", "zz", "1", "{}")
     refute Discord.verify?("alpha", String.duplicate("00", 63), "1", "{}")
+  end
+
+  describe "tenant_for/1" do
+    setup do
+      {:ok, _} = Tenant.seed(%{slug: "local", name: "local"}, authorize?: false)
+      :ok
+    end
+
+    test "a claimed application resolves to the tenant that claimed it" do
+      tenant("alpha")
+      claim("alpha", "100000000000000001")
+
+      assert {:ok, "alpha"} =
+               Discord.tenant_for(%{"application_id" => "100000000000000001"})
+    end
+
+    test "an unclaimed application is the default tenant's" do
+      tenant("alpha")
+      claim("alpha", "100000000000000001")
+
+      assert {:ok, "local"} = Discord.tenant_for(%{"application_id" => "100000000000000002"})
+      assert {:ok, "local"} = Discord.tenant_for(%{"type" => 1})
+      assert {:ok, "local"} = Discord.tenant_for(%{})
+    end
+
+    test "the default tenant's own claim does not close the fallback" do
+      claim("local", "100000000000000009")
+
+      # Nothing a payload can say resolves to no tenant, so nothing can skip
+      # verification by being shaped oddly. It is all the default tenant's key
+      # or a claiming tenant's key.
+      assert {:ok, "local"} = Discord.tenant_for(%{"application_id" => "100000000000000009"})
+      assert {:ok, "local"} = Discord.tenant_for(%{"application_id" => "100000000000000002"})
+      assert {:ok, "local"} = Discord.tenant_for(%{"type" => 1})
+    end
+
+    test "an application id that is not a snowflake never reaches a claim" do
+      tenant("alpha")
+      claim("alpha", "100000000000000001")
+
+      # Never alpha: a claim is matched exactly, so no amount of padding,
+      # trailing junk, or wrong type walks into another tenant.
+      for junk <- [
+            " 100000000000000001",
+            "100000000000000001 ",
+            "100000000000000001' OR 1=1",
+            "",
+            String.duplicate("1", 33),
+            "0x64",
+            123,
+            nil,
+            %{"$ne" => nil},
+            ["100000000000000001"]
+          ] do
+        assert {:ok, "local"} = Discord.tenant_for(%{"application_id" => junk}),
+               "#{inspect(junk)} resolved to a claiming tenant"
+      end
+    end
+
+    test "a payload that is not a map resolves to nothing" do
+      assert :error = Discord.tenant_for("{}")
+      assert :error = Discord.tenant_for(nil)
+    end
+
+    test "one application cannot be claimed by two tenants" do
+      tenant("alpha")
+      tenant("beta")
+      claim("alpha", "100000000000000001")
+
+      assert {:error, _} = claim("beta", "100000000000000001")
+      assert {:ok, "alpha"} = Discord.tenant_for(%{"application_id" => "100000000000000001"})
+    end
+
+    test "releasing a claim hands the application back" do
+      tenant("alpha")
+      claim("alpha", "100000000000000001")
+      claim("alpha", nil)
+
+      tenant("beta")
+      claim("beta", "100000000000000001")
+
+      assert {:ok, "beta"} = Discord.tenant_for(%{"application_id" => "100000000000000001"})
+    end
+
+    test "several tenants may hold no claim at once" do
+      tenant("alpha")
+      tenant("beta")
+
+      assert {:ok, _} = claim("alpha", nil)
+      assert {:ok, _} = claim("beta", nil)
+    end
+  end
+
+  defp claim(slug, application_id) do
+    {:ok, record} = Tenant.get_by_slug(slug, authorize?: false)
+
+    Tenant.claim_discord_application(record, %{discord_application_id: application_id},
+      authorize?: false
+    )
   end
 end

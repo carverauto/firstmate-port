@@ -17,6 +17,7 @@ defmodule FirstmatePortWeb.CredentialsLive do
   alias FirstmatePort.Credentials.{Credential, Errors, Slots}
   alias FirstmatePort.Fleet.Embeddings
   alias FirstmatePort.Tenancy
+  alias FirstmatePortWeb.DiscordHosts
 
   on_mount {FirstmatePortWeb.LiveUser, :require_user}
 
@@ -30,13 +31,14 @@ defmodule FirstmatePortWeb.CredentialsLive do
      socket
      |> assign(:page_title, "credentials")
      |> assign(:tenant, tenant)
-     |> assign(:interactions_url, interactions_url(tenant))
+     |> assign(:interactions_url, DiscordHosts.interactions_url())
      |> assign(:slot, default_slot())
      |> assign(:custom, @custom)
      # Bumped after every write so the browser replaces the form that was typed
      # into. That is how the secret leaves the page without entering an assign.
      |> assign(:form_version, 0)
      |> assign(:error, nil)
+     |> load_application_id()
      |> load_credentials()
      |> load_embeddings()}
   end
@@ -58,6 +60,22 @@ defmodule FirstmatePortWeb.CredentialsLive do
 
     write(socket, "#{attrs.provider}/#{attrs.key} saved", fn opts ->
       Credentials.put(attrs, opts)
+    end)
+  end
+
+  def handle_event("claim_application", %{"application_id" => application_id}, socket) do
+    claim = String.trim(application_id)
+
+    write(socket, claim_message(claim), fn opts ->
+      with {:ok, tenant} <- Tenant.get_by_slug(socket.assigns.tenant, opts) do
+        # Blank releases the claim, which is how a tenant hands its application
+        # to another one without an operator touching the database.
+        Tenant.claim_discord_application(
+          tenant,
+          %{discord_application_id: if(claim == "", do: nil, else: claim)},
+          opts
+        )
+      end
     end)
   end
 
@@ -108,6 +126,7 @@ defmodule FirstmatePortWeb.CredentialsLive do
          |> assign(:error, nil)
          |> update(:form_version, &(&1 + 1))
          |> put_flash(:info, success)
+         |> load_application_id()
          |> load_credentials()
          |> load_embeddings()}
     end
@@ -138,6 +157,19 @@ defmodule FirstmatePortWeb.CredentialsLive do
   end
 
   defp embedding_summary({:ready, model}), do: "On, using #{model}."
+
+  defp claim_message(""), do: "Discord application released"
+  defp claim_message(_claim), do: "Discord application claimed"
+
+  defp load_application_id(socket) do
+    case Tenant.get_by_slug(socket.assigns.tenant, opts(socket)) do
+      {:ok, %Tenant{discord_application_id: application_id}} ->
+        assign(socket, :application_id, application_id)
+
+      _ ->
+        assign(socket, :application_id, nil)
+    end
+  end
 
   defp load_credentials(socket) do
     case Credential.list(opts(socket)) do
@@ -177,14 +209,6 @@ defmodule FirstmatePortWeb.CredentialsLive do
     end
   end
 
-  # Nil on a single-tenant deployment, which has no per-tenant hostname to name.
-  defp interactions_url(tenant) do
-    case FirstmatePort.Tenancy.DiscordHost.hostname(tenant) do
-      nil -> nil
-      hostname -> "https://#{hostname}/interactions"
-    end
-  end
-
   defp shown(%{hint: ""} = credential), do: "#{credential.value_bytes} bytes"
   defp shown(credential), do: "ends #{credential.hint} - #{credential.value_bytes} bytes"
 
@@ -199,12 +223,41 @@ defmodule FirstmatePortWeb.CredentialsLive do
           never shown again.
         </p>
         <p :if={@interactions_url} class="meta">
-          Discord interactions URL for this tenant: <span class="kind">{@interactions_url}</span>. Paste it into the Discord developer
-          portal; only a key stored here verifies requests to it.
+          Discord interactions URL: <span class="kind">{@interactions_url}</span>. Paste it into the Discord developer portal; only a key stored here verifies requests to it.
         </p>
       </header>
 
       <p :if={@error} class="empty-copy" role="alert">{@error}</p>
+
+      <section class="plate">
+        <h2>Discord application</h2>
+        <p class="hint">
+          The application id from the Discord developer portal, so interactions for that
+          application are verified with this tenant's <span class="kind">discord/public_key</span>
+          and published for this tenant. Not a secret - Discord sends it in every interaction.
+          Leave it blank on a deployment that answers for a single application.
+        </p>
+        <form
+          id={"discord-application-#{@form_version}"}
+          phx-submit="claim_application"
+          class="axi-form"
+        >
+          <label>
+            Application id
+            <input
+              type="text"
+              name="application_id"
+              autocomplete="off"
+              spellcheck="false"
+              inputmode="numeric"
+              maxlength="32"
+              placeholder="1234567890123456789"
+              value={@application_id}
+            />
+          </label>
+          <button type="submit" class="btn btn-quiet">Save</button>
+        </form>
+      </section>
 
       <section class="plate">
         <h2>Add or replace</h2>

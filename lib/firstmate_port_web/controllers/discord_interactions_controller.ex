@@ -4,14 +4,13 @@ defmodule FirstmatePortWeb.DiscordInteractionsController do
   publishes command payloads onto `<tenant>.discord.inbound` through the app's
   Gnat client. This Phoenix service is the only JetStream client.
 
-  Discord sends no tenant context, so the hostname it posted to carries it: each
-  tenant is given its own `discord-<tenant>` hostname and the request is checked
-  against that tenant's stored `discord`/`public_key` and no one else's. See
-  `FirstmatePort.Tenancy.DiscordHost` for the mapping and
-  `FirstmatePort.Credentials.Discord` for verification. A hostname that names no
-  tenant, and a tenant with no stored key, are both plain 401s: the response
-  says nothing about which of the two it was, so the endpoint cannot be used to
-  enumerate tenants.
+  One URL serves every tenant. The interaction payload names the Discord
+  application it is for, and the tenant that claimed that application is the one
+  whose stored `discord`/`public_key` the request is checked against - see
+  `FirstmatePort.Credentials.Discord`. An application no tenant answers for, and
+  a tenant with no stored key, are both plain 401s: the response says nothing
+  about which of the two it was, so the endpoint cannot be used to enumerate
+  tenants or applications.
 
   Tenants store their key through the portal UI or API; environment keys are not
   accepted.
@@ -22,7 +21,6 @@ defmodule FirstmatePortWeb.DiscordInteractionsController do
   require Logger
 
   alias FirstmatePort.Credentials.Discord
-  alias FirstmatePort.Tenancy.DiscordHost
 
   # Discord interactions are a few KB; the cap is what a forged request can cost
   # us before the signature is even considered.
@@ -51,7 +49,7 @@ defmodule FirstmatePortWeb.DiscordInteractionsController do
   end
 
   defp authorize(conn, params, raw, signature, timestamp) do
-    with {:ok, tenant} <- DiscordHost.tenant(conn.host),
+    with {:ok, tenant} <- Discord.tenant_for(params),
          true <- Discord.verify?(tenant, signature, timestamp, raw) do
       dispatch(conn, params, tenant, raw)
     else

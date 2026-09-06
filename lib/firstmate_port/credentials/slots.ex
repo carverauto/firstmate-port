@@ -18,7 +18,7 @@ defmodule FirstmatePort.Credentials.Slots do
       label: "Discord interactions public key",
       format: :hex64,
       about:
-        "Ed25519 public key from the Discord developer portal. The portal verifies POST /interactions with it, on the interactions hostname belonging to this tenant."
+        "Ed25519 public key from the Discord developer portal. Every interaction for this tenant's Discord application is verified with it before anything is published."
     },
     %{
       provider: "discord",
@@ -26,13 +26,6 @@ defmodule FirstmatePort.Credentials.Slots do
       label: "Discord bot token",
       format: :opaque,
       about: "Used for outbound Discord calls. Never sent to the browser once stored."
-    },
-    %{
-      provider: "discord",
-      key: "application_id",
-      label: "Discord application id",
-      format: :digits,
-      about: "The Discord application snowflake. Handy for operators; not used for verification."
     },
     %{
       provider: "github",
@@ -127,14 +120,6 @@ defmodule FirstmatePort.Credentials.Slots do
       :ok
     else
       {:error, "must be a GitHub name"}
-    end
-  end
-
-  defp validate_format(:digits, value) do
-    if Regex.match?(~r/^[0-9]{1,32}$/, value) do
-      :ok
-    else
-      {:error, "must be digits only"}
     end
   end
 
