@@ -28,13 +28,24 @@ func Run(args []string) int {
 		return CmdAuth(args[1:])
 	case "inbox":
 		return CmdInbox(args[1:])
+	case "progress":
+		cmdProgress(args[1:])
+	case "rolls":
+		cmdRolls(args[1:])
+	case "diagrams":
+		cmdDiagrams(args[1:])
+	case "no-mistakes":
+		cmdNoMistakes(args[1:])
 	default:
 		return Usage()
 	}
+	return 0
 }
 
 // Usage prints the CLI synopsis and returns the conventional exit code 2.
 func Usage() int {
 	fmt.Fprintf(os.Stderr, "usage: fm-steer auth login|status|logout | inbox put|next|ack|list\n")
+	fmt.Fprintf(os.Stderr, "       fm-steer progress|rolls|diagrams|no-mistakes post|list\n")
+	fmt.Fprintf(os.Stderr, "ingest writes require an agent role: set %s to an agent API token.\n", AgentTokenEnv)
 	return 2
 }

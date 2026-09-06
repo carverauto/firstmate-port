@@ -46,6 +46,17 @@ fm-steer inbox ack --ack <ack-from-next>
 fm-steer inbox list
 ```
 
+Fleet log ingest posts (`progress|rolls|diagrams|no-mistakes post|list`) need an
+agent role, so they read the agent API token from `FIRSTMATE_AGENT_TOKEN`
+(env only; the CLI never prints or stores it) instead of the device-code user
+JWT:
+
+```sh
+FIRSTMATE_AGENT_TOKEN="$(cat /run/secrets/agent-token)" \
+  fm-steer rolls post --cluster c1 --namespace n1 \
+  --status success --image-tag sha-abc123
+```
+
 Postgres and NATS JetStream (single node, one account) are in the compose file. Streams are named `<tenant>.steer` and `<tenant>.inbound`. The Kubernetes NATS shape is a 3-node cluster (headless service, port 6222, PVCs, durable streams).
 
 To run Mix against compose Postgres/NATS only:

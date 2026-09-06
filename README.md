@@ -33,6 +33,14 @@ Prefix every `npm` invocation with `sfw`.
 
 `fm-steer` (Go) authenticates with RFC 8628 device-code against this API and drives inbox put/next/ack/list over HTTP. It does not dial NATS. JWT is stored at `$XDG_CONFIG_HOME/fm-steer/credentials.json` (mode 0600).
 
+Fleet log ingest (`progress|rolls|diagrams|no-mistakes post|list`, e.g.
+`fm-steer rolls post --cluster c1 --namespace n1 --status success --image-tag sha-abc`)
+reads `POST|GET /api/progress|rolls|diagrams|no-mistakes`. Listing works with a
+logged-in user; writes require an agent role, so posts take an agent API token
+from `FIRSTMATE_AGENT_TOKEN` (env only, never printed or stored). When neither
+`--instance`, `FIRSTMATE_INSTANCE`, nor stored credentials name a host, the CLI
+targets `https://firstmate.carverauto.dev`.
+
 Install from source (Go 1.25+):
 
 ```sh
@@ -47,6 +55,6 @@ amd64/arm64) plus `SHA256SUMS` on the GitHub Release.
 ## Layout
 
 - `lib/` Phoenix/Ash portal
-- `cmd/fm-steer` HTTP inbox CLI (device-code; does not dial NATS)
+- `cmd/fm-steer` HTTP inbox + Fleet log ingest CLI (device-code; does not dial NATS)
 - `k8s/` portal + 3-node NATS + CNPG (Discord interactions are served by Phoenix at `/interactions`; no sidecars)
 - `docker-compose.yml` portal + Postgres + single-node JetStream

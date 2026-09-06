@@ -107,6 +107,10 @@ spec:
                   name: github-token
                   key: GITHUB_TOKEN
                   optional: true
+            # Optional: org(s) for the GitHub PR/issue poll. Overlays set this
+            # (e.g. carverauto); comma-separated values poll each org.
+            # - name: GITHUB_ORG
+            #   value: ""
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
