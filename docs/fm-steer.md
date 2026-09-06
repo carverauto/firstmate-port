@@ -98,8 +98,8 @@ Two things:
 EOF
 ```
 
-Items carry `schema=fm-task-inbox.v1` with `at`, `task`, `seq`, `body`,
-`delivery`, `ack`, and `tenant`. `next` marks the item delivered-but-unacked: it
+See [the inbox payload reference](inbox.md#what-the-payload-looks-like) for the
+returned message fields. `next` marks the item delivered-but-unacked: it
 stays in `list` until it is acked, but `next` will not hand it out a second
 time, so record the `ack` token when you take one.
 
