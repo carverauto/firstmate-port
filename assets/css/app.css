@@ -1622,6 +1622,10 @@ table.data-table .num {
 }
 
 .site-footer a {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 /* Queues look-in: a wide row of facts per worker, scrollable rather than
    wrapped so a long task name never squeezes the token and timing columns. */
 .queue-scroll {
