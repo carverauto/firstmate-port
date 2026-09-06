@@ -3,9 +3,8 @@ defmodule FirstmatePortWeb.SessionsLive do
   Which `fm-steer` logins can currently act as you, and the button that ends one.
 
   A device-code grant leaves a long-lived token in a file on some machine. This
-  page is where that stops being invisible: every session shows where it was
-  approved from and when it was last used, and revoking one takes effect on that
-  token's next request rather than whenever it would have expired.
+  page exposes the session metadata and revocation controls described in
+  `docs/deploy.md#local`.
   """
 
   use FirstmatePortWeb, :live_view

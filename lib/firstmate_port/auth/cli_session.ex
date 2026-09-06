@@ -107,7 +107,7 @@ defmodule FirstmatePort.Auth.CliSession do
       default ""
       allow_nil? false
       public? true
-      description "The portal URL the CLI was told to remember."
+      description "The server's configured public portal URL when the session was issued."
       constraints max_length: 500, allow_empty?: true
     end
 
