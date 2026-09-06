@@ -108,6 +108,12 @@ defmodule FirstmatePort.Queues.Entry do
   def merge(%__MODULE__{} = prior, %__MODULE__{} = update) do
     at = update.updated_at || DateTime.utc_now()
 
+    prior = %{
+      prior
+      | tokens_in: high_water(prior.tokens_in, update.tokens_in),
+        tokens_out: high_water(prior.tokens_out, update.tokens_out)
+    }
+
     if DateTime.compare(at, prior.updated_at) == :lt do
       prior
     else
@@ -119,8 +125,6 @@ defmodule FirstmatePort.Queues.Entry do
           effort: update.effort || prior.effort,
           summary: update.summary || prior.summary,
           status: update.status || prior.status,
-          tokens_in: high_water(prior.tokens_in, update.tokens_in),
-          tokens_out: high_water(prior.tokens_out, update.tokens_out),
           started_at: update.started_at || prior.started_at,
           stopped_at: update.stopped_at || prior.stopped_at,
           updated_at: at

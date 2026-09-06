@@ -135,6 +135,45 @@ defmodule FirstmatePort.QueuesTest do
     refute_receive {:queue_entry, _}, 50
   end
 
+  test "older snapshots contribute tokens while newer state wins", ctx do
+    {:ok, done} =
+      Tracker.track(ctx.name, ctx.tenant, %{
+        "task" => "t1",
+        "status" => "done",
+        "worker" => "new",
+        "updated_at" => "2026-09-05T10:01:00Z"
+      })
+
+    Phoenix.PubSub.subscribe(FirstmatePort.PubSub, Tracker.topic(ctx.tenant))
+
+    {:ok, merged} =
+      Tracker.track(ctx.name, ctx.tenant, %{
+        "task" => "t1",
+        "status" => "working",
+        "worker" => "old",
+        "tokens_in" => 100,
+        "tokens_out" => 50,
+        "updated_at" => "2026-09-05T10:00:00Z"
+      })
+
+    assert merged == %{done | tokens_in: 100, tokens_out: 50}
+    assert_receive {:queue_entry, ^merged}
+    assert {:ok, ^merged} = Tracker.track(ctx.name, ctx.tenant, Entry.to_map(merged))
+    refute_receive {:queue_entry, _}, 50
+
+    {:ok, newer} =
+      Tracker.track(ctx.name, ctx.tenant, %{
+        "task" => "t1",
+        "tokens_in" => 0,
+        "tokens_out" => 10,
+        "updated_at" => "2026-09-05T10:02:00Z"
+      })
+
+    assert newer.tokens_in == 100
+    assert newer.tokens_out == 50
+    assert newer.status == :done
+  end
+
   test "wrong field types return errors without losing tenant entries", ctx do
     {:ok, prior} = Tracker.track(ctx.name, ctx.tenant, %{"task" => "saved"})
     other = ctx.tenant <> "-other"

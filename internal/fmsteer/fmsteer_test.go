@@ -439,3 +439,26 @@ func TestGetJSONRejectsMalformedErrorResponse(t *testing.T) {
 		t.Fatalf("GetJSONStatus returned status %d, error %v", status, err)
 	}
 }
+
+func TestGetJSONRejectsEmptyResponse(t *testing.T) {
+	for _, code := range []int{http.StatusOK, http.StatusBadGateway} {
+		t.Run(http.StatusText(code), func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(code)
+			}))
+			defer srv.Close()
+
+			var out map[string]any
+			if err := GetJSON(srv.URL, "", &out); err == nil {
+				t.Fatal("GetJSON accepted an empty document")
+			}
+			status, err := GetJSONStatus(srv.URL, "", &out)
+			if status != code || err == nil {
+				t.Fatalf("GetJSONStatus returned status %d, error %v", status, err)
+			}
+			if _, err := GetJSONStatus(srv.URL, "", nil); err != nil {
+				t.Fatalf("GET without an output document returned %v", err)
+			}
+		})
+	}
+}
