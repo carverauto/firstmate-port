@@ -261,6 +261,16 @@ defmodule FirstmatePort.RouterTest do
     assert escalated.model == "claude-opus-5"
   end
 
+  test "an escalated task keeps the claude base model, not the cheap one" do
+    got = Router.route("fix the failing test using the latest elixir release notes")
+
+    assert got.harness == "claude"
+    assert got.effort == "medium"
+    assert got.model == "claude-sonnet-5"
+
+    assert Enum.any?(got.reasons, &String.contains?(&1, "no lane satisfies every constraint"))
+  end
+
   test "no model the matrix declares is unreachable, and no route needs an undeclared one" do
     levels = [:low, :medium, :high]
 

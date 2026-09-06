@@ -24,13 +24,13 @@ landing page at `/steer`:
 
 - `/steer/docs/fm-steer` CLI: auth, inbox, route, usage
 - `/steer/docs/routing` task router: axes, matrix, intel, evals
-- `/steer/docs/usage` token usage ledger: accounts, runway, sync
+- `/steer/docs/usage` token usage ledger: accounts, runway, readings
 
 Run `mix phx.server` and open <http://localhost:4000/steer/docs>.
 
 Prefix every `npm` invocation with `sfw`.
 
-CLI: `fm-steer` authenticates with RFC 8628 device-code against this API and drives inbox put/next/ack/list, `route "<task>"` (portal picks harness/model/effort plus why), and `usage [--sync]` (per-account token counters) over HTTP. It does not dial NATS. JWT is stored at `$XDG_CONFIG_HOME/fm-steer/credentials.json` (mode 0600).
+CLI: `fm-steer` authenticates with RFC 8628 device-code against this API and drives inbox put/next/ack/list, `route "<task>"` (portal picks harness/model/effort plus why), and `usage` (per-account token counters) over HTTP. It does not dial NATS. JWT is stored at `$XDG_CONFIG_HOME/fm-steer/credentials.json` (mode 0600).
 
 ## Layout
 

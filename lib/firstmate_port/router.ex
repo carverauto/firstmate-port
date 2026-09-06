@@ -115,8 +115,8 @@ defmodule FirstmatePort.Router do
 
   defp matrix_route(axes, intel) do
     lanes = Matrix.lanes()
-    {lane, reasons} = pick_lane(lanes, axes)
-    effort = effort_for(lane, axes)
+    {lane, reasons, pick} = pick_lane(lanes, axes)
+    effort = effort_for(lane, axes, pick)
     {model, model_source, model_reasons} = ProviderIntel.select_model(lane.harness, effort, intel)
 
     answer(
@@ -154,10 +154,12 @@ defmodule FirstmatePort.Router do
     case survivors do
       [] ->
         {Matrix.lane("claude"),
-         reasons ++ ["no lane satisfies every constraint; escalated to claude for human triage"]}
+         reasons ++ ["no lane satisfies every constraint; escalated to claude for human triage"],
+         :escalated}
 
       [only] ->
-        {only, ["#{only.harness} is the only lane satisfying #{summarize_axes(axes)}"] ++ reasons}
+        {only, ["#{only.harness} is the only lane satisfying #{summarize_axes(axes)}"] ++ reasons,
+         :survivor}
 
       many ->
         best = Enum.min_by(many, &{&1.cost, &1.latency, -&1.quality})
@@ -166,7 +168,7 @@ defmodule FirstmatePort.Router do
          [
            "#{best.harness} wins on expected quality x cost x latency " <>
              "among #{Enum.map_join(many, ", ", & &1.harness)}"
-         ] ++ reasons}
+         ] ++ reasons, :survivor}
     end
   end
 
@@ -206,10 +208,13 @@ defmodule FirstmatePort.Router do
   defp level_rank(:medium), do: 1
   defp level_rank(:high), do: 2
 
-  # Nothing hard about the task means the lane can run at its floor: a
-  # question that lands in claude only because it needs citations should
-  # not pay for the top model. Escalation is unchanged.
-  defp effort_for(lane, axes) do
+  # A lane the task genuinely qualifies for can run at its floor when
+  # nothing about the task is hard: a question that lands in claude only
+  # because it needs citations should not pay for the top model. An
+  # escalation is different — no lane could satisfy the task, which is not
+  # evidence it is cheap — so it keeps the lane's base effort. Raising
+  # effort is unchanged either way.
+  defp effort_for(lane, axes, pick \\ :survivor) do
     bump =
       cond do
         axes.blast_radius == :high -> 2
@@ -217,7 +222,9 @@ defmodule FirstmatePort.Router do
         true -> 0
       end
 
-    floor = if all_low?(axes), do: lane.min_effort, else: lane.base_effort
+    floor =
+      if pick == :survivor and all_low?(axes), do: lane.min_effort, else: lane.base_effort
+
     base = Enum.find_index(@efforts, &(&1 == floor)) || 1
 
     Enum.at(@efforts, min(base + bump, length(@efforts) - 1))
