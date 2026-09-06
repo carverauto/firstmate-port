@@ -19,6 +19,9 @@ Everything else about firstmate is unchanged: spawning, supervision, status file
 worktrees, briefs, no-mistakes, merges. This is a transport swap, not a new
 architecture.
 
+The portal inbox is in memory. A portal restart loses pending and unacked items;
+there is no automatic redelivery or restoration.
+
 ## Preconditions
 
 - A firstmate-port instance you can reach, and its URL.
@@ -44,7 +47,8 @@ from every command.
 | crewmate reads it | list `state/<id>.inbox/*.msg` | `fm-steer inbox next --task <task-id>` |
 | crewmate acknowledges | `mv state/<id>.inbox/NNN.msg .../handled/` | `fm-steer inbox ack --ack <token>` |
 | crewmate → firstmate | `state/<id>.status` line | unchanged - status files stay on disk |
-| firstmate ↔ second mate | same on-disk record | `fm-steer inbox put --task <secondmate-id>`, replies under key `firstmate` |
+| captain → liaison → firstmate | same on-disk record | orders under `firstmate`; liaison relays through its parent channel |
+| firstmate / liaison → captain | same on-disk record | `fm-steer inbox put --task captain`; only captain reads and acknowledges |
 
 Status files are deliberately not moved. A `state/<id>.status` line is a wake event
 that firstmate's watcher reads locally; it is not a message, and routing it through
@@ -71,16 +75,15 @@ heredoc sends exactly the text written.
 
 `put` prints the stored item as JSON, including the `ack` token the worker will need.
 A non-zero exit means **the steer did not happen**. Do not carry on as though it
-landed: say so in one line, send that one message with `bin/fm-send.sh <task-id>`
-instead, and tell the captain the portal is unreachable.
+landed: report the failed delivery and stop. Never fall back to `bin/fm-send.sh`
+or the on-disk inbox for the order.
 
 ### Ringing
 
 `fm-steer inbox put` writes to the portal. It does not touch the crewmate's terminal.
 Stock `bin/fm-send.sh` did both, so this is the one capability the swap costs.
 
-When the captain's standing block says **Ring after put: yes**, follow a successful
-put with one constant doorbell line:
+After every successful crew put, send one constant doorbell line:
 
 ```sh
 bin/fm-send.sh <task-id> 'portal instruction waiting: fm-steer inbox next --task <task-id>'
@@ -89,10 +92,6 @@ bin/fm-send.sh <task-id> 'portal instruction waiting: fm-steer inbox next --task
 That record is a doorbell, never the orders. It carries no instruction text, the
 crewmate clears it with the stock `handled/` move, and firstmate's re-ring and
 stuck-crewmate ladders keep working unchanged.
-
-When the block says **Ring after put: no**, nothing wakes the crewmate. It takes the
-steer at its next natural checkpoint rather than immediately. That is a real delay -
-say so when a steer is time-critical.
 
 ## Dispatching with a portal brief
 
@@ -153,8 +152,11 @@ fm-port-steer-skill: PR https://github.com/<owner>/<repo>/pull/123 is up, checks
 FMSTEER
 ```
 
-Firstmate drains that key with `fm-steer inbox next --task firstmate` when a session
-runs and the captain asks. Nothing polls on its own. The portal inbox is not a pager.
+Without a liaison, firstmate drains that key with `fm-steer inbox next --task firstmate` when a session
+runs and the captain asks. With a liaison, only the liaison drains it and relays
+through its parent channel. Captain-facing notices instead use
+`fm-steer inbox put --task captain`; only the captain reads and acknowledges that
+key. Nothing polls on its own. The portal inbox is not a pager.
 
 ## Optional: the portal liaison second mate
 
@@ -165,8 +167,11 @@ with its own isolated `FM_HOME` - given one narrow charter: **carry orders from 
 portal to the first mate, and carry completion notices back**. It exists so the portal
 channel has an owner that is never mid-turn on fleet work.
 
-**It may:** drain the `firstmate` key, hand each order to the first mate, and put
-completion and status notices back on the portal.
+**It may:** exclusively drain the `firstmate` key, hand each order to the first mate
+through its parent channel, and put completion and status notices under `captain`.
+While it is enabled, firstmate does not also drain `firstmate`. Only the captain
+reads `captain` with `fm-steer inbox next --task captain` and acknowledges after
+reading; the liaison never consumes its own outbound notices.
 
 **It may not:** run the fleet, dispatch or spawn crewmates, take project work, or
 merge anything. An order it cannot relay goes back to the captain as a notice; it is
@@ -239,8 +244,7 @@ That removes, and nothing else:
 1. the marker block from `$FM_HOME/data/captain.md` - the file is left byte-identical
    outside the markers, and is deleted only if the block was its entire content;
 2. `$FM_HOME/data/portal-steering/` - this skill, the charter, and the recorded
-   settings. A file you added there is not deleted; the directory is left with it;
-3. the copy under `--skills-dir`, when one was installed there.
+   settings. A file you added there is not deleted; the directory is left with it.
 
 Then, by hand:
 
@@ -271,7 +275,7 @@ them, and they can be drained or ignored.
 | `inbox next` exits 1 silently | Nothing pending; the normal empty case |
 | `acked` but the item is still in `list` | The portal rejected the token; `ack` exits 0 anyway |
 | Connection refused | Wrong `--instance`/`FIRSTMATE_INSTANCE`, or the portal is not up |
-| A crewmate never picks up a steer | Ringing is off, or the ring was not sent - it is waiting for its next checkpoint |
+| A crewmate never picks up a steer | The ring was not sent - it is waiting for its next checkpoint |
 | `/updatefirstmate` reports a home skipped as dirty | Something was installed inside the firstmate checkout outside `data/`; move it under `data/` |
 
 Never hand `fm-steer` a NATS URL, NATS credentials, or a token on a command line. It

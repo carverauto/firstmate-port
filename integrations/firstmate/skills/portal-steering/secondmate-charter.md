@@ -23,10 +23,13 @@ portal inbox reached with `fm-steer`.
   delivered, and confirm with `fm-steer inbox list --task firstmate` that it is gone -
   `ack` prints `acked` and exits 0 even when the portal rejected the token.
 - Carry completion notices, status, and questions back the other way: put them on the
-  portal so the captain sees them away from the fleet host.
+  portal under `captain`. Only the captain consumes that key with
+  `fm-steer inbox next --task captain` and acknowledges after reading. Never drain
+  it yourself. The captain writes inbound orders under `firstmate`; while you are
+  enabled, only you consume `firstmate`, then relay through the parent channel.
 
   ```sh
-  fm-steer inbox put <<'FMSTEER'
+  fm-steer inbox put --task captain <<'FMSTEER'
   <the notice, verbatim>
   FMSTEER
   ```
@@ -49,7 +52,12 @@ portal inbox reached with `fm-steer`.
 
 A failing `fm-steer` call is a message that did not move. Say so plainly on your
 status file, stop using the portal plane, and wait. Do not fall back to steering the
-fleet yourself, and do not resend blindly - an item taken with `next` and never acked
-is still on the portal and will be handed back after the outage.
+fleet yourself or to the on-disk inbox. Retain each taken item's body and ack token.
+`next` marks it unacked and will not hand it back. After connectivity returns,
+recover from the retained item or `fm-steer inbox list --task firstmate`. Confirm
+whether the first mate already received that item before retrying the relay;
+acknowledge only after confirmed relay. If receipt is uncertain, ask the captain
+instead of resending or acknowledging blindly. The inbox is in memory: a portal
+restart loses pending and unacked items, with no automatic restoration.
 
 You are idle by default. An empty portal inbox is a healthy portal inbox.

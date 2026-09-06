@@ -36,6 +36,21 @@ session's startup digest, and it stays short because that digest has a budget.
 The **skill** is the long form - exact recipes, the brief section text, the
 liaison charter, troubleshooting - read when it is actually needed.
 
+The portal inbox is in memory: restarting the portal loses pending and unacked
+items, with no automatic restoration. Failed puts must be reported and stopped;
+orders never fall back to disk. Every successful crew put gets the ordinary
+`fm-send.sh` doorbell, carrying no order body.
+
+## Migrate from the old mirror prompt
+
+Before installing, edit `$FM_HOME/data/captain.md` and remove the previously
+imported `## Portal mirror (fm-steer)` section from `docs/fm-steer.md`, including
+all its bullets and nested command example. Also remove its optional companion
+block beginning "When I ask you to check the portal" through its final ack
+confirmation bullet. Preserve unrelated captain preferences. These old blocks
+have no installer markers, so the installer cannot remove them for you. The new
+portal-steering block must be the only live-delivery rule.
+
 ## Install
 
 You need `fm-steer` on PATH and a portal to point at:
@@ -62,14 +77,12 @@ Options:
 | Flag | Effect |
 | --- | --- |
 | `--instance <url>` | Your portal. Required on the first install; remembered after that |
-| `--ring yes\|no` | Whether firstmate rings a crewmate's terminal after a portal put (default `yes`) |
 | `--secondmate <id>` / `--no-secondmate` | Record which second mate owns the portal channel (default: none) |
-| `--skills-dir <abs dir>` | Also copy the skill into a harness skills directory |
 
 `install.sh status` prints what is installed and what it is set to.
 
 Prefer to do it by hand? Copy `captain-block.md.tmpl` into `$FM_HOME/data/captain.md`
-and replace `@@INSTANCE@@`, `@@RING@@`, and `@@SECONDMATE@@`. Keep the two HTML
+and replace `@@INSTANCE@@` and `@@SECONDMATE@@`. Keep the two HTML
 comment markers exactly as they are - they are what makes a later install or
 uninstall replace the block instead of stacking another one.
 
@@ -89,9 +102,7 @@ is - it is firstmate's own skill directory, but it is tracked. An untracked
 directory there makes the checkout dirty, and firstmate's fast-forward
 self-update skips a dirty home, so that home would quietly stop updating
 forever. `install.sh` refuses to install into a checkout where `data/` is not
-gitignored, for the same reason. `--skills-dir` is the escape hatch for a
-harness skills directory that lives outside the checkout, such as
-`~/.claude/skills`.
+gitignored, for the same reason.
 
 ## What changes, in one table
 
@@ -120,7 +131,13 @@ report with its own isolated `FM_HOME` - given one narrow job: carry orders from
 the portal to the first mate, and carry completion notices back. It exists so
 the portal channel has an owner that is never mid-turn on fleet work.
 
-It **may** drain the portal, hand orders to the first mate, and put notices back.
+It **may** drain inbound orders under `firstmate`, relay through its parent
+channel, and put notices under `captain`. While enabled, the liaison alone reads
+`firstmate`; otherwise firstmate reads it. The captain writes orders with
+`fm-steer inbox put --task firstmate`, reads notices with
+`fm-steer inbox next --task captain`, and acknowledges after reading. Neither
+firstmate nor the liaison consumes `captain`. Crew continue using their work item
+keys.
 
 It **may not** run the fleet, dispatch or spawn crewmates, take project work, or
 merge anything. An order it cannot relay goes back to the captain as a notice.
@@ -161,13 +178,13 @@ leaves the file byte-identical to installing once.
 integrations/firstmate/install.sh uninstall --fm-home "$FM_HOME"
 ```
 
-That removes exactly three things:
+That removes exactly two things:
 
 1. the marker block from `$FM_HOME/data/captain.md`, leaving the rest of the
    file byte-identical to what it was before install (and deleting the file only
    if the block was its entire content);
-2. `$FM_HOME/data/portal-steering/` - the skill, the charter, and the settings;
-3. the copy under `--skills-dir`, if one was installed there.
+2. `$FM_HOME/data/portal-steering/` - the skill, the charter, and the settings.
+   Operator-added files and the directory holding them remain.
 
 Then, by hand:
 

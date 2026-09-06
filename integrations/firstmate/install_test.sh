@@ -81,27 +81,23 @@ check "" "$(git -C "$HOME1" status --porcelain)" "the firstmate checkout stays c
 
 # -- changing a setting replaces in place ------------------------------------
 
-"$INSTALL" install --fm-home "$HOME1" --instance "$INSTANCE" --ring no --secondmate portal-liaison >/dev/null
+"$INSTALL" install --fm-home "$HOME1" --instance "$INSTANCE" --secondmate portal-liaison >/dev/null
 check 1 "$(blocks_in "$HOME1/data/captain.md")" "changing settings still leaves one block"
-if grep -q 'Ring after put: no\.' "$HOME1/data/captain.md"; then
-  ok "--ring no is rendered into the block"
-else
-  bad "--ring no was not rendered"
-fi
 if grep -q 'which owns the portal channel' "$HOME1/data/captain.md"; then
   ok "--secondmate is rendered into the block"
 else
   bad "--secondmate was not rendered"
 fi
-if grep -q 'Ring after put: yes\.' "$HOME1/data/captain.md"; then
-  bad "the superseded ring setting is still in the block"
-else
-  ok "the superseded ring setting is gone, not stacked"
-fi
 
 # Omitted flags keep the recorded settings rather than resetting them.
+cp "$HOME1/data/portal-steering/settings.env" "$WORK/settings.before"
 "$INSTALL" install --fm-home "$HOME1" >/dev/null
-if grep -q 'Ring after put: no\.' "$HOME1/data/captain.md" &&
+if cmp -s "$WORK/settings.before" "$HOME1/data/portal-steering/settings.env"; then
+  ok "a bare re-run preserves persisted settings"
+else
+  bad "a bare re-run changed persisted settings"
+fi
+if grep -q 'which owns the portal channel' "$HOME1/data/captain.md" &&
    grep -Fq "$INSTANCE" "$HOME1/data/captain.md"; then
   ok "a bare re-run keeps the recorded settings"
 else
@@ -171,20 +167,27 @@ if "$INSTALL" install --fm-home "$HOME4" >/dev/null 2>&1; then
 else
   ok "refuses to install without an instance"
 fi
-if "$INSTALL" install --fm-home "$HOME4" --instance "$INSTANCE" --ring maybe >/dev/null 2>&1; then
-  bad "accepted a ring value other than yes/no"
+if "$INSTALL" install --fm-home "$HOME4" --instance "$INSTANCE" --ring no >/dev/null 2>&1; then
+  bad "accepted the removed --ring option"
 else
-  ok "refuses a ring value other than yes/no"
+  ok "refuses the removed --ring option"
 fi
 if "$INSTALL" install --fm-home "$HOME4" --instance "$INSTANCE" --secondmate 'a b/c' >/dev/null 2>&1; then
   bad "accepted a second mate id with a path separator"
 else
   ok "refuses a second mate id that is not a task id"
 fi
-if "$INSTALL" install --fm-home "$HOME4" --instance "$INSTANCE" --skills-dir 'relative/dir' >/dev/null 2>&1; then
-  bad "accepted a relative --skills-dir"
+if "$INSTALL" install --fm-home "$HOME4" --instance "$INSTANCE" --skills-dir "$WORK/extra-skills" >/dev/null 2>&1; then
+  bad "accepted the removed --skills-dir option"
 else
-  ok "refuses a relative --skills-dir"
+  ok "refuses the removed --skills-dir option"
+fi
+
+if [ ! -e "$HOME4/data/captain.md" ] &&
+   [ ! -e "$HOME4/data/portal-steering" ] && [ ! -e "$WORK/extra-skills" ]; then
+  ok "rejected options leave no installation files"
+else
+  bad "rejected options wrote installation files"
 fi
 
 # A second block, however it got there, is a refusal rather than a guess.
@@ -202,34 +205,28 @@ check 2 "$(blocks_in "$HOME5/data/captain.md")" "the refusal changed nothing"
 # -- removal never touches a directory this installer did not write -----------
 
 HOME6=$(new_home home6)
-HARNESS="$WORK/harness-skills"
-"$INSTALL" install --fm-home "$HOME6" --instance "$INSTANCE" --skills-dir "$HARNESS" >/dev/null
-if [ -f "$HARNESS/portal-steering/SKILL.md" ]; then
-  ok "--skills-dir gets a harness copy"
-else
-  bad "--skills-dir did not get a harness copy"
-fi
-printf 'my own notes\n' > "$HARNESS/portal-steering/NOTES.md"
+"$INSTALL" install --fm-home "$HOME6" --instance "$INSTANCE" >/dev/null
+OWNED="$HOME6/data/portal-steering"
+printf 'my own notes\n' > "$OWNED/NOTES.md"
 "$INSTALL" uninstall --fm-home "$HOME6" >/dev/null
-if [ -f "$HARNESS/portal-steering/NOTES.md" ]; then
+if [ -f "$OWNED/NOTES.md" ]; then
   ok "uninstall leaves a file it did not write, and the directory holding it"
 else
   bad "uninstall deleted a file it did not write"
 fi
 
 # A foreign directory that merely shares the name is refused outright.
-FOREIGN="$WORK/foreign"
-mkdir -p "$FOREIGN/portal-steering"
-printf -- '---\nname: something-else\n---\n' > "$FOREIGN/portal-steering/SKILL.md"
-printf 'precious\n' > "$FOREIGN/portal-steering/data.txt"
 HOME7=$(new_home home7)
-"$INSTALL" install --fm-home "$HOME7" --instance "$INSTANCE" >/dev/null
-if "$INSTALL" uninstall --fm-home "$HOME7" --skills-dir "$FOREIGN" >/dev/null 2>&1; then
+FOREIGN="$HOME7/data/portal-steering"
+mkdir -p "$FOREIGN"
+printf -- '---\nname: something-else\n---\n' > "$FOREIGN/SKILL.md"
+printf 'precious\n' > "$FOREIGN/data.txt"
+if "$INSTALL" uninstall --fm-home "$HOME7" >/dev/null 2>&1; then
   bad "uninstall removed a directory this installer did not write"
 else
   ok "uninstall refuses a same-named directory it did not write"
 fi
-if [ -f "$FOREIGN/portal-steering/data.txt" ]; then
+if [ -f "$FOREIGN/data.txt" ]; then
   ok "the foreign directory's contents are intact"
 else
   bad "the foreign directory lost content"

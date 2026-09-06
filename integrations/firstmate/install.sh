@@ -7,10 +7,10 @@
 # the two things that must not accumulate or drift: one marker-delimited block in
 # the home's data/captain.md, and one installer-owned directory beside it.
 #
-#   install.sh install   --instance <url> [--fm-home <dir>] [--ring yes|no]
-#                        [--secondmate <id> | --no-secondmate] [--skills-dir <dir>]
+#   install.sh install   --instance <url> [--fm-home <dir>]
+#                        [--secondmate <id> | --no-secondmate]
 #   install.sh status    [--fm-home <dir>]
-#   install.sh uninstall [--fm-home <dir>] [--skills-dir <dir>]
+#   install.sh uninstall [--fm-home <dir>]
 #
 # Install is idempotent: re-running replaces the block between the markers in
 # place and overwrites the files it owns by name. It never appends a second
@@ -31,8 +31,7 @@
 # Nothing is written inside the firstmate checkout outside gitignored data/.
 # Firstmate's fast-forward self-update skips a home whose checkout is dirty, so
 # an untracked file under .agents/skills/ or bin/ would quietly stop that home
-# from ever updating. --skills-dir is the one escape hatch, for a harness skills
-# directory that lives outside the checkout.
+# from ever updating.
 #
 # FM_HOME supplies the default for --fm-home. There is no guessed fallback.
 set -euo pipefail
@@ -62,18 +61,15 @@ CMD=${1:-}
 [ -n "$CMD" ] || { usage >&2; exit 2; }
 shift || true
 
-FM_HOME_ARG=""; INSTANCE=""; RING=""
+FM_HOME_ARG=""; INSTANCE=""
 SECONDMATE=""; SECONDMATE_SET=0
-SKILLS_DIR=""; SKILLS_DIR_SET=0
 
 while [ $# -gt 0 ]; do
   case $1 in
     --fm-home)       FM_HOME_ARG=${2:-}; shift 2 ;;
     --instance)      INSTANCE=${2:-}; shift 2 ;;
-    --ring)          RING=${2:-}; shift 2 ;;
     --secondmate)    SECONDMATE=${2:-}; SECONDMATE_SET=1; shift 2 ;;
     --no-secondmate) SECONDMATE=""; SECONDMATE_SET=1; shift ;;
-    --skills-dir)    SKILLS_DIR=${2:-}; SKILLS_DIR_SET=1; shift 2 ;;
     -h|--help)       usage; exit 0 ;;
     *)               die "unknown argument: $1" ;;
   esac
@@ -160,7 +156,7 @@ assert_data_ignored() {
 
 # ----------------------------------------------------------------- settings --
 
-SET_INSTANCE=""; SET_RING=""; SET_SECONDMATE=""; SET_SKILLS_DIR=""
+SET_INSTANCE=""; SET_SECONDMATE=""
 load_settings() {
   [ -f "$SETTINGS_FILE" ] || return 0
   local line key value
@@ -170,9 +166,7 @@ load_settings() {
     value=${value%\"}; value=${value#\"}
     case $key in
       instance)   SET_INSTANCE=$value ;;
-      ring)       SET_RING=$value ;;
       secondmate) SET_SECONDMATE=$value ;;
-      skills_dir) SET_SKILLS_DIR=$value ;;
     esac
   done < "$SETTINGS_FILE"
 }
@@ -203,7 +197,7 @@ assert_markers_sane() {
 }
 
 render_block() {
-  local instance=$1 ring=$2 secondmate=$3 body sm
+  local instance=$1 secondmate=$2 body sm
   [ -f "$TEMPLATE" ] || die "missing template: $TEMPLATE"
   body=$(cat -- "$TEMPLATE")
   if [ -n "$secondmate" ]; then
@@ -212,7 +206,6 @@ render_block() {
     sm="not enabled; do not seed one without asking me"
   fi
   body=${body//@@INSTANCE@@/$instance}
-  body=${body//@@RING@@/$ring}
   body=${body//@@SECONDMATE@@/$sm}
   printf '%s\n' "$body"
 }
@@ -280,29 +273,18 @@ cmd_install() {
   esac
   INSTANCE=${INSTANCE%/}
 
-  [ -n "$RING" ] || RING=${SET_RING:-yes}
-  case $RING in yes|no) ;; *) die "--ring takes yes or no, got: $RING" ;; esac
-
   [ "$SECONDMATE_SET" -eq 1 ] || SECONDMATE=$SET_SECONDMATE
   case $SECONDMATE in
     '') ;;
     *[!A-Za-z0-9._-]*) die "--secondmate takes a task id ([A-Za-z0-9._-]), got: $SECONDMATE" ;;
   esac
 
-  [ "$SKILLS_DIR_SET" -eq 1 ] || SKILLS_DIR=$SET_SKILLS_DIR
-  if [ -n "$SKILLS_DIR" ]; then
-    case $SKILLS_DIR in
-      /*) ;;
-      *)  die "--skills-dir must be an absolute path, got: $SKILLS_DIR" ;;
-    esac
-  fi
-
   assert_markers_sane
   [ -f "$SOURCE_SKILL_DIR/SKILL.md" ] || die "missing skill source: $SOURCE_SKILL_DIR/SKILL.md"
 
   local tmpblock
   tmpblock=$(mktemp "${TMPDIR:-/tmp}/portal-steering-block.XXXXXX")
-  render_block "$INSTANCE" "$RING" "$SECONDMATE" > "$tmpblock"
+  render_block "$INSTANCE" "$SECONDMATE" > "$tmpblock"
   write_block "$tmpblock"
   remove_owned_file "$(dirname -- "$tmpblock")" "$(basename -- "$tmpblock")"
 
@@ -312,26 +294,14 @@ cmd_install() {
   {
     printf '# written by integrations/firstmate/install.sh; change it by re-running install\n'
     printf 'instance="%s"\n' "$INSTANCE"
-    printf 'ring="%s"\n' "$RING"
     printf 'secondmate="%s"\n' "$SECONDMATE"
-    printf 'skills_dir="%s"\n' "$SKILLS_DIR"
   } > "$SETTINGS_FILE"
-
-  if [ -n "$SKILLS_DIR" ]; then
-    mkdir -p "$SKILLS_DIR/$SKILL_NAME"
-    cp -- "$SOURCE_SKILL_DIR/SKILL.md" "$SKILLS_DIR/$SKILL_NAME/SKILL.md"
-    cp -- "$SOURCE_SKILL_DIR/secondmate-charter.md" "$SKILLS_DIR/$SKILL_NAME/secondmate-charter.md"
-  fi
 
   note "portal steering installed in $FM_HOME_DIR"
   note "  captain block   $CAPTAIN_FILE"
   note "  skill           $OWNED_DIR/SKILL.md"
   note "  instance        $INSTANCE"
-  note "  ring after put  $RING"
   note "  second mate     ${SECONDMATE:-not enabled}"
-  if [ -n "$SKILLS_DIR" ]; then
-    note "  harness copy    $SKILLS_DIR/$SKILL_NAME/"
-  fi
   note ""
   note "Log in once on this host before the first steer:"
   note "  fm-steer auth login --instance $INSTANCE"
@@ -348,9 +318,7 @@ cmd_status() {
   if [ -f "$OWNED_DIR/SKILL.md" ]; then note "skill           present ($OWNED_DIR/SKILL.md)"
   else note "skill           absent"; fi
   note "instance        ${SET_INSTANCE:-unset}"
-  note "ring after put  ${SET_RING:-unset}"
   note "second mate     ${SET_SECONDMATE:-not enabled}"
-  note "harness copy    ${SET_SKILLS_DIR:-none}"
   block_present || [ -f "$OWNED_DIR/SKILL.md" ]
 }
 
@@ -359,21 +327,11 @@ cmd_status() {
 cmd_uninstall() {
   load_settings
   assert_markers_sane
-  local removed=0 harness
+  local removed=0
 
   if block_present; then remove_block; removed=1; fi
   if [ -d "$OWNED_DIR" ] && [ ! -L "$OWNED_DIR" ]; then
     remove_owned_skill_dir "$OWNED_DIR"; removed=1
-  fi
-
-  harness=${SKILLS_DIR:-$SET_SKILLS_DIR}
-  if [ -n "$harness" ]; then
-    case $harness in
-      /*) if [ -d "$harness/$SKILL_NAME" ] && [ ! -L "$harness/$SKILL_NAME" ]; then
-            remove_owned_skill_dir "$harness/$SKILL_NAME"; removed=1
-          fi ;;
-      *)  die "--skills-dir must be an absolute path, got: $harness" ;;
-    esac
   fi
 
   if [ "$removed" -eq 0 ]; then

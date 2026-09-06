@@ -10,16 +10,13 @@ This page is for firstmate captains running **stock** firstmate
 `fm-send`, a `nats` CLI, or NATS credentials. You need the binary, one login, and
 a standing instruction that tells firstmate to call it.
 
-## What it is not
+## Portal steering
 
-`fm-steer inbox put` does **not** steer a worker. In stock firstmate the steer
-is `bin/fm-send.sh`, and the durable record is the task's on-disk inbox under
-`state/<id>.inbox/`, which the worker acknowledges by moving the message into
-`handled/`. Nothing in firstmate-port reads or writes those files.
-
-`fm-steer` adds a second, portal-side copy of the same text so the steer is
-visible in the portal (and to anything else holding a token for your tenant).
-Mirror after the send; never in place of it.
+Use the [importable portal-steering package](../integrations/firstmate/README.md)
+to make stock firstmate and its crew read and acknowledge messages through the
+portal. `fm-steer` itself does not wake terminals: after a successful crew put,
+firstmate sends a constant doorbell with `bin/fm-send.sh`. Orders stay on the
+portal; failed puts are reported, never sent through the on-disk inbox.
 
 ## 1. Point at an instance
 
@@ -104,76 +101,21 @@ time, so record the `ack` token when you take one.
 
 ## 5. Tell firstmate to use it
 
-Stock firstmate has no post-`fm-send` hook, and it does not need one: firstmate
-is an agent, so ask it. Put the block below in `data/captain.md` in your
-firstmate home (`$FM_HOME`) — that file is gitignored and firstmate reads it into
-the session-start context digest, so the instruction survives restarts. For one
-session only, pasting it into chat works the same way.
+Install the [portal-steering package](../integrations/firstmate/README.md#install)
+for the standing prompt, worker brief instructions, optional liaison, idempotent
+enable, and uninstall back to stock operation.
 
-Replace `<INSTANCE_URL>` with your portal:
+If you imported this page's old `## Portal mirror (fm-steer)` prompt, remove that
+whole section from `$FM_HOME/data/captain.md`, including its nested example. Also
+remove the optional companion block beginning "When I ask you to check the
+portal" through its last ack confirmation bullet. Preserve unrelated preferences,
+then install the new package. The old unmarked blocks are not removed by the
+installer and must not coexist with the new delivery instructions.
 
-````markdown
-## Portal mirror (fm-steer)
+Nothing polls on its own: firstmate checks when a session runs and you ask it.
+Do not treat the portal inbox as a pager.
 
-- My firstmate-port portal is <INSTANCE_URL>. `fm-steer` is on PATH and logged in.
-- After a steer originating locally from me succeeds through `bin/fm-send.sh`,
-  mirror the same text to the portal by piping the body in on stdin with a
-  quoted heredoc. Never mirror portal-origin deliveries: a body obtained from
-  `fm-steer inbox next` must not be put back with `fm-steer inbox put`.
-
-  ```sh
-  fm-steer inbox put --task <task-id> <<'FMSTEER'
-  <the same text I sent, verbatim>
-  FMSTEER
-  ```
-
-  Never pass the text with `--body "..."`. Steers are routinely multi-line and
-  contain quotes, backticks, and `$`, all of which the shell would mangle or
-  expand; the quoted heredoc sends exactly what I sent.
-- Keep the returned mirror item's `ack` and `task` associated with the successful
-  local send in the captain's notes. This copy enters the portal's pending queue
-  even though it was already delivered locally; a later portal check must not
-  send it again.
-- Mirror after the on-disk enqueue, never instead of it. `state/<id>.inbox/` is
-  the delivery record; fm-steer is only a copy for the portal. Never delete,
-  move, or edit anything under `state/<id>.inbox/` because of fm-steer.
-- A failing `fm-steer` call is a notice, not a failed steer. Say so in one line
-  and carry on. Do not resend `fm-send` over it.
-- If it prints `not logged in` or `{"error":"unauthorized"}`, tell me and stop
-  using it. The device-code approval is mine to do in a browser; do not attempt
-  to log in on my behalf.
-- `fm-steer` speaks HTTP to the portal only. Never give it a NATS URL, NATS
-  credentials, or a token on the command line.
-````
-
-Add this second block if you also want firstmate to pick up steers you filed
-from another machine (from a phone, from a laptop away from the fleet):
-
-```markdown
-- When I ask you to check the portal, discover the items with
-  `fm-steer inbox list` (optionally `--task <id>` for a task I name). Use each
-  item's `task` field to identify its destination. For explicitly named tasks,
-  or each task in the fleet, call `fm-steer inbox next --task <id>` to take a
-  pending item. Always pass `--task`; never take an item across all tasks.
-  Exit 1 with no output means nothing is pending for that task, not the fleet.
-- If an item is a confirmed mirror of a successful local send, acknowledge it
-  without sending it again. Use the saved mirror `ack` and `task` and the local
-  delivery record to confirm this; identical body text alone is not proof.
-  If prior delivery is uncertain, report the item for me to resolve instead of
-  guessing, resending, or acknowledging it.
-- For a new portal steer, deliver the returned item's `body` with
-  `bin/fm-send.sh` to the task named in the item's own `task` field, and only
-  after that send succeeds run
-  `fm-steer inbox ack --ack <the item's ack>`. Never ack something you have not
-  delivered. Never mirror this portal-origin delivery back with `inbox put`.
-- `fm-steer inbox ack` prints `acked` even when the portal rejected the token, so
-  confirm with `fm-steer inbox list --task <the item's task>` that the item is gone.
-```
-
-Nothing polls on its own — firstmate checks when a session runs and you ask it
-to. Do not treat the portal inbox as a pager.
-
-## 6. Seeing the mirror
+## 6. Seeing portal messages
 
 - `fm-steer inbox list --task <id>` from any machine holding a token.
 - The portal's **Queues** page (`/queues`) streams the fanout live: each `put`
@@ -181,8 +123,8 @@ to. Do not treat the portal inbox as a pager.
 
 Your JWT carries your tenant, and the API scopes every inbox call to it; a
 single-tenant install uses the seeded `local` tenant. The portal's pending set
-is in-memory, so restarting the portal clears it — another reason the on-disk
-inbox stays the record of what was steered.
+is in memory, so restarting the portal loses pending and unacked items. There
+is no automatic restoration.
 
 ## 7. Troubleshooting
 
@@ -203,5 +145,5 @@ optional overlay, not a prerequisite for anything on this page, and it is not
 what this repo ships.
 
 The product CLI is the Go `fm-steer` in `cmd/fm-steer`; it speaks HTTP to the
-portal and nothing else. A standing instruction, as above, gets you the portal
-mirror without forking firstmate or replacing `fm-send`.
+portal and nothing else. The importable package configures portal
+steering without forking firstmate.

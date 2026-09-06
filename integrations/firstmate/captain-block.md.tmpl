@@ -32,18 +32,21 @@ read or acknowledged.
 - Every brief you scaffold gets its generated `# Firstmate instruction inbox` section
   replaced with the portal version before dispatch. Do not patch `bin/fm-brief.sh`; edit
   the scaffolded `data/<id>/brief.md`. The exact text is in the skill.
-- Ring after put: @@RING@@. The portal does not touch a crewmate's terminal, so with
-  ringing on, follow a successful put with one constant doorbell line through
-  `bin/fm-send.sh <task-id>` that carries no orders; with it off, crew pick steers up at
-  their next checkpoint instead of immediately.
-- A failing `fm-steer` call is a steer that did not happen. Do not carry on as if it
-  landed: say so in one line, send that one message with `bin/fm-send.sh <task-id>`
-  instead, and tell me the portal is unreachable.
+- After every successful crew put, ring with one constant doorbell through
+  `bin/fm-send.sh <task-id> 'portal instruction waiting: fm-steer inbox next --task <task-id>'`.
+  The doorbell carries no orders; the worker reads the body from the portal.
+- If `fm-steer inbox put` fails, report the failed delivery and stop. Never send
+  the order through `bin/fm-send.sh` or the on-disk inbox as a fallback.
 - `not logged in` or `{"error":"unauthorized"}` means my token lapsed. Tell me and stop
   using the portal plane until I say it is back. The device-code approval is mine to do
   in a browser; never attempt to log in on my behalf.
 - `fm-steer` speaks HTTP to the portal only. Never give it a NATS URL, NATS credentials,
   or a token on a command line.
+- Captain-facing notices use `--task captain`; only the captain reads that key
+  with `fm-steer inbox next --task captain` and acknowledges after reading.
+  Inbound orders use `firstmate`: you read it when no liaison is enabled; otherwise
+  the liaison alone reads it and relays through its parent channel. Never drain
+  the captain key or a crew work item as liaison traffic.
 - Second mate - a portal liaison relays orders to you and completion notices back, and
   never runs the fleet, spawns crew, or merges. Right now it is @@SECONDMATE@@.
 
