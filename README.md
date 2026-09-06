@@ -29,6 +29,7 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`,
 - [docs/deploy.md](docs/deploy.md) image publishing, compose, Kubernetes
 - [docs/build-tracking.md](docs/build-tracking.md) opt-in tracking and BuildBuddy secrets
 - [docs/bazel.md](docs/bazel.md) rules_elixir / BuildBuddy, `--output_base=/tmp/fm-fm-port/bazel`
+- [docs/build-events.md](docs/build-events.md) the append-only build/deploy log and its API
 
 Prefix every `npm` invocation with `sfw`.
 
@@ -57,6 +58,28 @@ fm-steer no-mistakes post --run-id run-123 --branch fm/example --step review
 Use `fm-steer <kind> post --help` for the available fields. Progress is populated
 by the [GitHub poll](docs/deploy.md#github-fleet-log-ingestion).
 
+### Build and deployment tracking
+
+`fm-steer build start` and `fm-steer build finish` bracket a build or a
+deployment, whatever performs it - `--kind` names the system (`docker`, `k8s`,
+`bazel`, ...) rather than the API growing an endpoint per system. `start`
+prints the `run_id` that `finish` reports against, and the pair records who ran
+it, on what model and effort, and what it cost in tokens:
+
+```sh
+fm-steer build start --kind docker --target firstmate-port --agent-id crew-7
+fm-steer build finish --run-id run-3f9a1c7e5b2d4a08 --status success --tokens 48210
+```
+
+`FIRSTMATE_AGENT_ID`, `FIRSTMATE_MODEL`, and `FIRSTMATE_EFFORT` supply the
+defaults on `start`. The log is append-only and a dashboard row is a projection over one
+`run_id`; see [docs/build-events.md](docs/build-events.md).
+
+Crew make these calls themselves. The installable
+[`build-tracking` skill](skills/build-tracking/SKILL.md) is what tells them to:
+copy that directory into the agent's skills directory
+(`~/.claude/skills/build-tracking/` for Claude Code).
+
 Install from source (Go 1.25+):
 
 ```sh
@@ -72,5 +95,6 @@ amd64/arm64) plus `SHA256SUMS` on the GitHub Release.
 
 - `lib/` Phoenix/Ash portal
 - `cmd/fm-steer` HTTP inbox + Fleet log ingest CLI (device-code; does not dial NATS)
+- `skills/` installable agent skills that drive the CLI
 - `k8s/` portal + 3-node NATS + CNPG (Discord interactions are served by Phoenix at `/interactions`; no sidecars)
 - `docker-compose.yml` portal + Postgres + single-node JetStream

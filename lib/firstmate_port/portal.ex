@@ -1,7 +1,7 @@
 defmodule FirstmatePort.Portal do
   @moduledoc """
   Diagrams, progress, Kubernetes rolls, Docker builds, BuildBuddy
-  invocations, and no-mistakes run records.
+  invocations, build/deploy events, and no-mistakes run records.
   """
 
   use Ash.Domain,
@@ -38,6 +38,7 @@ defmodule FirstmatePort.Portal do
     resource FirstmatePort.Portal.Roll
     resource FirstmatePort.Portal.DockerBuild
     resource FirstmatePort.Portal.BuildBuddyInvocation
+    resource FirstmatePort.Portal.BuildEvent
     resource FirstmatePort.Portal.NoMistakesRun
     resource FirstmatePort.Portal.GithubItem
   end

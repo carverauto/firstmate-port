@@ -1,5 +1,8 @@
 # Build tracking
 
+This page covers the system-specific Fleet-log tracks. For crew-reported
+start/finish runs through `fm-steer build`, see [build events](build-events.md).
+
 Kubernetes rolls, Docker builds, and BuildBuddy invocations are each
 **opt-in**. When a track is not configured its Fleet-log plate and tab are
 hidden entirely; the portal never renders an empty placeholder for it.
