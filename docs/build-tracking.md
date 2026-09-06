@@ -10,7 +10,7 @@ hidden entirely; the portal never renders an empty placeholder for it.
 | ---------- | ----- | ----------- |
 | Kubernetes | `?tab=kubernetes` | `KUBERNETES_TRACKING_ENABLED=true` |
 | Docker     | `?tab=docker` | `DOCKER_TRACKING_ENABLED=true` |
-| BuildBuddy | `?tab=buildbuddy` | `BUILDBUDDY_ORG_API_KEY=<org key>` (plus optional `BUILDBUDDY_HOST`) |
+| BuildBuddy | `?tab=buildbuddy` | Org key via the secret setup below |
 
 Recorded facts stay generic: cluster/namespace/image/helm for Kubernetes,
 registry repository/tag/digest for Docker (push to `ghcr.io` when you
@@ -19,8 +19,14 @@ farm-specific naming anywhere in the product.
 
 ## BuildBuddy org API key
 
-Any BuildBuddy host works; nothing requires a specific hostname. The
-examples below use `https://app.buildbuddy.io` as the default host.
+Set `BUILDBUDDY_HOST` to your BuildBuddy endpoint for API lookups.
+Compose defaults to `https://app.buildbuddy.io`; Kubernetes has no default.
+The key alone enables recording and the Fleet-log plate, but lookups also
+require the host.
+
+Environment settings are loaded by the production release. For local
+`mix phx.server`, configure `:firstmate_port, :build_tracking` in the dev
+configuration instead; `.env` is consumed by Compose.
 
 1. In your BuildBuddy org go to **Settings → Org API keys** and mint a key
    with invocation read access.
@@ -69,14 +75,19 @@ Create the secret (also printed by `deploy/bootstrap-secrets.sh`):
 
 ```sh
 kubectl -n firstmate create secret generic firstmate-buildbuddy \
-  --from-literal=org-api-key=<paste the org key>
+  --from-literal=org-api-key='PASTE_ORG_KEY_HERE'
 ```
 
 `k8s/deployment.yaml` already maps that secret to
 `BUILDBUDDY_ORG_API_KEY` with `optional: true`, so the Deployment works
-with or without it. Uncomment the `KUBERNETES_TRACKING_ENABLED`,
-`DOCKER_TRACKING_ENABLED`, and `BUILDBUDDY_HOST` entries in the same file
-to opt into the other plates.
+with or without it. Uncomment `BUILDBUDDY_HOST` for API lookups. Enable
+Kubernetes and Docker independently with their commented switches in the
+same file, then apply the Deployment. After creating or rotating the
+secret, restart existing pods so they receive the new environment:
+
+```sh
+kubectl -n firstmate rollout restart deployment/firstmate-port
+```
 
 ## Recording
 
@@ -100,9 +111,13 @@ curl -X POST "$PUBLIC_URL/api/buildbuddy-invocations" -H "Authorization: Bearer 
   -d '{"invocation_id":"abc-123","status":"SUCCESS"}'
 ```
 
-The same writes are available as MCP tools: `post_roll` / `list_rolls`,
+The corresponding write/list MCP tools are `post_roll` / `list_rolls`,
 `post_docker_build` / `list_docker_builds`, `post_buildbuddy_invocation` /
 `list_buildbuddy_invocations`.
+
+Recording stores the supplied fields; it does not query BuildBuddy or
+automatically collect builds. Use the Elixir client below to fetch invocation
+details before submitting a record.
 
 ## Querying BuildBuddy from Elixir
 

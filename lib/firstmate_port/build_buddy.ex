@@ -4,8 +4,8 @@ defmodule FirstmatePort.BuildBuddy do
 
   Calls `POST {host}/rpc/BuildBuddyService/<Method>` with the org API key
   in the `x-buildbuddy-api-key` header and proto3 JSON bodies. The key is
-  read from `FirstmatePort.BuildTracking` (env `BUILDBUDDY_ORG_API_KEY`
-  supplied as a Kubernetes or Docker secret) and is never logged.
+  read from `FirstmatePort.BuildTracking` and is never logged.
+  See `docs/build-tracking.md` for deployment and secret setup.
 
   API calls use the configured `BUILDBUDDY_HOST`.
   """
@@ -22,7 +22,7 @@ defmodule FirstmatePort.BuildBuddy do
 
   @doc """
   Web URL for an invocation, e.g. `https://host/invocation/<id>`.
-  Returns nil when no host is given or configured.
+  Returns nil when the ID is empty or invalid, or no host is configured.
   """
   def invocation_url(id) when not is_binary(id) or id == "", do: nil
 

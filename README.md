@@ -25,6 +25,7 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`,
 
 - [docs/credentials.md](docs/credentials.md) how a tenant stores Discord and other secrets
 - [docs/deploy.md](docs/deploy.md) image publishing, compose, Kubernetes
+- [docs/build-tracking.md](docs/build-tracking.md) opt-in tracking and BuildBuddy secrets
 - [docs/bazel.md](docs/bazel.md) rules_elixir / BuildBuddy, `--output_base=/tmp/fm-fm-port/bazel`
 
 Prefix every `npm` invocation with `sfw`.

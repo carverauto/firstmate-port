@@ -15,8 +15,7 @@ defmodule FirstmatePort.BuildTracking do
 
   @doc """
   True when BuildBuddy tracking is opted in, i.e. an org API key is
-  present. The key arrives as a secret (`BUILDBUDDY_ORG_API_KEY`) and is
-  never committed.
+  present. See `docs/build-tracking.md` for secret setup.
   """
   def buildbuddy_enabled?, do: api_key() not in [nil, ""]
 
