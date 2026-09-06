@@ -50,7 +50,7 @@ including when the build fails - `--status failure` with the reason in
 |---|---|
 | `--kind` | the build or deploy system: `docker`, `k8s`, `helm`, `bazel`, `compose`, `nix`, ... Lowercase, one word. Required on `start`. |
 | `--target` | what is built or deployed: an image name, a chart, a Bazel label. |
-| `--agent-id` | which agent did the work. Your own id, not the human's. |
+| `--agent-id` | which agent did the work. Your own id, not the human's. Required on `start`, either as a flag or through `FIRSTMATE_AGENT_ID`. |
 | `--model` / `--effort` | the model you are running as and its reasoning effort. |
 | `--tokens` | tokens the run cost you, **cumulative for the whole run**, on the finish call. Omit it when you cannot count them; never guess. |
 | `--image` / `--image-tag` | for container work: repository and tag. |
