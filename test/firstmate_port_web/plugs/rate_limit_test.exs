@@ -30,9 +30,9 @@ defmodule FirstmatePortWeb.Plugs.RateLimitTest do
     test "answer 429 with retry-after once the bucket is spent" do
       tighten(:cli_device_auth, 1)
 
-      assert build_conn() |> post(~p"/api/cli/auth/localice") |> json_response(200)
+      assert build_conn() |> post(~p"/api/cli/auth/device") |> json_response(200)
 
-      conn = post(build_conn(), ~p"/api/cli/auth/localice")
+      conn = post(build_conn(), ~p"/api/cli/auth/device")
       assert %{"error" => "rate_limited", "retry_after" => retry_after} = json_response(conn, 429)
       assert retry_after > 0
       assert [value] = get_resp_header(conn, "retry-after")
@@ -59,21 +59,21 @@ defmodule FirstmatePortWeb.Plugs.RateLimitTest do
     test "are on allowed responses and count down" do
       tighten(:cli_device_auth, 5)
 
-      conn = post(build_conn(), ~p"/api/cli/auth/localice")
+      conn = post(build_conn(), ~p"/api/cli/auth/device")
       assert ["5"] = get_resp_header(conn, "x-ratelimit-limit")
       assert ["4"] = get_resp_header(conn, "x-ratelimit-remaining")
       assert [reset] = get_resp_header(conn, "x-ratelimit-reset")
       assert String.to_integer(reset) > System.system_time(:second)
 
-      conn = post(build_conn(), ~p"/api/cli/auth/localice")
+      conn = post(build_conn(), ~p"/api/cli/auth/device")
       assert ["3"] = get_resp_header(conn, "x-ratelimit-remaining")
     end
 
     test "report nothing remaining on a denial" do
       tighten(:cli_device_auth, 1)
 
-      post(build_conn(), ~p"/api/cli/auth/localice")
-      conn = post(build_conn(), ~p"/api/cli/auth/localice")
+      post(build_conn(), ~p"/api/cli/auth/device")
+      conn = post(build_conn(), ~p"/api/cli/auth/device")
 
       assert ["0"] = get_resp_header(conn, "x-ratelimit-remaining")
     end
