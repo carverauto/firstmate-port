@@ -423,42 +423,20 @@ func TestQueuePostOmitsCountersNeverGiven(t *testing.T) {
 	}
 }
 
-func TestGetJSONRejectsMalformedErrorResponse(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadGateway)
-		_, _ = w.Write([]byte("<html>Bad Gateway</html>"))
-	}))
-	defer srv.Close()
-
-	var out map[string]any
-	if err := GetJSON(srv.URL, "", &out); err == nil {
-		t.Fatal("GetJSON accepted a malformed error response")
-	}
-	status, err := GetJSONStatus(srv.URL, "", &out)
-	if status != http.StatusBadGateway || err == nil {
-		t.Fatalf("GetJSONStatus returned status %d, error %v", status, err)
-	}
-}
-
-func TestGetJSONRejectsEmptyResponse(t *testing.T) {
-	for _, code := range []int{http.StatusOK, http.StatusBadGateway} {
-		t.Run(http.StatusText(code), func(t *testing.T) {
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(code)
-			}))
-			defer srv.Close()
-
-			var out map[string]any
-			if err := GetJSON(srv.URL, "", &out); err == nil {
-				t.Fatal("GetJSON accepted an empty document")
-			}
-			status, err := GetJSONStatus(srv.URL, "", &out)
-			if status != code || err == nil {
-				t.Fatalf("GetJSONStatus returned status %d, error %v", status, err)
-			}
-			if _, err := GetJSONStatus(srv.URL, "", nil); err != nil {
-				t.Fatalf("GET without an output document returned %v", err)
-			}
-		})
+// queue list must never mistake a refused read for an empty look-in. The
+// portal's shared GetJSON turns a non-2xx into an error, whether or not the
+// body is JSON, so the CLI reports the refusal instead of printing nothing.
+func TestQueueListRefusalIsAnErrorNotAnEmptyLookIn(t *testing.T) {
+	for _, body := range []string{"<html>Bad Gateway</html>", ""} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadGateway)
+			_, _ = w.Write([]byte(body))
+		}))
+		var out map[string]any
+		err := GetJSON(srv.URL+QueuePath, "", &out)
+		srv.Close()
+		if err == nil {
+			t.Fatalf("a 502 with body %q was accepted as a look-in", body)
+		}
 	}
 }
