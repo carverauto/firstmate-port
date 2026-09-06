@@ -79,8 +79,8 @@ defmodule FirstmatePortWeb.PortalLive do
       </section>
 
       <section :if={@filter in ["all", "rolls"]} class="plate">
-        <h2>Farm / demo rolls</h2>
-        <p :if={@rolls == []} class="empty-state">No image builds or helm rolls recorded.</p>
+        <h2>Image builds / cluster deploys</h2>
+        <p :if={@rolls == []} class="empty-state">No image builds or cluster deploys recorded.</p>
         <ol class="rows">
           <li :for={r <- @rolls}>
             <.link href={~p"/rolls/#{r.id}"}>{r.cluster} {r.status} {r.image_tag}</.link>

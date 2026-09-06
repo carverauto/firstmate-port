@@ -9,6 +9,7 @@ defmodule FirstmatePort.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
+      releases: releases(),
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
@@ -23,6 +24,18 @@ defmodule FirstmatePort.MixProject do
     [
       mod: {FirstmatePort.Application, []},
       extra_applications: [:logger, :runtime_tools, :crypto, :public_key, :ssl]
+    ]
+  end
+
+  # Explicit release so we can disable validate_compile_env. Bazel Hex
+  # builds don't see host config.exs at compile time, so every Ash
+  # compile_env key would otherwise abort Config.Provider boot when the
+  # release-time config differs. Same as serviceradar web-ng.
+  defp releases do
+    [
+      firstmate_port: [
+        validate_compile_env: false
+      ]
     ]
   end
 
@@ -56,6 +69,9 @@ defmodule FirstmatePort.MixProject do
       {:ash, "~> 3.31"},
       {:simple_sat, "~> 0.1.4"},
       {:guardian, "~> 2.3"},
+      # Direct use: optional BOOTSTRAP_ADMIN_PASSWORD_HASH check on /auth/dev.
+      # Already in mix.lock via ash_events; no new closure for Bazel.
+      {:bcrypt_elixir, "~> 3.0"},
       {:ueberauth, "~> 0.10"},
       {:ueberauth_oidcc, "~> 0.4"},
       {:gnat, "~> 1.15"},

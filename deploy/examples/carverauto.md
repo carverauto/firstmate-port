@@ -8,14 +8,13 @@ the portal. Copy them into GitOps overlays, `.env`, or `docker-compose.override.
 | Portal hostname | `firstmate.carverauto.dev` |
 | LAN VIP | `192.168.6.87` |
 | OIDC issuer (Authentik) | `https://auth.carverauto.dev/application/o/firstmate/` |
-| Image | `ghcr.io/mfreeman451/firstmate-port` |
+| Image | `ghcr.io/carverauto/firstmate-port` |
 | Discord interactions | `discord-firstmate.carverauto.dev` |
-| Email allowlist | `@carverauto.dev` |
+| Local sign-in | `DEV_AUTH=true` plus `BOOTSTRAP_ADMIN_EMAIL` from the `firstmate-bootstrap-admin` secret (no site email wall). Optional `password-hash` key in the same secret (bcrypt hash via `BOOTSTRAP_ADMIN_PASSWORD_HASH`) adds a shared local password to the sign-in form; unset means email-only |
 | BuildBuddy | `carverauto.buildbuddy.io` |
 
-ghcr.io is the registry for this product; Harbor is not used. The source repo is
-private, so the package is private and the namespace needs an `imagePullSecret`
-(`ghcr-io-cred`, a `docker-registry` secret) built from a token with `read:packages`.
+ghcr.io is the registry for this product; Harbor is not used. The namespace pulls
+with an `imagePullSecret` (`ghcr-io-cred`, a `docker-registry` secret).
 
 Gateways in this cluster:
 

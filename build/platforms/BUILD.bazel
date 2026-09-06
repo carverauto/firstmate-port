@@ -38,6 +38,24 @@ platform(
     visibility = ["//visibility:public"],
 )
 
+config_setting(
+    name = "target_darwin_x86_64",
+    constraint_values = [
+        "@platforms//os:macos",
+        "@platforms//cpu:x86_64",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "target_darwin_arm64",
+    constraint_values = [
+        "@platforms//os:macos",
+        "@platforms//cpu:aarch64",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 platform(
     name = "darwin_aarch64",
     constraint_values = [

@@ -8,7 +8,7 @@
 import Config
 
 # Scheduler lives in this app (same role as serviceradar_core_elx).
-config :ash_oban, pro?: false, oban_name: Oban
+config :ash_oban, oban_name: Oban
 
 config :firstmate_port, Oban,
   engine: Oban.Engines.Basic,

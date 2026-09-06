@@ -13,8 +13,8 @@ resources:
   - discord-httproute.yaml
 images:
   - name: firstmate-port
-    newName: ghcr.io/mfreeman451/firstmate-port
-    newTag: sha-pending
+    newName: ghcr.io/carverauto/firstmate-port
+    newTag: sha-1e7ad1f
 patches:
   - path: deployment-patch.yaml
   - path: portal-httproute-patch.yaml

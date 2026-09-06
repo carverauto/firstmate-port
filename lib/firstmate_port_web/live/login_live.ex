@@ -34,7 +34,8 @@ defmodule FirstmatePortWeb.LoginLive do
         <p class="brand-mark">firstmate port</p>
         <h1>The companion for a captain and crew.</h1>
         <p class="lede">
-          Review diagrams, PRs, issues, farm rolls, and no-mistakes runs in one place.
+          Review diagrams, PRs, issues, image builds, cluster deploys, and
+          no-mistakes runs in one place.
         </p>
       </section>
 
@@ -57,6 +58,7 @@ defmodule FirstmatePortWeb.LoginLive do
               name="email"
               value={@email}
               autocomplete="username"
+              placeholder="you@example.com"
               required
             />
             <label for="password">Password</label>
