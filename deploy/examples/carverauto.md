@@ -10,7 +10,7 @@ the portal. Copy them into GitOps overlays, `.env`, or `docker-compose.override.
 | OIDC issuer (Authentik) | `https://auth.carverauto.dev/application/o/firstmate/` |
 | Image | `ghcr.io/carverauto/firstmate-port` |
 | Discord interactions | `discord-firstmate.carverauto.dev` |
-| Local sign-in | `DEV_AUTH=true` plus `BOOTSTRAP_ADMIN_EMAIL` from the `firstmate-bootstrap-admin` secret (no site email wall). Optional `password-hash` key in the same secret (bcrypt hash via `BOOTSTRAP_ADMIN_PASSWORD_HASH`) adds a shared local password to the sign-in form; unset means email-only |
+| Local sign-in | `LOCAL_AUTH=true`, with `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` from the `firstmate-admin` secret's `email` and `password` keys; email is `captain@localhost` |
 | BuildBuddy | `carverauto.buildbuddy.io` |
 
 ghcr.io is the registry for this product; Harbor is not used. The namespace pulls
@@ -28,6 +28,18 @@ The namespace needs both gateway selector labels:
 
 A ready-to-apply kustomize overlay of exactly this table is in
 [`carverauto/`](carverauto/). It is an example overlay, never a compiled-in default.
+
+With kubectl targeting the `carverauto` context, provision or backfill its secrets
+from the repository root:
+
+```sh
+bash deploy/examples/carverauto/bootstrap-secrets.sh
+```
+
+This sets a missing `firstmate-admin.email` to `captain@localhost` and preserves
+the existing password without printing it. An existing email is left unchanged.
+Only the configured bootstrap email and password sign in; arbitrary `@localhost`
+or `@example.com` addresses are not admitted.
 
 Authentik is this site's identity provider, not the portal's. The portal speaks
 generic OpenID Connect and reads its endpoints from the issuer's discovery

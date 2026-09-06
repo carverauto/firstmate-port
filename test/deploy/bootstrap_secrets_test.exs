@@ -49,7 +49,7 @@ defmodule FirstmatePort.BootstrapSecretsTest do
     bootstrap_with(tmp_dir, output, base, exists, [])
   end
 
-  defp bootstrap_with(tmp_dir, output, base, exists, extra_env) do
+  defp bootstrap_with(tmp_dir, output, base, exists, extra_env, script \\ "deploy/bootstrap-secrets.sh") do
     extra_keys = Enum.map(extra_env, &elem(&1, 0))
 
     env =
@@ -65,7 +65,7 @@ defmodule FirstmatePort.BootstrapSecretsTest do
       |> Enum.reject(fn {key, _} -> key in extra_keys end)
       |> Kernel.++(extra_env)
 
-    System.cmd("bash", ["deploy/bootstrap-secrets.sh"],
+    System.cmd("bash", [script],
       env: env,
       stderr_to_stdout: true
     )
@@ -125,5 +125,32 @@ defmodule FirstmatePort.BootstrapSecretsTest do
     assert out =~ "reusing firstmate-admin"
     # Only the pg-app dry-run create is logged; firstmate-admin is untouched.
     refute File.read!(context.calls) =~ "firstmate-admin"
+  end
+
+  test "Carverauto bootstrap binds captain without changing the password", context do
+    assert {out, 0} =
+             bootstrap_with(
+               context.tmp_dir,
+               context.output,
+               "base",
+               true,
+               [{"ADMIN_STATE", "password-only"}, {"ADMIN_EMAIL", "wrong@localhost"}],
+               "deploy/examples/carverauto/bootstrap-secrets.sh"
+             )
+
+    admin_calls =
+      context.calls
+      |> File.read!()
+      |> String.split("\n", trim: true)
+      |> Enum.filter(&String.contains?(&1, "firstmate-admin"))
+
+    email = Base.encode64("captain@localhost")
+
+    assert admin_calls == [
+             "patch patch secret firstmate-admin --type=json -p=[{\"op\":\"add\",\"path\":\"/data/email\",\"value\":\"#{email}\"}]"
+           ]
+
+    refute out =~ email
+    refute out =~ "captain@localhost"
   end
 end

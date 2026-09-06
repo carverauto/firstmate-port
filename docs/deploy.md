@@ -185,15 +185,10 @@ kubectl apply -k k8s
 ./deploy/bootstrap-secrets.sh
 ```
 
-OSS login is the local `DEV_AUTH` form (email plus password), not a SaaS OIDC
-wall: no `ALLOWED_EMAIL_DOMAIN` is set by default (`localhost`), and one
-`BOOTSTRAP_ADMIN_EMAIL` is admitted regardless of domain. It comes from the
-optional `firstmate-bootstrap-admin` secret
-(`kubectl -n firstmate create secret generic firstmate-bootstrap-admin --from-literal=email=<you@example.org>`,
-or `BOOTSTRAP_ADMIN_EMAIL=<you@example.org> ./deploy/bootstrap-secrets.sh`).
-A `password-hash` key in the same secret (bcrypt hash via
-`BOOTSTRAP_ADMIN_PASSWORD_HASH`) adds a shared local password to the form and
-fails closed when set; unset means email-only. Generate a hash with
-`PW=<password> mix run --no-start -e 'IO.puts(Bcrypt.hash_pwd_salt(System.fetch_env!("PW")))'`.
+Local sign-in requires the email and password from `firstmate-admin`.
+Set `ADMIN_EMAIL=<you@example.org>` when running the bootstrap script to choose
+the email for a new or password-only secret. For Carverauto, use the
+[deployment-specific bootstrap command](../deploy/examples/carverauto.md), which
+binds a missing email to `captain@localhost` without rotating the password.
 
 See the [fm-steer CLI guide](../README.md#fm-steer-cli) for inbox and Fleet log usage. The Phoenix API is the only JetStream client. The on-disk firstmate inbox stays until dual-write is wired.
