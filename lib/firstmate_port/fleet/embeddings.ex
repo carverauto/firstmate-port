@@ -1,10 +1,9 @@
 defmodule FirstmatePort.Fleet.Embeddings do
   @moduledoc """
-  Optional semantic search: the operator's model, the tenant's key.
+  Optional semantic search: the tenant's model and key.
 
   Embeddings are off until two things are true. A model spec - `provider:model`,
-  see `catalog/0` - is set, either on the tenant or as the deployment default in
-  `FLEET_EMBEDDINGS_MODEL`. And the tenant has filled the `embeddings`/`api_key`
+  see `catalog/0` - is set on the tenant. And the tenant has filled the `embeddings`/`api_key`
   credential slot in the portal. Until both hold, `FirstmatePort.Fleet.Search`
   runs on Postgres text search alone and nothing leaves the cluster.
 
@@ -82,28 +81,8 @@ defmodule FirstmatePort.Fleet.Embeddings do
     end
   end
 
-  @doc """
-  The model spec for a tenant: its own choice, else the deployment default.
-
-  Returns `:error` when neither is set, which is how embeddings stay off by
-  default in a fresh checkout.
-  """
-  def model(tenant) do
-    slug = Tenancy.slug(tenant)
-
-    case tenant_model(slug) do
-      {:ok, spec} -> {:ok, spec}
-      :error -> default_model()
-    end
-  end
-
-  @doc "The deployment-wide model spec from configuration, or `:error`."
-  def default_model do
-    :firstmate_port
-    |> Application.get_env(__MODULE__, [])
-    |> Keyword.get(:model)
-    |> present()
-  end
+  @doc "The tenant's chosen model spec, or `:error` when embeddings are off."
+  def model(tenant), do: tenant |> Tenancy.slug() |> tenant_model()
 
   @doc """
   Checks a model spec before it is stored.

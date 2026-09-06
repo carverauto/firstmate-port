@@ -24,7 +24,8 @@ defmodule FirstmatePortWeb.SearchLiveTest do
   end
 
   test "an empty page asks for a query and says embeddings are off", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/search")
+    {:ok, view, _html} = live(conn, ~p"/search")
+    html = render_async(view)
 
     assert html =~ "Search the fleet log"
     assert html =~ "Type something to search"
@@ -37,10 +38,11 @@ defmodule FirstmatePortWeb.SearchLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/search")
 
-    html =
-      view
-      |> form("form[phx-submit=search]", %{"q" => "buildbuddy"})
-      |> render_submit()
+    view
+    |> form("form[phx-submit=search]", %{"q" => "buildbuddy"})
+    |> render_submit()
+
+    html = render_async(view)
 
     assert html =~ "BuildBuddy invocation vanished"
     assert html =~ "words"
@@ -50,11 +52,11 @@ defmodule FirstmatePortWeb.SearchLiveTest do
   test "a query that matches nothing says why it might not be there yet", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/search")
 
-    html =
-      view
-      |> form("form[phx-submit=search]", %{"q" => "nothing-here"})
-      |> render_submit()
+    view
+    |> form("form[phx-submit=search]", %{"q" => "nothing-here"})
+    |> render_submit()
 
+    html = render_async(view)
     assert html =~ "Nothing matched"
     assert html =~ "next fleet sync"
   end
@@ -63,7 +65,11 @@ defmodule FirstmatePortWeb.SearchLiveTest do
     progress_item(robot, %{title: "helm revision rolled back"})
     {:ok, _} = Sync.run("local")
 
-    {:ok, _view, html} = live(conn, ~p"/search?q=helm")
+    conn = get(conn, ~p"/search?q=helm")
+    refute html_response(conn, 200) =~ "helm revision rolled back"
+    assert html_response(conn, 200) =~ "Searching"
+    {:ok, view, _html} = live(conn)
+    html = render_async(view)
 
     assert html =~ "helm revision rolled back"
   end
@@ -74,7 +80,8 @@ defmodule FirstmatePortWeb.SearchLiveTest do
     progress_item(other, %{title: "other tenant secret"})
     {:ok, _} = Sync.run("other")
 
-    {:ok, _view, html} = live(conn, ~p"/search?q=secret")
+    {:ok, view, _html} = live(conn, ~p"/search?q=secret")
+    html = render_async(view)
 
     refute html =~ "other tenant secret"
     assert html =~ "Nothing matched"

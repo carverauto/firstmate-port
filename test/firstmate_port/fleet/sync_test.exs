@@ -94,4 +94,27 @@ defmodule FirstmatePort.Fleet.SyncTest do
     assert {:ok, [%Document{document: document}]} = Document.list(Tenancy.opts(actor))
     assert %{"image_tag" => "sha-cafe", "cluster" => "farm01", "outcome" => "rolled"} = document
   end
+  test "sync persists changes beyond the searchable text window", %{actor: actor} do
+    long = String.duplicate("x", 2_000)
+    run = no_mistakes_run(actor, %{branch: long, findings: long, intent: long, outcome: long})
+    assert {:ok, %{written: 1}} = Sync.run("local")
+    {:ok, [before]} = Document.list(Tenancy.opts(actor))
+
+    captain = human("local")
+    {:ok, updated} =
+      FirstmatePort.Portal.NoMistakesRun.human_respond(
+        run,
+        %{respond_instructions: "Please fix the finding"},
+        Tenancy.opts(captain)
+      )
+
+    assert {:ok, %{written: 1}} = Sync.run("local")
+    assert {:ok, [after_change]} = Document.list(Tenancy.opts(actor))
+    assert after_change.id == before.id
+    assert after_change.search_text == before.search_text
+    assert after_change.document["respond_instructions"] == "Please fix the finding"
+    assert after_change.occurred_at == updated.updated_at
+    assert {:ok, %{written: 0}} = Sync.run("local")
+  end
+
 end

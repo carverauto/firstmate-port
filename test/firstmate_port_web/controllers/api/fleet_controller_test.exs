@@ -79,4 +79,22 @@ defmodule FirstmatePortWeb.Api.FleetControllerTest do
     conn = post(conn, ~p"/api/fleet/sync")
     assert conn.status in [401, 403]
   end
+  test "the query alias is ignored", %{conn: conn, token: token, robot: robot} do
+    progress_item(robot, %{title: "roll"})
+    {:ok, _} = Sync.run("local")
+
+    conn = conn |> as_agent(token) |> get(~p"/api/fleet/search", %{"query" => "roll"})
+    assert %{"query" => "", "data" => []} = json_response(conn, 200)
+  end
+
+  test "the maximum limit returns all one hundred matches", %{conn: conn, token: token, robot: robot} do
+    titles = for index <- 1..100, do: "roll number #{index}"
+    for title <- titles, do: progress_item(robot, %{title: title})
+    {:ok, _} = Sync.run("local")
+
+    conn = conn |> as_agent(token) |> get(~p"/api/fleet/search", %{"q" => "roll", "limit" => "100"})
+    assert %{"data" => hits} = json_response(conn, 200)
+    assert Enum.sort(Enum.map(hits, & &1["title"])) == Enum.sort(titles)
+  end
+
 end

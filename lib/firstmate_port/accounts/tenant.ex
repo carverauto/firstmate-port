@@ -90,8 +90,8 @@ defmodule FirstmatePort.Accounts.Tenant do
       public? true
 
       description """
-      `provider:model` spec for fleet-log embeddings, empty to fall back to the
-      deployment default. Not a secret: the key lives in the credential store.
+      `provider:model` spec for fleet-log embeddings, empty to disable
+      embeddings. Not a secret: the key lives in the credential store.
       """
 
       constraints max_length: 200, allow_empty?: true

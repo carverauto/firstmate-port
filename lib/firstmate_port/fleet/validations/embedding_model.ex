@@ -2,7 +2,7 @@ defmodule FirstmatePort.Fleet.Validations.EmbeddingModel do
   @moduledoc """
   Refuses a model spec the portal could not actually embed with.
 
-  Empty clears the choice and falls back to the deployment default, so that is
+  Empty clears the choice and disables embeddings, so that is
   always allowed. Anything else has to be a `provider:model` spec the provider
   library recognises as an embedding model - a chat model pasted into the box is
   a mistake worth catching in the form.

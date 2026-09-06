@@ -74,13 +74,6 @@ if config_env() != :test do
   config :ueberauth_oidcc, issuers: [], providers: [oidc: oidc_provider_opts]
 end
 
-# Optional in every runtime, and read the same way in each. Unset leaves
-# fleet-log search on Postgres text search alone; see docs/fleet-search.md.
-if config_env() != :test do
-  config :firstmate_port, FirstmatePort.Fleet.Embeddings,
-    model: System.get_env("FLEET_EMBEDDINGS_MODEL")
-end
-
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

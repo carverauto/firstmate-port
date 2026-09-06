@@ -105,7 +105,8 @@ defmodule FirstmatePortWeb.CredentialsLive do
          |> assign(:error, nil)
          |> update(:form_version, &(&1 + 1))
          |> put_flash(:info, success)
-         |> load_credentials()}
+         |> load_credentials()
+         |> load_embeddings()}
     end
   end
 
@@ -246,8 +247,8 @@ defmodule FirstmatePortWeb.CredentialsLive do
         </form>
         <p class="hint">
           A <code>provider:model</code> spec; the box suggests the ones this portal knows by name,
-          and any other model the provider library supports can be typed in. Empty falls back to
-          the deployment default. Semantic search is optional: choosing a model and saving that
+          and any other model the provider library supports can be typed in. Empty disables
+          embeddings. Semantic search is optional: choosing a model and saving that
           provider's key sends the indexed text of this fleet log - titles, progress notes, roll
           outcomes, no-mistakes findings - to that provider. Leave it off and search stays entirely
           in Postgres.

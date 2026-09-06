@@ -9,10 +9,8 @@ defmodule FirstmatePort.Fleet.Projection do
   ## What the text looks like
 
   `search_text` is the document's fields, in sorted key order, one `key: value`
-  line each, empty values dropped. That shape does two jobs: it is a canonical
-  serialisation of the JSON, so `content_hash` over it detects any change worth
-  re-indexing, and it reads as labelled prose, which is what an embedding model
-  handles best.
+  line each, empty values dropped. It reads as labelled prose, which is what an
+  embedding model handles best. The sync digest covers all projected attributes.
 
   ## What it leaves out
 
@@ -186,16 +184,11 @@ defmodule FirstmatePort.Fleet.Projection do
     |> String.slice(0, @text_limit)
   end
 
-  @doc "Digest of the canonical text. Equal digests mean nothing worth re-indexing changed."
-  def content_hash(search_text) when is_binary(search_text) do
-    :sha256 |> :crypto.hash(search_text) |> Base.encode16(case: :lower)
-  end
-
   defp build(source, source_id, title, url, body, occurred_at, values) do
     document = Map.new(values, fn {key, value} -> {key, jsonable(value)} end)
     text = search_text(document)
 
-    %{
+    attributes = %{
       source: source,
       source_id: source_id,
       title: clean(title),
@@ -203,9 +196,11 @@ defmodule FirstmatePort.Fleet.Projection do
       body: clean(body),
       document: document,
       search_text: text,
-      content_hash: content_hash(text),
       occurred_at: occurred_at
     }
+
+    hash = :crypto.hash(:sha256, :erlang.term_to_binary(attributes, [:deterministic]))
+    Map.put(attributes, :content_hash, Base.encode16(hash, case: :lower))
   end
 
   defp occurred_at(%GithubItem{github_updated_at: nil, updated_at: updated_at}), do: updated_at

@@ -56,7 +56,7 @@ defmodule FirstmatePort.Fleet.Search do
     query = String.trim(text)
     slug = Tenancy.slug(actor)
     limit = Keyword.get(opts, :limit, @default_limit)
-    candidates = Keyword.get(opts, :candidates, @candidates)
+    candidates = max(limit, Keyword.get(opts, :candidates, @candidates))
 
     if query == "" do
       {:ok, %{query: query, results: [], semantic: Embeddings.state(slug)}}

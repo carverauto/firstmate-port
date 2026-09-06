@@ -118,7 +118,7 @@ defmodule FirstmatePort.Fleet.ProjectionTest do
     assert String.length(projection.search_text) <= 8_000
   end
 
-  test "the hash follows the content and nothing else" do
+  test "the hash includes content and occurrence time" do
     roll = %Roll{
       id: "r1",
       cluster: "farm01",
@@ -134,7 +134,7 @@ defmodule FirstmatePort.Fleet.ProjectionTest do
       inserted_at: @at
     }
 
-    assert Projection.from(roll).content_hash ==
+    refute Projection.from(roll).content_hash ==
              Projection.from(%{roll | inserted_at: ~U[2020-01-01 00:00:00.000000Z]}).content_hash
 
     refute Projection.from(roll).content_hash ==
@@ -162,4 +162,28 @@ defmodule FirstmatePort.Fleet.ProjectionTest do
 
     assert text =~ "rebuilt: web-ng core"
   end
+  test "changes outside the search window change the sync digest" do
+    long = String.duplicate("x", 2_000)
+    run = %NoMistakesRun{
+      id: "nm-long",
+      branch: long,
+      findings: long,
+      intent: long,
+      outcome: long,
+      step: "review",
+      respond_instructions: "before",
+      updated_at: @at
+    }
+
+    before = Projection.from(run)
+
+    for changed <- [%{run | step: "test"}, %{run | respond_instructions: "after"}] do
+      after_change = Projection.from(changed)
+      assert before.search_text == after_change.search_text
+      refute before.content_hash == after_change.content_hash
+    end
+
+    assert before == Projection.from(run)
+  end
+
 end

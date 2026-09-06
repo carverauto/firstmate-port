@@ -79,12 +79,8 @@ search with poor recall.
 Off in a fresh checkout. Nothing leaves the cluster until an operator turns it
 on, and turning it on takes two deliberate steps.
 
-**1. Choose a model.** Either per tenant in the portal at
-`/settings/credentials`, or as the deployment default:
-
-```sh
-FLEET_EMBEDDINGS_MODEL=openai:text-embedding-3-small
-```
+**1. Choose a model.** Set it per tenant in the portal at
+`/settings/credentials`. Clearing the model disables embeddings.
 
 The spec is `provider:model`. The portal lists these by name:
 

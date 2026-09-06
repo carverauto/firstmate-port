@@ -44,15 +44,19 @@ defmodule FirstmatePort.Fleet.EmbeddingsTest do
     assert {:ready, @model} = Embeddings.state("local")
   end
 
-  test "the tenant's choice wins over the deployment default", %{human: human} do
+  test "the tenant chooses its own model", %{human: human} do
     assert :error = Embeddings.model("local")
     {:ok, _} = choose_model(human, "google:gemini-embedding-001")
     assert {:ok, "google:gemini-embedding-001"} = Embeddings.model("local")
   end
 
-  test "clearing the choice falls back to the deployment default", %{human: human} do
+  test "clearing the choice disables embeddings despite a stored key", %{human: human} do
     {:ok, _} = choose_model(human, @model)
+    {:ok, _} = save_key(human, "sk-test")
     {:ok, _} = choose_model(human, "")
+
+    assert :off = Embeddings.state("local")
+    assert {:error, :disabled} = Embeddings.embed(["hello"], "local")
 
     assert :error = Embeddings.model("local")
   end

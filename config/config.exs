@@ -91,12 +91,6 @@ config :firstmate_port,
   enable_saas: false,
   default_tenant_slug: "local"
 
-# Fleet-log search runs on Postgres text search with no configuration at all.
-# Embeddings are the opt-in half: a model here (FLEET_EMBEDDINGS_MODEL in
-# config/runtime.exs) plus an `embeddings`/`api_key` credential slot filled by
-# the tenant. Nil means a fresh checkout sends nothing to any provider.
-config :firstmate_port, FirstmatePort.Fleet.Embeddings, model: nil
-
 # Deliberately slow. Test config lowers it; nothing else should.
 config :firstmate_port, FirstmatePort.Accounts.Password, iterations: 210_000
 

@@ -16,7 +16,7 @@ defmodule FirstmatePortWeb.Api.FleetController do
 
   def search(conn, params) do
     actor = conn.assigns.current_user
-    query = params["q"] || params["query"] || ""
+    query = params["q"] || ""
 
     case Search.run(query, actor, limit: limit(params)) do
       {:ok, result} ->

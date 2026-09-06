@@ -226,4 +226,29 @@ defmodule FirstmatePortWeb.CredentialsLiveTest do
       assert html =~ "Nothing from this fleet log is sent anywhere"
     end
   end
+  test "embedding status follows saving, rotating, and deleting the key", %{conn: conn, local: local} do
+    {:ok, view, _html} = live(conn, ~p"/settings/credentials")
+    view
+    |> form("form[phx-submit=set_embedding_model]", %{"model" => "openai:text-embedding-3-small"})
+    |> render_submit()
+
+    view |> element("form[phx-change=select_slot]") |> render_change(%{"slot" => "embeddings/api_key"})
+
+    html = view |> form("#credential-form-0", %{"value" => "sk-first"}) |> render_submit()
+    assert html =~ "On, using openai:text-embedding-3-small"
+
+    {:ok, credential} = Credential.get_slot("embeddings", "api_key", Tenancy.opts(local))
+    {:ok, _} = Credential.destroy(credential, Tenancy.opts(local))
+    {:ok, remounted, html} = live(conn, ~p"/settings/credentials")
+    assert html =~ "Save an embeddings/api_key credential"
+    {:ok, _} = Credentials.put(%{provider: "embeddings", key: "api_key", value: "sk-second"}, Tenancy.opts(local))
+
+    html = render_submit(remounted, "rotate", %{"provider" => "embeddings", "key" => "api_key", "value" => "sk-third"})
+    assert html =~ "On, using openai:text-embedding-3-small"
+
+    html = render_click(remounted, "delete", %{"provider" => "embeddings", "key" => "api_key"})
+    assert html =~ "Save an embeddings/api_key credential"
+    refute html =~ "On, using"
+  end
+
 end

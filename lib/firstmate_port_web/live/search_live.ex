@@ -28,12 +28,28 @@ defmodule FirstmatePortWeb.SearchLive do
      |> assign(:query, "")
      |> assign(:results, [])
      |> assign(:semantic, :off)
+     |> assign(:loading, false)
      |> assign(:error, nil)}
   end
 
   @impl true
   def handle_params(params, _uri, socket) do
-    {:noreply, run(socket, params["q"] || "")}
+    query = String.trim(params["q"] || "")
+    actor = socket.assigns.current_user
+
+    socket =
+      socket
+      |> cancel_async(:search)
+      |> assign(query: query, results: [], error: nil, loading: true)
+
+    socket =
+      if connected?(socket) do
+        start_async(socket, :search, fn -> Search.run(query, actor) end)
+      else
+        socket
+      end
+
+    {:noreply, socket}
   end
 
   @impl true
@@ -41,21 +57,23 @@ defmodule FirstmatePortWeb.SearchLive do
     {:noreply, push_patch(socket, to: ~p"/search?#{[q: query]}")}
   end
 
-  defp run(socket, query) do
-    case Search.run(query, socket.assigns.current_user) do
-      {:ok, result} ->
-        socket
-        |> assign(:query, result.query)
-        |> assign(:results, result.results)
-        |> assign(:semantic, result.semantic)
-        |> assign(:error, nil)
+  @impl true
+  def handle_async(:search, {:ok, {:ok, result}}, socket) do
+    {:noreply,
+     assign(socket,
+       results: result.results,
+       semantic: result.semantic,
+       error: nil,
+       loading: false
+     )}
+  end
 
-      {:error, error} ->
-        socket
-        |> assign(:query, query)
-        |> assign(:results, [])
-        |> assign(:error, inspect(error))
-    end
+  def handle_async(:search, {:ok, {:error, error}}, socket) do
+    {:noreply, assign(socket, error: inspect(error), loading: false)}
+  end
+
+  def handle_async(:search, {:exit, _reason}, socket) do
+    {:noreply, assign(socket, error: "Search could not complete. Please try again.", loading: false)}
   end
 
   defp banner(:off) do
@@ -95,7 +113,7 @@ defmodule FirstmatePortWeb.SearchLive do
     <Layouts.app flash={@flash} current_user={@current_user}>
       <header class="page-head">
         <h1>Search the fleet log</h1>
-        <p class="meta">{banner(@semantic)}</p>
+        <p :if={!@loading} class="meta">{banner(@semantic)}</p>
       </header>
 
       <p :if={@error} class="empty-copy" role="alert">{@error}</p>
@@ -122,8 +140,9 @@ defmodule FirstmatePortWeb.SearchLive do
 
       <section class="plate">
         <h2>Results</h2>
+        <p :if={@loading} class="empty-state" role="status">Searching…</p>
         <p :if={@query == ""} class="empty-state">Type something to search.</p>
-        <p :if={@query != "" and @results == []} class="empty-state">
+        <p :if={!@loading and !@error and @query != "" and @results == []} class="empty-state">
           Nothing matched. A record reaches the index on the next fleet sync, so a PR opened in
           the last few minutes may not be here yet.
         </p>
