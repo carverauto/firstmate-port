@@ -1,5 +1,5 @@
 defmodule FirstmatePort.Fleet.SyncTest do
-  use FirstmatePort.DataCase, async: true
+  use FirstmatePort.DataCase, async: false
 
   import FirstmatePort.FleetFixtures
 
@@ -8,6 +8,14 @@ defmodule FirstmatePort.Fleet.SyncTest do
   alias FirstmatePort.Tenancy
 
   setup do
+    previous_tracking = Application.get_env(:firstmate_port, :build_tracking, [])
+
+    on_exit(fn ->
+      Application.put_env(:firstmate_port, :build_tracking, previous_tracking)
+    end)
+
+    Application.put_env(:firstmate_port, :build_tracking, kubernetes_enabled: true)
+
     tenant("local")
     {:ok, actor: agent("local")}
   end
