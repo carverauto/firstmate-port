@@ -63,6 +63,46 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheckTest do
     refute is_nil(Lockouts.active_lockout(email))
   end
 
+  test "an array-shaped email cannot bypass an active lockout", %{email: email} do
+    assert :ok = Lockouts.record_failed_login(email)
+    assert {:locked, locked_until} = Lockouts.record_failed_login(email)
+
+    body = URI.encode_query([{"email[]", email}, {"password", "known-password"}])
+
+    conn =
+      build_conn()
+      |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      |> post(~p"/auth/local", body)
+
+    assert redirected_to(conn) == "/login"
+    refute get_session(conn, :guardian_token)
+
+    assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
+             "That email and password did not match an account."
+
+    assert Lockouts.active_lockout(email) == locked_until
+  end
+
+  test "non-binary credentials are rejected without coercion", %{email: email} do
+    for params <- [
+          %{"email" => [email], "password" => "known-password"},
+          %{"email" => %{"value" => email}, "password" => "known-password"},
+          %{"email" => nil, "password" => "known-password"},
+          %{"email" => email, "password" => ["known-password"]},
+          %{"email" => email, "password" => %{"value" => "known-password"}},
+          %{"email" => email, "password" => nil}
+        ] do
+      Lockouts.clear(email)
+      conn = post(build_conn(), ~p"/auth/local", params)
+
+      assert redirected_to(conn) == "/login"
+      refute get_session(conn, :guardian_token)
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
+               "That email and password did not match an account."
+    end
+  end
+
   describe "the plug itself" do
     test "lets a request with no identifier through" do
       conn =
@@ -70,12 +110,12 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheckTest do
         |> Plug.Test.conn("/auth/local", %{})
         |> Plug.Conn.fetch_query_params()
         |> Map.put(:params, %{})
-        |> LockoutCheck.call(LockoutCheck.init(actor_id_param: "email", response_mode: :json))
+        |> LockoutCheck.call(LockoutCheck.init(actor_id_param: "email"))
 
       refute conn.halted
     end
 
-    test "answers JSON callers with 423 rather than a redirect" do
+    test "redirects locked callers regardless of Accept header" do
       email = "json-#{System.unique_integer([:positive])}@example.com"
       put_env(Lockouts, threshold: 1, window_seconds: 900, lock_seconds: 900)
       on_exit(fn -> Lockouts.clear(email) end)
@@ -84,27 +124,21 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheckTest do
       conn =
         :post
         |> Plug.Test.conn("/auth/local", %{})
+        |> put_req_header("accept", "application/json")
+        |> assign(:flash, %{})
         |> Map.put(:params, %{"email" => email})
-        |> LockoutCheck.call(LockoutCheck.init(actor_id_param: "email", response_mode: :json))
+        |> LockoutCheck.call(LockoutCheck.init(actor_id_param: "email"))
 
       assert conn.halted
-      assert conn.status == 423
-      assert Jason.decode!(conn.resp_body)["error"] == "account_temporarily_locked"
-    end
-
-    test "requires an explicit response mode" do
-      for mode <- [nil, :auto, :invalid] do
-        assert_raise ArgumentError,
-                     ~r/:response_mode is required and must be :json or :html/,
-                     fn ->
-                       LockoutCheck.init(actor_id_param: "email", response_mode: mode)
-                     end
-      end
+      assert redirected_to(conn, 303) == "/login"
+      assert [retry_after] = get_resp_header(conn, "retry-after")
+      assert String.to_integer(retry_after) > 0
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Too many failed sign-ins"
     end
 
     test "requires an identifier source" do
       assert_raise ArgumentError, "LockoutCheck requires :actor_id_param", fn ->
-        LockoutCheck.init(response_mode: :json)
+        LockoutCheck.init([])
       end
     end
   end

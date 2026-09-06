@@ -180,7 +180,7 @@ failures that caused the lock are still inside the counting window when it
 lifts, and the first honest typo after serving the wait locks the account
 again.
 
-Locked requests get `423` with `retry-after`, or a `303` to `/login` with a
+Locked local sign-in requests get a `303` to `/login` with `retry-after` and a
 flash. To clear one early, restart the pod — state is in memory. That is the
 tradeoff for having no lockout table, no migration and no audit UI to prune; if
 the portal ever needs a real audit trail, this is the module to promote to an

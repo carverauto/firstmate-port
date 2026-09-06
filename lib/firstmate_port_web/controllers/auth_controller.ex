@@ -20,23 +20,29 @@ defmodule FirstmatePortWeb.AuthController do
 
   # Order matters: refuse a locked account before spending a rate-limit slot on
   # it, and run both before Ueberauth starts an OIDC round trip.
-  plug LockoutCheck,
-       [actor_id_param: "email", response_mode: :html, html_redirect_to: "/login"]
-       when action == :local_login
+  plug(
+    LockoutCheck,
+    [actor_id_param: "email", html_redirect_to: "/login"]
+    when action == :local_login
+  )
 
-  plug RateLimit,
-       [bucket: :auth_local, response_mode: :html, html_redirect_to: "/login"]
-       when action == :local_login
+  plug(
+    RateLimit,
+    [bucket: :auth_local, response_mode: :html, html_redirect_to: "/login"]
+    when action == :local_login
+  )
 
-  plug RateLimit,
-       [bucket: :auth_oidc_callback, response_mode: :html, html_redirect_to: "/login"]
-       when action in [:request, :callback]
+  plug(
+    RateLimit,
+    [bucket: :auth_oidc_callback, response_mode: :html, html_redirect_to: "/login"]
+    when action in [:request, :callback]
+  )
 
   # Runs before Ueberauth. Without a loaded provider the strategy fails inside
   # the plug, and these actions answer with a 502 that inspects the underlying
   # error at the visitor. "OIDC is off" is a normal state, not a gateway fault.
-  plug :require_oidc when action in [:request, :callback]
-  plug Ueberauth when action in [:request, :callback]
+  plug(:require_oidc when action in [:request, :callback])
+  plug(Ueberauth when action in [:request, :callback])
 
   def request(conn, _params) do
     case conn.assigns[:ueberauth_failure] do
@@ -103,12 +109,18 @@ defmodule FirstmatePortWeb.AuthController do
   """
   def local_login(conn, params) do
     if local_auth?() do
-      email = params |> Map.get("email", "") |> to_string() |> String.trim()
-      password = params |> Map.get("password", "") |> to_string()
+      email =
+        case Map.get(params, "email") do
+          value when is_binary(value) -> String.trim(value)
+          _ -> nil
+        end
+
+      password = Map.get(params, "password")
 
       user = fetch_user(email)
 
-      with true <- User.valid_password?(user, password),
+      with true <- is_binary(email) and is_binary(password),
+           true <- User.valid_password?(user, password),
            {:ok, token, _claims} <- Guardian.encode_and_sign(user, %{typ: "access"}) do
         return_to = get_session(conn, :return_to) || "/"
         Lockouts.clear(email)
@@ -144,7 +156,7 @@ defmodule FirstmatePortWeb.AuthController do
     :ok
   end
 
-  defp fetch_user(""), do: nil
+  defp fetch_user(email) when email in [nil, ""], do: nil
 
   defp fetch_user(email) do
     case User.get_by_email(email, authorize?: false) do
@@ -206,3 +218,4 @@ defmodule FirstmatePortWeb.AuthController do
     end
   end
 end
+

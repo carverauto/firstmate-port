@@ -5,8 +5,7 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheck do
   Reads the account identifier from a request param (the email a sign-in form
   posts), and asks
   `FirstmatePort.Security.Lockouts.active_lockout/1`. A locked account gets
-  `423 Locked` with a JSON body, or a `303` back to sign-in with a flash for
-  browsers. Anything else — no identifier in the request, no active lockout —
+  `303` back to sign-in with a flash and a `retry-after` header. Anything else — no identifier in the request, no active lockout —
   passes straight through, so this plug never decides who *may* sign in, only
   who must wait.
 
@@ -14,7 +13,6 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheck do
 
     * `:actor_id_param` — required param to read the account identifier from,
       e.g. `"email"`.
-    * `:response_mode` — required, `:json` or `:html`.
     * `:html_redirect_to` — path for the 303. Defaults to `"/login"`.
 
   Place it after `Plug.Parsers` so params are available, and after
@@ -37,16 +35,8 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheck do
       raise ArgumentError, "LockoutCheck requires :actor_id_param"
     end
 
-    response_mode = Keyword.get(opts, :response_mode)
-
-    if response_mode not in [:json, :html] do
-      raise ArgumentError,
-            "LockoutCheck :response_mode is required and must be :json or :html (got #{inspect(response_mode)})"
-    end
-
     %{
       param: param,
-      response_mode: response_mode,
       html_redirect_to: Keyword.get(opts, :html_redirect_to, "/login")
     }
   end
@@ -69,24 +59,13 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheck do
   end
 
   defp deny(conn, retry_after, config) do
-    case config.response_mode do
-      :json ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> send_resp(
-          423,
-          Jason.encode!(%{error: "account_temporarily_locked", retry_after: retry_after})
-        )
-
-      :html ->
-        conn
-        |> maybe_put_flash(
-          "Too many failed sign-ins for that account. Try again in about " <>
-            "#{max(div(retry_after, 60), 1)} minutes."
-        )
-        |> put_resp_header("location", config.html_redirect_to)
-        |> send_resp(303, "")
-    end
+    conn
+    |> maybe_put_flash(
+      "Too many failed sign-ins for that account. Try again in about " <>
+        "#{max(div(retry_after, 60), 1)} minutes."
+    )
+    |> put_resp_header("location", config.html_redirect_to)
+    |> send_resp(303, "")
   end
 
   defp maybe_put_flash(conn, message) do
