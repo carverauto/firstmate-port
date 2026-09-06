@@ -1,7 +1,7 @@
 defmodule FirstmatePort.Portal do
   @moduledoc """
   Diagrams, progress, Kubernetes rolls, Docker builds, BuildBuddy
-  invocations, build/deploy events, and no-mistakes run records.
+  invocations, build/deploy events, no-mistakes run records, and the inbox the mates pass messages through.
 
   Progress is two resources: `ProgressItem` is the subject row, and the
   append-only `ProgressEvent` log carries everything that happened to it.
@@ -51,5 +51,6 @@ defmodule FirstmatePort.Portal do
     resource FirstmatePort.Portal.GithubItem
     resource FirstmatePort.Portal.UsageAccount
     resource FirstmatePort.Portal.UsageSnapshot
+    resource FirstmatePort.Portal.InboxMessage
   end
 end
