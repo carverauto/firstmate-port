@@ -107,8 +107,8 @@ spec:
                   name: github-token
                   key: GITHUB_TOKEN
                   optional: true
-            # Optional: org(s) for the GitHub PR/issue poll. Overlays set this
-            # (e.g. carverauto); comma-separated values poll each org.
+            # Optional GitHub poll configuration: see docs/deploy.md
+            # "GitHub Fleet log ingestion".
             # - name: GITHUB_ORG
             #   value: ""
           securityContext:

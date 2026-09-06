@@ -36,10 +36,21 @@ Prefix every `npm` invocation with `sfw`.
 Fleet log ingest (`rolls|diagrams|no-mistakes post`, e.g.
 `fm-steer rolls post --cluster c1 --namespace n1 --status success --image-tag sha-abc`)
 sends `POST /api/rolls|diagrams|no-mistakes`. Writes require an agent role,
-so posts take an agent API token
-from `FIRSTMATE_AGENT_TOKEN` (env only, never printed or stored). When neither
+so set `FIRSTMATE_AGENT_TOKEN` to an agent API token (env only, never printed
+or stored). Without it, the CLI falls back to stored login credentials; a
+regular device-code user JWT cannot authorize ingest writes. When neither
 `--instance`, `FIRSTMATE_INSTANCE`, nor stored credentials name a host, the CLI
 targets `http://localhost:4000`. Set `FIRSTMATE_INSTANCE` for your deployment.
+
+With the agent token supplied in your environment:
+
+```sh
+fm-steer diagrams post --title "Request flow" --html-file diagram.html
+fm-steer no-mistakes post --run-id run-123 --branch fm/example --step review
+```
+
+Use `fm-steer <kind> post --help` for the available fields. Progress is populated
+by the [GitHub poll](docs/deploy.md#github-fleet-log-ingestion).
 
 Install from source (Go 1.25+):
 

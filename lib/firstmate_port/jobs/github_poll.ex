@@ -1,6 +1,6 @@
 defmodule FirstmatePort.Jobs.GitHubPoll do
   @moduledoc """
-  Copies GitHub PR and closed-issue html_url values as given by the API.
+  Copies open GitHub PR and issue html_url values as given by the API.
   """
 
   require Logger

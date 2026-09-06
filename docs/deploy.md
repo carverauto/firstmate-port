@@ -46,17 +46,8 @@ fm-steer inbox ack --ack <ack-from-next>
 fm-steer inbox list
 ```
 
-Fleet log ingest posts (`rolls|diagrams|no-mistakes post`) need an
-agent role, so they read the agent API token from `FIRSTMATE_AGENT_TOKEN`
-(env only; the CLI never prints or stores it) instead of the device-code user
-JWT. Set `FIRSTMATE_INSTANCE` to your deployment URL; the default is
-`http://localhost:4000`:
-
-```sh
-FIRSTMATE_AGENT_TOKEN="$(cat /run/secrets/agent-token)" \
-  fm-steer rolls post --cluster c1 --namespace n1 \
-  --status success --image-tag sha-abc123
-```
+For Fleet log posting commands and authentication, see the
+[fm-steer CLI guide](../README.md#fm-steer-cli).
 
 Postgres and NATS JetStream (single node, one account) are in the compose file. Streams are named `<tenant>.steer` and `<tenant>.inbound`. The Kubernetes NATS shape is a 3-node cluster (headless service, port 6222, PVCs, durable streams).
 
@@ -67,6 +58,24 @@ docker compose up postgres nats
 mix setup
 mix phx.server
 ```
+
+## GitHub Fleet log ingestion
+
+The scheduled GitHub poll populates Progress from open PRs and issues. Set
+`GITHUB_ORG` to one organization name and `GITHUB_TOKEN` to a token with read
+access to its repositories in the portal process environment. Both values are
+trimmed; an unset or blank value skips the poll. The poll currently reads only
+the first 50 results for each kind and writes to the default tenant when run
+by the scheduler. The schedule is defined in
+[`FirstmatePort.Jobs.Tick`](../lib/firstmate_port/jobs/tick.ex).
+
+For Compose, pass both variables through the portal service's `environment` in
+`docker-compose.override.yml`; setting them in `.env` alone does not pass them
+to the container. In Kubernetes, the base Deployment reads `GITHUB_TOKEN` from
+the optional `github-token` secret; set `GITHUB_ORG` in your deployment overlay.
+The [Carverauto example](../deploy/examples/carverauto/deployment-patch.yaml)
+sets its organization there. Tenant-stored GitHub credentials are separate;
+see [credential consumer status](credentials.md).
 
 ## Sign-in
 
@@ -185,4 +194,4 @@ A `password-hash` key in the same secret (bcrypt hash via
 fails closed when set; unset means email-only. Generate a hash with
 `PW=<password> mix run --no-start -e 'IO.puts(Bcrypt.hash_pwd_salt(System.fetch_env!("PW")))'`.
 
-`fm-steer` is the HTTP inbox port (`put` / `next` / `ack` / `list`). It does not dial NATS. The Phoenix API is the only JetStream client. The on-disk firstmate inbox stays until dual-write is wired.
+See the [fm-steer CLI guide](../README.md#fm-steer-cli) for inbox and Fleet log usage. The Phoenix API is the only JetStream client. The on-disk firstmate inbox stays until dual-write is wired.

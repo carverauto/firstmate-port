@@ -71,7 +71,7 @@ func TestEndpointAuthPrefersAgentToken(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	t.Setenv(AgentTokenEnv, "agent-tok")
-	if err := writeCreds("http://localhost:4000", "user-jwt", "local"); err != nil {
+	if err := WriteCreds("http://localhost:4000", "user-jwt", "local"); err != nil {
 		t.Fatal(err)
 	}
 	base, token := endpointAuth("http://example.com")
@@ -96,10 +96,10 @@ func TestEndpointAuthDefaultsInstance(t *testing.T) {
 func TestMustCredsDefaultsInstance(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
-	if err := writeCreds("", "user-jwt", "local"); err != nil {
+	if err := WriteCreds("", "user-jwt", "local"); err != nil {
 		t.Fatal(err)
 	}
-	c := mustCreds("")
+	c := MustCreds("")
 	if c.Instance != "http://localhost:4000" {
 		t.Fatalf("instance %q", c.Instance)
 	}
