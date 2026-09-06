@@ -10,6 +10,9 @@ There is no `kubectl create secret firstmate-discord`, and no per-tenant secret 
 any other kind. Kubernetes holds the vault key and deployment infrastructure
 secrets, as listed below; tenant credentials stay in Postgres.
 
+For the optional deployment-wide BuildBuddy key, see
+[build tracking](build-tracking.md#buildbuddy-org-api-key).
+
 ## What the cluster still holds
 
 | Secret | Why it is not a tenant credential |

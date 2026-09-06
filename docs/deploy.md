@@ -94,6 +94,9 @@ account, with no identity provider. It is what `docker compose up` and the base
 `k8s/` manifests use, so a cluster can come up and sign in before any IdP
 exists.
 
+Sign-in checks the supplied email's stored account password; a local-looking
+`@localhost` or `@example.com` address alone grants no access.
+
 The account is created on first boot and never rewritten afterwards, so a
 restart cannot rotate a password out from under you.
 
@@ -106,8 +109,11 @@ Set `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` to choose them
 yourself before the first boot. In Kubernetes, the Deployment requires both
 keys in `firstmate-admin` and waits until the secret exists; it does not fall
 back to a generated password. Set `ADMIN_EMAIL` when running
-`deploy/bootstrap-secrets.sh` to choose the secret's email, or create the secret
-yourself with `email` and `password` keys. Read its email with
+`deploy/bootstrap-secrets.sh` to choose the secret's email (default
+`admin@localhost`), or create the secret yourself with `email` and `password`
+keys. Re-running the script backfills a missing or empty `email` without
+rotating the password; an existing nonempty email is left unchanged. Read its
+email with
 `kubectl -n firstmate get secret firstmate-admin -o jsonpath='{.data.email}' | base64 -d`.
 Changing the password environment variable or secret later does not reset an
 existing account's password. A generated Compose password is printed once and
@@ -183,15 +189,8 @@ kubectl apply -k k8s
 ./deploy/bootstrap-secrets.sh
 ```
 
-OSS login is the local `DEV_AUTH` form (email plus password), not a SaaS OIDC
-wall: no `ALLOWED_EMAIL_DOMAIN` is set by default (`localhost`), and one
-`BOOTSTRAP_ADMIN_EMAIL` is admitted regardless of domain. It comes from the
-optional `firstmate-bootstrap-admin` secret
-(`kubectl -n firstmate create secret generic firstmate-bootstrap-admin --from-literal=email=<you@example.org>`,
-or `BOOTSTRAP_ADMIN_EMAIL=<you@example.org> ./deploy/bootstrap-secrets.sh`).
-A `password-hash` key in the same secret (bcrypt hash via
-`BOOTSTRAP_ADMIN_PASSWORD_HASH`) adds a shared local password to the form and
-fails closed when set; unset means email-only. Generate a hash with
-`PW=<password> mix run --no-start -e 'IO.puts(Bcrypt.hash_pwd_salt(System.fetch_env!("PW")))'`.
+See [Sign-in](#sign-in) for bootstrap credentials and backfill behavior. For
+Carverauto, use the
+[deployment-specific bootstrap command](../deploy/examples/carverauto.md).
 
 See the [fm-steer CLI guide](../README.md#fm-steer-cli) for inbox and Fleet log usage. The Phoenix API is the only JetStream client. The on-disk firstmate inbox stays until dual-write is wired.

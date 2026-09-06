@@ -33,8 +33,7 @@ defmodule FirstmatePortWeb.LoginLive do
       <section class="auth-hero">
         <h1>The companion for a captain and crew.</h1>
         <p class="lede">
-          Review diagrams, PRs, issues, image builds, Kubernetes and Docker deploys,
-          and no-mistakes runs in one place.
+          Review diagrams, PRs, issues, builds, and no-mistakes runs in one place.
         </p>
         <ul class="auth-points">
           <li>One log for diagrams, progress, and pipeline runs</li>

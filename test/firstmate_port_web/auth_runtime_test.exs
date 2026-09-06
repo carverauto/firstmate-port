@@ -91,6 +91,21 @@ defmodule FirstmatePortWeb.AuthRuntimeTest do
       refute get_session(conn, :guardian_token)
     end
 
+    test "a random local address with the admin password does not sign in", %{conn: conn} do
+      # Regression: local sign-in is bound to the one bootstrap admin account,
+      # never to any local-looking mailbox. The old hole accepted any
+      # @localhost or @example.com address.
+      for domain <- ["localhost", "example.com"] do
+        intruder =
+          "intruder-#{Base.url_encode64(:crypto.strong_rand_bytes(6), padding: false)}@#{domain}"
+
+        conn = post(conn, ~p"/auth/local", %{"email" => intruder, "password" => @password})
+
+        assert redirected_to(conn) == "/login"
+        refute get_session(conn, :guardian_token)
+      end
+    end
+
     test "the provider route redirects instead of failing", %{conn: conn} do
       conn = get(conn, ~p"/auth/oidc")
       assert redirected_to(conn) == "/login"
@@ -176,6 +191,38 @@ defmodule FirstmatePortWeb.AuthRuntimeTest do
 
       assert redirected_to(conn) == "/"
       assert get_session(conn, :guardian_token)
+    end
+
+    test "only the configured bootstrap email signs in with its password", %{conn: conn} do
+      System.put_env("BOOTSTRAP_ADMIN_EMAIL", "captain@localhost")
+      System.put_env("BOOTSTRAP_ADMIN_PASSWORD", "operator-chosen-secret")
+
+      on_exit(fn ->
+        System.delete_env("BOOTSTRAP_ADMIN_EMAIL")
+        System.delete_env("BOOTSTRAP_ADMIN_PASSWORD")
+      end)
+
+      assert :ok = Bootstrap.ensure_admin!()
+
+      for intruder <- ["someone-else@localhost", "root@localhost", "captain@example.com"] do
+        refused =
+          post(conn, ~p"/auth/local", %{
+            "email" => intruder,
+            "password" => "operator-chosen-secret"
+          })
+
+        assert redirected_to(refused) == "/login"
+        refute get_session(refused, :guardian_token)
+      end
+
+      admitted =
+        post(conn, ~p"/auth/local", %{
+          "email" => "captain@localhost",
+          "password" => "operator-chosen-secret"
+        })
+
+      assert redirected_to(admitted) == "/"
+      assert get_session(admitted, :guardian_token)
     end
 
     test "the generated first-boot password signs in and is printed only once", %{conn: conn} do

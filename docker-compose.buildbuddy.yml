@@ -1,0 +1,10 @@
+services:
+  portal:
+    environment:
+      BUILDBUDDY_ORG_API_KEY_FILE: /run/secrets/buildbuddy_org_api_key
+    secrets:
+      - buildbuddy_org_api_key
+
+secrets:
+  buildbuddy_org_api_key:
+    file: ${BUILDBUDDY_ORG_API_KEY_FILE:-./.local-secrets/buildbuddy_org_api_key}
