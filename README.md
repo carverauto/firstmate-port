@@ -25,6 +25,7 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`,
 
 - [docs/fm-steer.md](docs/fm-steer.md) `fm-steer` for stock firstmate captains: login, commands, and the standing prompt that makes firstmate mirror steers to the portal (no fork required)
 - [docs/credentials.md](docs/credentials.md) how a tenant stores Discord and other secrets
+- [docs/fleet-search.md](docs/fleet-search.md) searching the fleet log, and the optional embeddings
 - [docs/deploy.md](docs/deploy.md) image publishing, compose, Kubernetes
 - [docs/build-tracking.md](docs/build-tracking.md) opt-in tracking and BuildBuddy secrets
 - [docs/bazel.md](docs/bazel.md) rules_elixir / BuildBuddy, `--output_base=/tmp/fm-fm-port/bazel`

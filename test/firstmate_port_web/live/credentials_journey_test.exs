@@ -7,7 +7,9 @@ defmodule FirstmatePortWeb.CredentialsJourneyTest do
   alias FirstmatePort.Auth.Guardian
   alias FirstmatePort.Repo
 
-  test "portal storage enables Discord and API rotation and deletion revoke its keys", %{conn: conn} do
+  test "portal storage enables Discord and API rotation and deletion revoke its keys", %{
+    conn: conn
+  } do
     {:ok, _} = Tenant.seed(%{slug: "journey", name: "Journey"}, authorize?: false)
 
     {:ok, user} =
@@ -15,6 +17,7 @@ defmodule FirstmatePortWeb.CredentialsJourneyTest do
         %{email: "journey@example.com", name: "Journey", tenant_slug: "journey"},
         authorize?: false
       )
+
     {:ok, token, _} = Guardian.encode_and_sign(user, %{"tenant" => "journey"})
     signed_in = conn |> init_test_session(%{}) |> put_session(:guardian_token, token)
     api = fn -> build_conn() |> put_req_header("authorization", "Bearer " <> token) end
@@ -30,6 +33,7 @@ defmodule FirstmatePortWeb.CredentialsJourneyTest do
       view
       |> form("#credential-form-0", %{"value" => key, "description" => "Discord application"})
       |> render_submit()
+
     refute stored =~ key
     assert stored =~ "discord/public_key"
     capture("credentials-stored.html", stored)
@@ -38,25 +42,31 @@ defmodule FirstmatePortWeb.CredentialsJourneyTest do
       Repo.query!("SELECT encrypted_value FROM tenant_credentials WHERE tenant_slug = $1", [
         "journey"
       ])
+
     refute ciphertext == key
     assert :binary.match(ciphertext, key) == :nomatch
     pong = ping(private)
     assert json_response(pong, 200) == %{"type" => 1}
     listed = api.() |> get(~p"/api/credentials")
+
     assert [%{"provider" => "discord", "key" => "public_key", "tenant" => "journey"}] =
              json_response(listed, 200)["data"]
+
     refute listed.resp_body =~ key
 
     {replacement, replacement_private} = :crypto.generate_key(:eddsa, :ed25519)
+
     rotated =
       api.()
       |> put(~p"/api/credentials/discord/public_key", %{"value" => Base.encode16(replacement)})
+
     assert rotated.status == 200
     assert ping(private).status == 401
     assert ping(replacement_private).status == 200
     deleted = api.() |> delete(~p"/api/credentials/discord/public_key")
     assert deleted.status == 204
     assert ping(replacement_private).status == 401
+
     assert %{rows: [[0]]} =
              Repo.query!("SELECT count(*) FROM tenant_credentials WHERE tenant_slug = $1", [
                "journey"

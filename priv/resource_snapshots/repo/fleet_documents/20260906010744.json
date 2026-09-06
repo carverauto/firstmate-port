@@ -1,0 +1,271 @@
+{
+  "attributes": [
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"uuid_generate_v7()\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": true,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "id",
+      "type": "uuid"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "tenant_slug",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "source",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "source_id",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "title",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "\"\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "url",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "\"\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "body",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "%{}",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "document",
+      "type": "map"
+    },
+    {
+      "allow_nil?": false,
+      "default": "\"\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "search_text",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "\"\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "content_hash",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "occurred_at",
+      "type": "utc_datetime_usec"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "embedding",
+      "type": [
+        "array",
+        "float"
+      ]
+    },
+    {
+      "allow_nil?": false,
+      "default": "\"\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "embedding_model",
+      "type": "text"
+    },
+    {
+      "allow_nil?": false,
+      "default": "0",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "embedding_dimensions",
+      "type": "bigint"
+    },
+    {
+      "allow_nil?": false,
+      "default": "\"\"",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "embedded_hash",
+      "type": "text"
+    },
+    {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "embedded_at",
+      "type": "utc_datetime_usec"
+    },
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "inserted_at",
+      "type": "utc_datetime_usec"
+    },
+    {
+      "allow_nil?": false,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "updated_at",
+      "type": "utc_datetime_usec"
+    }
+  ],
+  "base_filter": null,
+  "check_constraints": [],
+  "create_table_options": null,
+  "custom_indexes": [],
+  "custom_statements": [
+    {
+      "after_tables": [],
+      "code?": false,
+      "down": "DROP INDEX IF EXISTS fleet_documents_search_gin",
+      "global?": false,
+      "name": "fleet_documents_search_gin",
+      "up": "CREATE INDEX fleet_documents_search_gin\n  ON fleet_documents\n  USING GIN (to_tsvector('english', search_text))\n"
+    }
+  ],
+  "has_create_action": true,
+  "hash": "7F8DDD05258B0A4CF0124DE90F977C3D910F58B81AC7D9AEF8C492847B5AE9A3",
+  "identities": [
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "fleet_documents_unique_source_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "tenant_slug"
+        },
+        {
+          "type": "atom",
+          "value": "source"
+        },
+        {
+          "type": "atom",
+          "value": "source_id"
+        }
+      ],
+      "name": "unique_source",
+      "nils_distinct?": true,
+      "where": null
+    }
+  ],
+  "multitenancy": {
+    "attribute": "tenant_slug",
+    "global": false,
+    "strategy": "attribute"
+  },
+  "repo": "Elixir.FirstmatePort.Repo",
+  "schema": null,
+  "table": "fleet_documents"
+}

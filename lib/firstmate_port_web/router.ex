@@ -67,6 +67,7 @@ defmodule FirstmatePortWeb.Router do
     get "/docker-builds", IngestController, :list_docker_builds
     get "/buildbuddy-invocations", IngestController, :list_buildbuddy_invocations
     get "/no-mistakes", IngestController, :list_no_mistakes
+    get "/fleet/search", FleetController, :search
   end
 
   scope "/api/cli", FirstmatePortWeb do
@@ -105,6 +106,7 @@ defmodule FirstmatePortWeb.Router do
     post "/docker-builds", IngestController, :create_docker_build
     post "/buildbuddy-invocations", IngestController, :create_buildbuddy_invocation
     post "/no-mistakes", IngestController, :create_no_mistakes
+    post "/fleet/sync", FleetController, :sync
   end
 
   scope "/", FirstmatePortWeb do
@@ -131,6 +133,7 @@ defmodule FirstmatePortWeb.Router do
 
     live "/login/device", DeviceLive
     live "/", PortalLive
+    live "/search", SearchLive
     live "/queues", QueuesLive
     live "/prs", BoardLive
     live "/issues", BoardLive

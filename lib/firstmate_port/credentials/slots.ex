@@ -49,6 +49,14 @@ defmodule FirstmatePort.Credentials.Slots do
       about: "Shared secret for verifying inbound GitHub webhooks."
     },
     %{
+      provider: "embeddings",
+      key: "api_key",
+      label: "Fleet-log embedding API key",
+      format: :opaque,
+      about:
+        "Key for the embedding provider named in this tenant's model, e.g. openai, google, or mistral. Optional: without it, fleet search runs on Postgres text search alone. With it, the indexed text of the fleet log is sent to that provider."
+    },
+    %{
       provider: "oidc",
       key: "client_secret",
       label: "OIDC client secret",

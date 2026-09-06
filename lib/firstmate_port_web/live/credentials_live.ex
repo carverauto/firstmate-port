@@ -10,10 +10,12 @@ defmodule FirstmatePortWeb.CredentialsLive do
 
   use FirstmatePortWeb, :live_view
 
+  alias FirstmatePort.Accounts.Tenant
   alias FirstmatePort.Credentials
   # `Errors.describe/1`, never `Exception.message/1` or `inspect/1`: Ash's own
   # error messages end in the rejected value, which here is the secret.
   alias FirstmatePort.Credentials.{Credential, Errors, Slots}
+  alias FirstmatePort.Fleet.Embeddings
   alias FirstmatePort.Tenancy
 
   on_mount {FirstmatePortWeb.LiveUser, :require_user}
@@ -32,7 +34,8 @@ defmodule FirstmatePortWeb.CredentialsLive do
      # into. That is how the secret leaves the page without entering an assign.
      |> assign(:form_version, 0)
      |> assign(:error, nil)
-     |> load_credentials()}
+     |> load_credentials()
+     |> load_embeddings()}
   end
 
   @impl true
@@ -63,6 +66,18 @@ defmodule FirstmatePortWeb.CredentialsLive do
     end)
   end
 
+  def handle_event("set_embedding_model", %{"model" => model}, socket) do
+    actor = socket.assigns.current_user
+
+    with {:ok, tenant} <- Tenant.get_by_slug(Tenancy.slug(actor), actor: actor),
+         {:ok, _updated} <-
+           Tenant.set_embedding_model(tenant, %{embedding_model: model}, actor: actor) do
+      {:noreply, socket |> assign(:error, nil) |> load_embeddings()}
+    else
+      {:error, error} -> {:noreply, assign(socket, :error, Errors.describe(error))}
+    end
+  end
+
   def handle_event("delete", %{"provider" => provider, "key" => key}, socket) do
     write(socket, "#{provider}/#{key} removed", fn opts ->
       with {:ok, credential} <- find(provider, key, opts) do
@@ -90,11 +105,36 @@ defmodule FirstmatePortWeb.CredentialsLive do
          |> assign(:error, nil)
          |> update(:form_version, &(&1 + 1))
          |> put_flash(:info, success)
-         |> load_credentials()}
+         |> load_credentials()
+         |> load_embeddings()}
     end
   end
 
   defp opts(socket), do: Tenancy.opts(socket.assigns.current_user)
+
+  defp load_embeddings(socket) do
+    actor = socket.assigns.current_user
+
+    chosen =
+      case Tenant.get_by_slug(Tenancy.slug(actor), actor: actor) do
+        {:ok, %Tenant{embedding_model: model}} -> model
+        _ -> ""
+      end
+
+    socket
+    |> assign(:embedding_model, chosen)
+    |> assign(:embedding_state, Embeddings.state(actor))
+  end
+
+  defp embedding_summary(:off) do
+    "Off. Nothing from this fleet log is sent anywhere."
+  end
+
+  defp embedding_summary(:missing_api_key) do
+    "A model is chosen. Save an embeddings/api_key credential above to switch semantic search on."
+  end
+
+  defp embedding_summary({:ready, model}), do: "On, using #{model}."
 
   defp load_credentials(socket) do
     case Credential.list(opts(socket)) do
@@ -182,6 +222,37 @@ defmodule FirstmatePortWeb.CredentialsLive do
           </label>
           <button type="submit" class="btn btn-primary">Save</button>
         </form>
+      </section>
+
+      <section class="plate">
+        <h2>Fleet-log embeddings</h2>
+        <p class="meta">{embedding_summary(@embedding_state)}</p>
+        <form phx-submit="set_embedding_model" class="axi-form">
+          <label>
+            Model
+            <input
+              type="text"
+              name="model"
+              value={@embedding_model}
+              list="embedding-models"
+              placeholder="openai:text-embedding-3-small"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </label>
+          <datalist id="embedding-models">
+            <option :for={model <- Embeddings.catalog()} value={model.spec}>{model.label}</option>
+          </datalist>
+          <button type="submit" class="btn btn-quiet">Save model</button>
+        </form>
+        <p class="hint">
+          A <code>provider:model</code> spec; the box suggests the ones this portal knows by name,
+          and any other model the provider library supports can be typed in. Empty disables
+          embeddings. Semantic search is optional: choosing a model and saving that
+          provider's key sends the indexed text of this fleet log - titles, progress notes, roll
+          outcomes, no-mistakes findings - to that provider. Leave it off and search stays entirely
+          in Postgres.
+        </p>
       </section>
 
       <section class="plate">

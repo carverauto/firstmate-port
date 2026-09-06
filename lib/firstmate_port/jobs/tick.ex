@@ -1,7 +1,7 @@
 defmodule FirstmatePort.Jobs.Tick do
   @moduledoc """
-  AshOban scheduled actions: GitHub poll and retention.
-  The workstation Bazel cache wipe stays on the Mac crontab.
+  AshOban scheduled actions: GitHub poll, retention, and the two fleet-search
+  jobs. The workstation Bazel cache wipe stays on the Mac crontab.
   """
 
   use Ash.Resource,
@@ -28,6 +28,18 @@ defmodule FirstmatePort.Jobs.Tick do
         queue :default
         worker_module_name FirstmatePort.Jobs.Tick.AshOban.ActionWorker.Retention
       end
+
+      schedule :fleet_sync, "*/10 * * * *" do
+        action :fleet_sync
+        queue :fleet
+        worker_module_name FirstmatePort.Jobs.Tick.AshOban.ActionWorker.FleetSync
+      end
+
+      schedule :fleet_embed, "*/5 * * * *" do
+        action :fleet_embed
+        queue :fleet
+        worker_module_name FirstmatePort.Jobs.Tick.AshOban.ActionWorker.FleetEmbed
+      end
     end
   end
 
@@ -51,13 +63,31 @@ defmodule FirstmatePort.Jobs.Tick do
         {:ok, :ok}
       end
     end
+
+    action :fleet_sync, :atom do
+      run fn _input, _context ->
+        case FirstmatePort.Jobs.FleetIndex.sync() do
+          :ok -> {:ok, :ok}
+          {:error, reason} -> {:error, reason}
+        end
+      end
+    end
+
+    action :fleet_embed, :atom do
+      run fn _input, _context ->
+        case FirstmatePort.Jobs.FleetIndex.embed() do
+          :ok -> {:ok, :ok}
+          {:error, reason} -> {:error, reason}
+        end
+      end
+    end
   end
 
   attributes do
     uuid_v7_primary_key :id
 
     attribute :kind, :atom do
-      constraints one_of: [:github_poll, :retention]
+      constraints one_of: [:github_poll, :retention, :fleet_sync, :fleet_embed]
       allow_nil? false
     end
 
