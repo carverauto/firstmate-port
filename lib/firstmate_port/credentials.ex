@@ -11,9 +11,9 @@ defmodule FirstmatePort.Credentials do
   ## Reading a secret back
 
   `secret/3` is the only path that decrypts, and it exists for the app itself -
-  the Discord inbound endpoint reading the key of the tenant whose hostname the
-  interaction arrived on. It bypasses authorization on purpose, so call it from
-  server-side code with a tenant you already established, never with a
+  the Discord inbound endpoint reading the selected tenant’s key (see
+  `FirstmatePort.Credentials.Discord`). It bypasses authorization on purpose, so
+  call it from server-side code with a tenant you already established, never with a
   user-supplied slug. It is also the only caller that sets the context
   `FirstmatePort.Credentials.DecryptGuard` requires, so any other query that
   reaches for the plaintext gets an error rather than a secret. There is no

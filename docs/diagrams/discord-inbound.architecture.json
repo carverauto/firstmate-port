@@ -290,7 +290,7 @@
       "items": [
         "One URL; the payload's application_id names the tenant",
         "Unclaimed applications always fall to the default tenant",
-        "Unknown application and unknown key both return a bare 401"
+        "Missing key or failed signature returns a bare 401"
       ]
     },
     {

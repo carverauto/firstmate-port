@@ -173,10 +173,10 @@ tenant is not a weaker check, only a different key - the only interaction it can
 authenticate is one signed by the default tenant's own application. It is also
 what makes a fresh install work with nothing stored but a public key.
 
-An application no tenant answers for and a signature no key verifies return the
-same bare `401 unauthorized`, so the endpoint cannot be used to find out which
-tenants or applications exist. Two tenants may hold the same Discord app key
-without either speaking for the other - the claim, not the key, decides.
+A missing or unusable selected key and a failed signature return the same bare
+`401 unauthorized`, without identifying the selected tenant. Two tenants may
+hold the same Discord app key without either speaking for the other - the claim,
+not the key, decides.
 
 Keys are read fresh on each interaction, so storing, rotating, or deleting one
 takes effect immediately, with no cache to invalidate and no restart. A
@@ -223,9 +223,9 @@ environment variable, and never appears in a chat message or an HTTP response.
 
 ### Publishing the interactions hostname
 
-The interactions hostname is the only thing this deployment exposes publicly,
-and it exposes exactly one path. `deploy/examples/carverauto/discord-httproute.yaml`
-is a working example: an `Exact` `/interactions` match on the public gateway,
+The interactions hostname exposes exactly one path. For the portal’s separate
+public-access policy, see [Security](security.md#public-access).
+`deploy/examples/carverauto/discord-httproute.yaml` is a working example: an `Exact` `/interactions` match on the public gateway,
 and nothing else. The portal UI, `/mcp`, `/api`, and NATS are not routed there,
 and `FirstmatePortWeb.Plugs.DiscordHostGuard` answers 404 for any other path on
 it even if a route is later widened.

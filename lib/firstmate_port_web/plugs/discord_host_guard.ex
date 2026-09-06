@@ -1,8 +1,8 @@
 defmodule FirstmatePortWeb.Plugs.DiscordHostGuard do
   @moduledoc """
-  Confines the public interactions hostnames to `POST /interactions`.
+  Confines the public interactions hostname to `POST /interactions`.
 
-  The gateway already publishes only that path on those hostnames. This is the
+  The gateway already publishes only that path on that hostname. This is the
   second lock: if an HTTPRoute is ever widened, or the app is reached by some
   other route, the portal UI, `/mcp`, `/api`, and the auth endpoints still must
   not answer on a hostname that exists solely for Discord. Anything else there

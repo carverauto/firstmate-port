@@ -121,9 +121,8 @@ defmodule FirstmatePort.Credentials.Credential do
   multitenancy do
     strategy :attribute
     attribute :tenant_slug
-    # Not global: every read of a credential names the tenant it is for. Inbound
-    # Discord interactions establish their tenant from the hostname before they
-    # touch this resource, so nothing needs to read across tenants any more.
+    # Every credential read must name its tenant; inbound selection belongs to
+    # FirstmatePort.Credentials.Discord, before this resource is read.
     global? false
   end
 

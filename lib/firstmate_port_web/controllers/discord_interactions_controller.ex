@@ -7,10 +7,9 @@ defmodule FirstmatePortWeb.DiscordInteractionsController do
   One URL serves every tenant. The interaction payload names the Discord
   application it is for, and the tenant that claimed that application is the one
   whose stored `discord`/`public_key` the request is checked against - see
-  `FirstmatePort.Credentials.Discord`. An application no tenant answers for, and
-  a tenant with no stored key, are both plain 401s: the response says nothing
-  about which of the two it was, so the endpoint cannot be used to enumerate
-  tenants or applications.
+  `FirstmatePort.Credentials.Discord` for selection and fallback. A missing or
+  unusable selected key and a failed signature are all plain 401s, without
+  identifying the selected tenant.
 
   Tenants store their key through the portal UI or API; environment keys are not
   accepted.

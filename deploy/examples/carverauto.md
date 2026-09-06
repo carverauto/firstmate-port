@@ -21,7 +21,7 @@ Gateways in this cluster:
 | Route | Gateway | Section | Hostname |
 | --- | --- | --- | --- |
 | Portal | `serviceradar-system/serviceradar-shared-gateway` | `https-carverauto` / `http-carverauto` | `firstmate.carverauto.dev`, whole app |
-| Discord interactions | same Gateway | `https-carverauto` / `http-carverauto` | `discord-firstmate.carverauto.dev`, path-only `/interactions` |
+| Discord interactions | same Gateway | `https-carverauto` | `discord-firstmate.carverauto.dev`, path-only `/interactions` |
 
 The portal was LAN-only (`lan-edge/lan-shared-gateway`, VIP `192.168.6.87`) until
 Discord needed reachable Terms of Service and Privacy Policy URLs. Both hostnames

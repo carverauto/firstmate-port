@@ -209,5 +209,4 @@ defmodule FirstmatePort.Accounts.Tenant do
       authorize?: false
     ) == {:ok, nil}
   end
-
 end
