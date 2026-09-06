@@ -2,7 +2,9 @@ defmodule FirstmatePort.RuntimeConfigTest do
   use ExUnit.Case, async: false
 
   @tag :tmp_dir
-  test "production reads the mounted BuildBuddy secret and independent tracking switches", %{tmp_dir: dir} do
+  test "production reads the mounted BuildBuddy secret and independent tracking switches", %{
+    tmp_dir: dir
+  } do
     values = %{
       "DATABASE_URL" => "ecto://test:test@localhost/test",
       "SECRET_KEY_BASE" => String.duplicate("x", 64),

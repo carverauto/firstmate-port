@@ -97,5 +97,4 @@ defmodule FirstmatePort.BuildBuddyTest do
     assert is_binary(message)
     refute message =~ @key
   end
-
 end

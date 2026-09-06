@@ -99,7 +99,10 @@ defmodule FirstmatePortWeb.Api.IngestControllerTest do
     assert String.contains?(url, "/docker-builds/")
   end
 
-  test "agent can record a buildbuddy invocation from an invocation id", %{conn: conn, token: token} do
+  test "agent can record a buildbuddy invocation from an invocation id", %{
+    conn: conn,
+    token: token
+  } do
     conn =
       conn
       |> put_req_header("authorization", "Bearer " <> token)

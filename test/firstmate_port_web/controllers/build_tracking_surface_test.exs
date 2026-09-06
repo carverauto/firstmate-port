@@ -20,7 +20,10 @@ defmodule FirstmatePortWeb.BuildTrackingSurfaceTest do
           {"buildbuddy", [buildbuddy_api_key: "synthetic-test-key"], ["BuildBuddy"]}
         ] do
       Application.put_env(:firstmate_port, :build_tracking, config)
-      html = conn |> init_test_session(%{"guardian_token" => jwt}) |> get("/") |> html_response(200)
+
+      html =
+        conn |> init_test_session(%{"guardian_token" => jwt}) |> get("/") |> html_response(200)
+
       assert html =~ "Fleet log"
       refute html =~ "Farm / demo rolls"
       refute html =~ "No image builds or helm rolls recorded."
