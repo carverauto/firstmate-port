@@ -41,8 +41,9 @@ A closed vocabulary, in lifecycle order:
 | `merged` | a pull request that landed |
 | `complete` | closed, finished, or a thing that already happened |
 
-`merged` and `complete` are terminal: reaching one is what sets an item's
-completion time.
+`merged` and `complete` are terminal: the latest status event sets completion
+time only while the current status is terminal. Returning to an active status
+clears the projected completion time without changing history.
 
 An item whose log carries no `:status` event falls back to its kind — `pr` and
 `issue` read as `in_progress`, `achievement` and `note` as `complete` — and the
@@ -69,7 +70,8 @@ author:
 | closed issue | `complete` |
 | closed, unmerged pull request | `complete` |
 
-An observed `merged` or `complete` always wins. An observed `in_progress` is
+A new observed `merged` or `complete` is eligible to append; projections still
+order events by their occurrence time. An observed `in_progress` is
 **dropped** whenever the crew has already said something more specific — draft,
 ready for review, ready for merge, stalled all look "open" to the search API,
 and the poll must not drag a crew judgement backwards. See
@@ -79,8 +81,10 @@ It never invents an assignee, a runtime, a model, an effort, a duration, or a
 token count. A PR author is not evidence that anyone was assigned, and it is
 certainly not evidence of which model ran.
 
-The poll appends a status event only when the projected status actually moved,
-so a poll on a short schedule does not fill the log with identical rows.
+The poll skips a status already explicitly projected and a transition already
+recorded at the same observed timestamp. Merge and close events retain GitHub’s
+observed timestamps, so repeated polls cannot replay an old transition after
+newer crew work.
 
 ## Ingest contract
 
@@ -168,8 +172,9 @@ Reads:
   count; `meta` contains `total`, `limit`, `offset`, and `next_offset` (null at
   the end). Follow `next_offset` to retrieve the complete log.
 
-The same actions are exposed over MCP as `post_progress_event` and
-`list_progress_events`.
+MCP exposes event append and paginated reads as `post_progress_event` and
+`list_progress_events`; both use `item_id`, not URL lookup. Item creation and
+paged identity reads are `post_progress` and `list_progress`.
 
 ## The portal surfaces
 
@@ -192,7 +197,6 @@ The same actions are exposed over MCP as `post_progress_event` and
 Charts aggregate over the newest `ProgressItem.stats_cap/0` items and say so
 when there are more, so a chart is never an unbounded table scan.
 
-
 `fm-steer progress post --item-id <id> --type status --status merged` appends
 an event using `FIRSTMATE_AGENT_TOKEN`. Use `--url` instead of `--item-id` when
 holding the GitHub link. Assignment and contribution events accept `--worker`,
@@ -202,7 +206,6 @@ holding the GitHub link. Assignment and contribution events accept `--worker`,
 
 Recording crew work at an existing hidden imported URL claims that identity by
 appending its first assignment. The old row and its history are preserved.
-
 
 Event reads are bounded to 100 rows. HTTP uses `limit` and `offset` with
 continuation metadata; MCP `list_progress_events` accepts the same arguments

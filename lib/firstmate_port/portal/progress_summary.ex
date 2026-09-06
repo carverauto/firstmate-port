@@ -97,4 +97,3 @@ defmodule FirstmatePort.Portal.ProgressSummary do
   defp utc(%DateTime{} = value), do: value
   defp utc(value), do: DateTime.from_naive!(value, "Etc/UTC")
 end
-

@@ -8,12 +8,14 @@ defmodule FirstmatePort.Portal.Changes.SeedAssignmentEvent do
   saying who is doing the thing — a mirror of an org's pull requests has no
   worker to name and therefore cannot create one.
 
-  The append runs in the same transaction as the create, so a row can never
-  exist without the event that explains why it exists.
+  The append runs in the same transaction as the create. A hidden imported
+  identity at the same tenant/URL is claimed by appending its first assignment,
+  preserving the existing row and history.
 
   `:assigned_at` places that event in time. It defaults to the row's own
   `inserted_at`, which is right when the crew logs work as it happens, and can
-  be set explicitly when firstmate backfills work that predates the log.
+  be set explicitly when firstmate backfills work that predates the log. When
+  claiming an imported identity, the default is now, not its old insertion time.
   """
 
   use Ash.Resource.Change
@@ -78,4 +80,3 @@ defmodule FirstmatePort.Portal.Changes.SeedAssignmentEvent do
     end
   end
 end
-

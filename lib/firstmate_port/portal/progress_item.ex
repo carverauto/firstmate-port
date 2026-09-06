@@ -26,14 +26,14 @@ defmodule FirstmatePort.Portal.ProgressItem do
     authorizers: [Ash.Policy.Authorizer],
     extensions: [AshPaperTrail.Resource, AshEvents.Events]
 
-  resource do
-    base_filter expr(exists(events, type == :assignment))
-  end
-
   postgres do
     table "progress_items"
     repo FirstmatePort.Repo
     identity_wheres_to_sql unique_url: "url <> ''"
+  end
+
+  resource do
+    base_filter expr(exists(events, type == :assignment))
   end
 
   paper_trail do

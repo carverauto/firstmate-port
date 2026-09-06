@@ -84,9 +84,10 @@ defmodule FirstmatePort.Portal.ProgressStatus do
   def from_github(kind, _item), do: default_for_kind(kind)
 
   @doc """
-  True when a GitHub-observed status may overwrite a crew-reported one.
+  True when a GitHub-observed status is eligible to append.
 
-  The poll knows when something merged or closed, and that always wins. It does
+  Merge and close observations are eligible here; `ProgressLog` handles
+  duplicate transitions and the projection preserves timestamp order. The poll does
   not know the difference between "in progress", "draft", "ready for review",
   "ready for merge", and "stalled", so it must never drag a crew judgement back
   to plain in-progress.
@@ -112,4 +113,3 @@ defmodule FirstmatePort.Portal.ProgressStatus do
   def parse(raw) when is_atom(raw), do: raw |> Atom.to_string() |> parse()
   def parse(_), do: :error
 end
-

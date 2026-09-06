@@ -92,7 +92,7 @@ defmodule FirstmatePort.Jobs.GitHubPollTest do
       assert {:ok, projection} = ProgressProjection.load_one(item, ctx.opts)
       assert projection.status == :merged
       assert projection.status_source == :log
-      assert projection.completed_at == ~U[2026-09-05 00:00:00Z]
+      assert DateTime.compare(projection.completed_at, ~U[2026-09-05 00:00:00Z]) == :eq
     end
 
     test "the poll refreshes a title but still does not create siblings", ctx do

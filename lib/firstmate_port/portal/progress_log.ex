@@ -93,4 +93,3 @@ defmodule FirstmatePort.Portal.ProgressLog do
     end
   end
 end
-

@@ -53,7 +53,10 @@ defmodule FirstmatePortWeb.ProgressLive do
      |> assign(:total_pages, total_pages)
      |> assign(:stats, stats)
      |> assign(:capped, capped)
-     |> assign(:detail, load_detail(params["item"], ProgressProjection.parse_offset(params["event_offset"]), opts))}
+     |> assign(
+       :detail,
+       load_detail(params["item"], ProgressProjection.parse_offset(params["event_offset"]), opts)
+     )}
   end
 
   @impl true

@@ -16,7 +16,8 @@ defmodule FirstmatePort.Portal.ProgressEvent do
   Unlike the mutable portal resources this one carries neither AshPaperTrail nor
   AshEvents: versioning an append-only table would only duplicate it.
 
-  Producers (fm-steer, firstmate, the GitHub poll) POST events; see
+  External producers (fm-steer and firstmate) POST events; the GitHub poll
+  appends through `FirstmatePort.Portal.ProgressLog`. See
   `docs/progress.md` for the wire contract. They never replace firstmate's
   on-disk inbox/status files.
   """
@@ -26,6 +27,8 @@ defmodule FirstmatePort.Portal.ProgressEvent do
   use Ash.Resource,
     otp_app: :firstmate_port,
     domain: FirstmatePort.Portal,
+    # The primary read deliberately bounds history reads as well as relationships.
+    primary_read_warning?: false,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -72,6 +75,7 @@ defmodule FirstmatePort.Portal.ProgressEvent do
       validate compare(:limit, greater_than: 0, less_than_or_equal_to: 100)
       validate compare(:offset, greater_than_or_equal_to: 0)
       prepare build(sort: [occurred_at: :asc, inserted_at: :asc, id: :asc])
+
       prepare fn query, _ ->
         query
         |> Ash.Query.limit(query.arguments.limit)

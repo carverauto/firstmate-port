@@ -25,7 +25,8 @@ defmodule FirstmatePort.Portal.ProgressPaginationTest do
     assert {:ok, [_]} = ProgressItem.list_paged(20, 0, opts)
     assert {:ok, [_]} = ProgressItem.list_for_stats(opts)
     assert {:ok, 1} = Ash.count(ProgressItem, opts)
-    assert {:ok, nil} = ProgressItem.get_by_url(legacy.url, opts)
+    assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+             ProgressItem.get_by_url(legacy.url, opts)
     assert %{rows: [[1]]} = FirstmatePort.Repo.query!(
              "SELECT count(*) FROM progress_items WHERE id = $1", [legacy.id]
            )

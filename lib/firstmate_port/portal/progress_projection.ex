@@ -316,4 +316,3 @@ defmodule FirstmatePort.Portal.ProgressProjection do
     end)
   end
 end
-

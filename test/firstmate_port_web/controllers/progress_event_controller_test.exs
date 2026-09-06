@@ -39,7 +39,8 @@ defmodule FirstmatePortWeb.Api.ProgressEventControllerTest do
 
     historical = append(legacy, %{type: :note, detail: "import history"}, ctx.opts)
     before = FirstmatePort.Repo.query!("SELECT count(*) FROM progress_items", []).rows
-    assert {:ok, nil} = ProgressItem.get_by_url(legacy.url, ctx.opts)
+    assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.NotFound{}]}} =
+             ProgressItem.get_by_url(legacy.url, ctx.opts)
 
     conn =
       build_conn()

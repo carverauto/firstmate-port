@@ -2,10 +2,7 @@ defmodule FirstmatePortWeb.PortalLive do
   @moduledoc """
   The home fleet log.
 
-  Progress is a preview here, not an archive: the newest
-  `ProgressItem.preview_size/0` rows, fetched with a server-side limit, and a
-  "see all" link to `/progress` once there are more. The full list is never
-  rendered and then hidden.
+  Progress navigation and preview behavior are documented in `docs/progress.md`.
   """
   use FirstmatePortWeb, :live_view
 
@@ -70,7 +67,10 @@ defmodule FirstmatePortWeb.PortalLive do
     {:noreply,
      socket
      |> assign(:filter, params["tab"] || "all")
-     |> assign(:detail, load_detail(params["item"], ProgressProjection.parse_offset(params["event_offset"]), opts))}
+     |> assign(
+       :detail,
+       load_detail(params["item"], ProgressProjection.parse_offset(params["event_offset"]), opts)
+     )}
   end
 
   @impl true
@@ -204,7 +204,9 @@ defmodule FirstmatePortWeb.PortalLive do
       <.progress_details
         projection={@detail}
         close_path={close_path(@filter)}
-        event_path={fn offset -> detail_path(@filter, @detail.item.id) <> "&event_offset=#{offset}" end}
+        event_path={
+          fn offset -> detail_path(@filter, @detail.item.id) <> "&event_offset=#{offset}" end
+        }
       />
     </Layouts.app>
     """
@@ -213,7 +215,7 @@ defmodule FirstmatePortWeb.PortalLive do
   defp detail_path(filter, id), do: ~p"/?tab=#{filter}&item=#{id}"
   defp close_path(filter), do: ~p"/?tab=#{filter}"
 
-  # The preview only holds 20 rows, so a deep link to an older row still has to
+  # The preview is bounded, so a deep link to an older row still has to
   # be fetched by id.
   defp load_detail(nil, _offset, _opts), do: nil
   defp load_detail("", _offset, _opts), do: nil

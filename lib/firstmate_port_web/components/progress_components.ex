@@ -113,13 +113,25 @@ defmodule FirstmatePortWeb.ProgressComponents do
         </header>
 
         <div class="modal-body">
-          <nav :if={@event_path && @projection.event_count > @projection.event_limit} class="pager" aria-label="Event pages">
-            <.link :if={@projection.event_offset > 0}
-              patch={@event_path.(max(0, @projection.event_offset - @projection.event_limit))}>Previous events</.link>
+          <nav
+            :if={@event_path && @projection.event_count > @projection.event_limit}
+            class="pager"
+            aria-label="Event pages"
+          >
+            <.link
+              :if={@projection.event_offset > 0}
+              patch={@event_path.(max(0, @projection.event_offset - @projection.event_limit))}
+            >
+              Previous events
+            </.link>
             <span>Event page starting at {@projection.event_offset + 1} of {@projection.event_count}.
               History sections and charts below cover this page; totals cover the full log.</span>
-            <.link :if={@projection.event_offset + @projection.event_limit < @projection.event_count}
-              patch={@event_path.(@projection.event_offset + @projection.event_limit)}>Next events</.link>
+            <.link
+              :if={@projection.event_offset + @projection.event_limit < @projection.event_count}
+              patch={@event_path.(@projection.event_offset + @projection.event_limit)}
+            >
+              Next events
+            </.link>
           </nav>
           <dl class="facts">
             <dt>Status</dt>
@@ -147,7 +159,6 @@ defmodule FirstmatePortWeb.ProgressComponents do
             <dt>Assignee</dt>
             <dd>
               {@projection.assignee || "unassigned"}
-
             </dd>
 
             <dt>Duration</dt>
@@ -596,8 +607,11 @@ defmodule FirstmatePortWeb.ProgressComponents do
       [] when projection.event_count == 0 ->
         [{"log", "Nothing appended yet, so there is nothing to observe."}]
 
-      [] -> [{"log", "No additional observations."}]
-      lines -> lines
+      [] ->
+        [{"log", "No additional observations."}]
+
+      lines ->
+        lines
     end
   end
 
