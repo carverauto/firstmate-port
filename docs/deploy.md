@@ -61,23 +61,19 @@ mix phx.server
 
 ## GitHub Fleet log ingestion
 
-For the scheduled poll’s board and Progress behavior, see
-[what the poll fills](progress.md#what-the-poll-fills-and-what-it-does-not). Set
-`GITHUB_ORG` to one organization name and `GITHUB_TOKEN` to a token with read
-access to its repositories in the portal process environment. Both values are
-trimmed; an unset or blank value skips the poll. The board search reads only
-the first 50 open results for each kind; Progress enrichment separately walks
-tracked crew URLs in bounded pages. The scheduler uses the default tenant.
-The schedule is defined in
+Configure the scheduled GitHub poll through the
+[GitHub credential slots](credentials.md#github). That guide owns credential
+precedence, permissions, and polling scope. The schedule is defined in
 [`FirstmatePort.Jobs.Tick`](../lib/firstmate_port/jobs/tick.ex).
 
-For Compose, pass both variables through the portal service's `environment` in
+For Compose environment fallbacks, pass `GITHUB_TOKEN` and `GITHUB_ORG` through
+the portal service's `environment` in
 `docker-compose.override.yml`; setting them in `.env` alone does not pass them
 to the container. In Kubernetes, the base Deployment reads `GITHUB_TOKEN` from
 the optional `github-token` secret; set `GITHUB_ORG` in your deployment overlay.
 The [Carverauto example](../deploy/examples/carverauto/deployment-patch.yaml)
-sets its organization there. Tenant-stored GitHub credentials are separate;
-see [credential consumer status](credentials.md).
+sets its organization there. These deployment variables are optional fallbacks
+for the portal credential slots.
 
 ## Sign-in
 

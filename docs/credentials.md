@@ -115,7 +115,9 @@ it does not read `oidc`/`client_secret`.
 
 ### GitHub
 
-The Fleet log's Progress tab is filled by a poll that reads two slots:
+The scheduled poll visits every tenant with a tenant-scoped agent, taking the
+first 50 open PRs and first 50 open issues for its organisation. A missing or
+blank token or organisation skips that tenant. It reads two slots:
 
 | Slot | What it is |
 | --- | --- |

@@ -55,10 +55,11 @@ Prefix every `npm` invocation with `sfw`.
 
 Fleet log ingest (`rolls|diagrams|no-mistakes post`, e.g.
 `fm-steer rolls post --cluster c1 --namespace n1 --status success --image-tag sha-abc`)
-sends `POST /api/rolls|diagrams|no-mistakes`. Writes require an agent role,
+sends `POST /api/rolls|diagrams|no-mistakes`. Rolls and no-mistakes writes require an agent role,
 so set `FIRSTMATE_AGENT_TOKEN` to an agent API token (env only, never printed
 or stored). Without it, the CLI falls back to stored login credentials; a
-regular device-code user JWT cannot authorize ingest writes. When neither
+regular device-code user JWT cannot authorize those two kinds of writes.
+For diagram upload authentication and viewing, see [Diagrams](docs/fleet-log.md#diagrams). When neither
 `--instance`, `FIRSTMATE_INSTANCE`, nor stored credentials name a host, the CLI
 targets `http://localhost:4000`. Set `FIRSTMATE_INSTANCE` for your deployment.
 

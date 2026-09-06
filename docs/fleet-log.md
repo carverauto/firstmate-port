@@ -40,8 +40,8 @@ All progress reads, including the portal, API, MCP, and GitHub poll, project
 initial state plus events in ascending database sequence (`seq`) order.
 Event UUIDs identify records in the shared event log; the sequence orders patches.
 The last supplied value for each field wins. Historical rows have no update or delete action. GitHub
-polling appends title/kind changes and preserves crew-owned fields. Scheduled
-polls visit every tenant using that tenant's credential slots and agent actor.
+polling appends title/kind changes and preserves crew-owned fields. See
+[GitHub configuration and polling scope](credentials.md#github).
 
 Merkle trees, hash chains, and provenance proofs remain out of scope.
 

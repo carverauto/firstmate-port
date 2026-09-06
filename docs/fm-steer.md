@@ -66,7 +66,8 @@ It prints a URL and a user code. Open the URL, sign in, confirm the code matches
 what the CLI printed, and click **Approve** on `/login/device`. The CLI stores a
 JWT at `$XDG_CONFIG_HOME/fm-steer/credentials.json` (`~/.config/fm-steer/` when
 `XDG_CONFIG_HOME` is unset), mode `0600`, together with the instance URL and your
-tenant. The token is good for 12 hours.
+tenant. See [CLI session management](deploy.md#local) for token lifetime and
+revocation.
 
 ```sh
 fm-steer auth status    # instance + tenant, exit 1 when not logged in
@@ -139,7 +140,7 @@ Replace `<INSTANCE_URL>` with your portal:
   move, or edit anything under `state/<id>.inbox/` because of fm-steer.
 - A failing `fm-steer` call is a notice, not a failed steer. Say so in one line
   and carry on. Do not resend `fm-send` over it.
-- If it prints `not logged in` or `{"error":"unauthorized"}`, tell me and stop
+- If it prints `not logged in` or `not signed in`, tell me and stop
   using it. The device-code approval is mine to do in a browser; do not attempt
   to log in on my behalf.
 - `fm-steer` speaks HTTP to the portal only. Never give it a NATS URL, NATS
@@ -176,21 +177,18 @@ to. Do not treat the portal inbox as a pager.
 ## 6. Seeing the mirror
 
 - `fm-steer inbox list --task <id>` from any machine holding a token.
-- The portal's **Queues** page (`/queues`) streams the fanout live: each `put`
-  publishes to `<tenant>.steer.inbox` on your tenant's `<tenant>.steer` stream.
+- Open the portal's **Inbox** page (`/inbox`); see the
+  [inbox guide](inbox.md#from-the-portal) for live traffic and history.
 
-Your JWT carries your tenant, and the API scopes every inbox call to it; a
-single-tenant install uses the seeded `local` tenant. The portal's pending set
-is in-memory, so restarting the portal clears it — another reason the on-disk
-inbox stays the record of what was steered.
+Persistence and tenant routing are described in [the inbox guide](inbox.md).
 
 ## 7. Troubleshooting
 
 | Symptom | Cause |
 | --- | --- |
 | `not logged in; run fm-steer auth login` | No credentials file, or it has no token |
-| `{"error":"unauthorized"}` | Token expired (12h) or the instance was rebuilt — log in again |
-| `{"error":"invalid"}` from `put` | Empty body |
+| `not signed in (token expired or revoked); run fm-steer auth login` | See [session management](deploy.md#local); log in again |
+| `{"error":"body is required"}` from `put` | Empty body |
 | `device code expired` | The approval page was not confirmed within 10 minutes |
 | `inbox next` exits 1 silently | Nothing pending; this is the normal empty case |
 | Connection refused | Wrong `--instance` / `FIRSTMATE_INSTANCE`, or the portal is not up |
