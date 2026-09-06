@@ -76,6 +76,7 @@ defmodule FirstmatePort.Jobs.GitHubCredentialsTest do
   test "scheduled polling uses each tenant's PAT and appends title changes", %{captain: captain} do
     other_slug = "poll#{System.unique_integer([:positive])}"
     {:ok, _} = Tenant.seed(%{slug: other_slug, name: other_slug}, authorize?: false)
+
     {:ok, other} =
       User.upsert_oidc(
         %{email: "#{other_slug}@localhost", name: "Other", tenant_slug: other_slug},
@@ -93,38 +94,51 @@ defmodule FirstmatePort.Jobs.GitHubCredentialsTest do
     owner = self()
 
     stub = fn title ->
-      Req.default_options(plug: fn conn ->
-        conn = Plug.Conn.fetch_query_params(conn)
-        [_, slug] = Regex.run(~r/org:([^ +]+)/, conn.query_params["q"])
-        send(owner, {:poll, slug, Plug.Conn.get_req_header(conn, "authorization")})
-        items =
-          if String.contains?(conn.query_params["q"], "is:pr") do
-            [%{"html_url" => "https://github.com/#{slug}/app/pull/1", "title" => title}]
-          else
-            []
-          end
-        Req.Test.json(conn, %{items: items})
-      end)
+      Req.default_options(
+        plug: fn conn ->
+          conn = Plug.Conn.fetch_query_params(conn)
+          [_, slug] = Regex.run(~r/org:([^ +]+)/, conn.query_params["q"])
+          send(owner, {:poll, slug, Plug.Conn.get_req_header(conn, "authorization")})
+
+          items =
+            if String.contains?(conn.query_params["q"], "is:pr") do
+              [%{"html_url" => "https://github.com/#{slug}/app/pull/1", "title" => title}]
+            else
+              []
+            end
+
+          Req.Test.json(conn, %{items: items})
+        end
+      )
     end
 
     stub.("Initial PR")
     assert :ok = GitHubPoll.run(nil)
+
     for user <- [captain, other] do
       slug = user.tenant_slug
       expected = ["Bearer test-#{slug}"]
       assert_receive {:poll, ^slug, ^expected}
-      assert {:ok, [%{title: "Initial PR"}]} = FirstmatePort.Portal.ProgressItem.list(Tenancy.opts(user))
+
+      assert {:ok, [%{title: "Initial PR"}]} =
+               FirstmatePort.Portal.ProgressItem.list(Tenancy.opts(user))
     end
 
     stub.("Revised PR")
     assert :ok = GitHubPoll.run(nil)
     assert :ok = GitHubPoll.run(nil)
+
     for user <- [captain, other] do
       opts = Tenancy.opts(user)
-      assert {:ok, [%{id: id, title: "Revised PR"}]} = FirstmatePort.Portal.ProgressItem.list(opts)
-      assert {:ok, [%{item_id: ^id, title: "Revised PR"}]} = FirstmatePort.Portal.ProgressEvent.list(opts)
-      assert %{rows: [["Initial PR"]]} = FirstmatePort.Repo.query!("SELECT title FROM progress_items WHERE id = $1", [id])
+
+      assert {:ok, [%{id: id, title: "Revised PR"}]} =
+               FirstmatePort.Portal.ProgressItem.list(opts)
+
+      assert {:ok, [%{item_id: ^id, title: "Revised PR"}]} =
+               FirstmatePort.Portal.ProgressEvent.list(opts)
+
+      assert %{rows: [["Initial PR"]]} =
+               FirstmatePort.Repo.query!("SELECT title FROM progress_items WHERE id = $1", [id])
     end
   end
-
 end
