@@ -61,8 +61,9 @@ fm-steer auth login --instance https://portal.example.com
 ```
 
 The login is a device-code approval in a browser: it is the operator's step, not
-an agent's. One login covers the whole host - firstmate and every crewmate it
-spawns run as the same user and share `~/.config/fm-steer/credentials.json`.
+an agent's. Firstmate and its crewmates share that login when they use the same
+credentials location. See the [CLI login guide](../../docs/fm-steer.md#3-log-in)
+for credential storage and the `XDG_CONFIG_HOME` override.
 
 The installer migrates no existing inbox messages. Before enabling portal
 delivery for an existing task, pause new steers and reconcile outstanding stock

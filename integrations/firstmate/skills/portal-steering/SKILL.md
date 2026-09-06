@@ -28,10 +28,9 @@ there is no automatic redelivery or restoration.
 - `fm-steer` on PATH: `go build -o ~/.local/bin/fm-steer ./cmd/fm-steer` from a
   firstmate-port checkout (or `./tools/bazel build //:fm-steer`).
 - One login on the fleet host: `fm-steer auth login --instance <your portal URL>`.
-  That stores a token at `~/.config/fm-steer/credentials.json` (mode 0600), which
-  every agent running as that user shares - firstmate and every crewmate it spawns
-  need no login of their own. A second mate on a **remote** home is a different user
-  on a different machine and needs its own login there.
+  Agents share it only when they use the same credentials location; keep their
+  `XDG_CONFIG_HOME` setting consistent. Check `fm-steer auth status` in each
+  agent's environment. A second mate on a **remote** home needs its own login there.
 - The approval step is a human in a browser. Never try to complete a device-code
   login on the captain's behalf.
 
@@ -271,7 +270,7 @@ Then, by hand:
   because the generator was never patched.
 - Tell any running crewmate, once, that the portal plane is off and the on-disk inbox
   is live again.
-- Optionally `fm-steer auth logout` and remove `~/.config/fm-steer/credentials.json`.
+- Optionally `fm-steer auth logout`, which removes the active credentials file.
   Leaving the login in place is harmless; nothing reads it unless asked.
 
 After completing those steps, resume stock delivery. `bin/fm-send.sh`,
