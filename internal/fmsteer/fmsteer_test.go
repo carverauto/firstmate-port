@@ -344,6 +344,9 @@ func TestRevokedTokenSaysToSignInAgain(t *testing.T) {
 	// The device-code poll is unauthenticated by design and must keep working.
 	if _, err := PostJSONStatus(srv.URL, "", map[string]string{}, nil); err != nil {
 		t.Fatalf("unauthenticated poll errored: %v", err)
+	}
+}
+
 func TestQueuePostSendsSparsePayload(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)

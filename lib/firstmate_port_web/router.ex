@@ -180,13 +180,13 @@ defmodule FirstmatePortWeb.Router do
   scope "/api", FirstmatePortWeb.Api do
     pipe_through :cli
 
-    post "/queues", QueueController, :create
     post "/diagrams", IngestController, :create_diagram
   end
 
   scope "/api", FirstmatePortWeb.Api do
     pipe_through :api_write
 
+    post "/queues", QueueController, :create
     post "/progress", IngestController, :create_progress
     post "/progress/events", IngestController, :create_progress_event
     post "/rolls", IngestController, :create_roll
