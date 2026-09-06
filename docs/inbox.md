@@ -25,7 +25,7 @@ two crewmates polling `next` at the same time are never handed the same order.
 ## From the CLI
 
 ```sh
-fm-steer auth login                      # defaults to https://firstmate.carverauto.dev
+fm-steer auth login --instance https://firstmate.carverauto.dev
 fm-steer inbox put --body "PR is green"  # files under task 'firstmate'
 fm-steer inbox next                      # oldest message for any task
 fm-steer inbox ack --ack <ack-from-next>
