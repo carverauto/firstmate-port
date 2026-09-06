@@ -73,7 +73,7 @@ defmodule FirstmatePort.Jobs.GitHubCredentialsTest do
     assert GitHubPoll.run(captain) == :ok
   end
 
-  test "scheduled polling uses each tenant's PAT and appends title changes", %{captain: captain} do
+  test "scheduled polling uses each tenant's PAT and refreshes the board", %{captain: captain} do
     other_slug = "poll#{System.unique_integer([:positive])}"
     {:ok, _} = Tenant.seed(%{slug: other_slug, name: other_slug}, authorize?: false)
 
@@ -121,7 +121,7 @@ defmodule FirstmatePort.Jobs.GitHubCredentialsTest do
       assert_receive {:poll, ^slug, ^expected}
 
       assert {:ok, [%{title: "Initial PR"}]} =
-               FirstmatePort.Portal.ProgressItem.list(Tenancy.opts(user))
+               FirstmatePort.Portal.GithubItem.list(Tenancy.opts(user))
     end
 
     stub.("Revised PR")
@@ -131,14 +131,11 @@ defmodule FirstmatePort.Jobs.GitHubCredentialsTest do
     for user <- [captain, other] do
       opts = Tenancy.opts(user)
 
-      assert {:ok, [%{id: id, title: "Revised PR"}]} =
-               FirstmatePort.Portal.ProgressItem.list(opts)
+      assert {:ok, [%{title: "Revised PR"}]} =
+               FirstmatePort.Portal.GithubItem.list(opts)
 
-      assert {:ok, [%{item_id: ^id, title: "Revised PR"}]} =
-               FirstmatePort.Portal.ProgressEvent.list(opts)
-
-      assert %{rows: [["Initial PR"]]} =
-               FirstmatePort.Repo.query!("SELECT title FROM progress_items WHERE id = $1", [id])
+      assert {:ok, []} = FirstmatePort.Portal.ProgressItem.list(opts)
+      assert {:ok, []} = FirstmatePort.Portal.ProgressEvent.list(opts)
     end
   end
 end

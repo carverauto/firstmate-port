@@ -6,7 +6,7 @@ defmodule FirstmatePort.Fleet.EmbedderTest do
   alias FirstmatePort.Accounts.Tenant
   alias FirstmatePort.Credentials
   alias FirstmatePort.Fleet.{Document, Embedder, Sync}
-  alias FirstmatePort.Portal.{ProgressEvent, ProgressItem}
+  alias FirstmatePort.Portal.ProgressItem
   alias FirstmatePort.Tenancy
 
   @model "openai:text-embedding-3-small"
@@ -91,10 +91,7 @@ defmodule FirstmatePort.Fleet.EmbedderTest do
     {:ok, [item]} = ProgressItem.list(Tenancy.opts(actor))
 
     {:ok, _} =
-      ProgressEvent.record(
-        %{item_id: item.id, kind: :note, title: "helm rolled forward"},
-        Tenancy.opts(actor)
-      )
+      ProgressItem.touch(item, %{kind: :note, title: "helm rolled forward"}, Tenancy.opts(actor))
 
     {:ok, %{written: 1}} = Sync.run("local")
 

@@ -41,8 +41,8 @@ defmodule FirstmatePort.Portal do
 
   resources do
     resource FirstmatePort.Portal.Diagram
-    resource FirstmatePort.Portal.ProgressEvent
     resource FirstmatePort.Portal.ProgressItem
+    resource FirstmatePort.Portal.ProgressEvent
     resource FirstmatePort.Portal.Roll
     resource FirstmatePort.Portal.DockerBuild
     resource FirstmatePort.Portal.BuildBuddyInvocation

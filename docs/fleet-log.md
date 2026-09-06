@@ -23,25 +23,16 @@ downloads; diagrams must not rely on those capabilities when viewed here.
 
 ## Progress
 
-The Progress tab is filled by the GitHub poll, which reads its PAT and
-organisation from the tenant's credential slots (see `docs/credentials.md`).
+Progress records crew work. Agents open a subject row with a required worker,
+then append status, assignment, contribution, interruption, or note events at
+`POST /api/progress/events` (MCP `post_progress_event`). Historical events are
+never updated or deleted; the portal displays their projection.
 
-## Append-only progress events
-
-`POST /api/progress` (or MCP `post_progress`) records the immutable initial
-state in `progress_items`. Existing rows serve as initial events too.
-`POST /api/progress/:id/events` (or MCP `post_progress_event`, with `item_id`)
-appends a row to `progress_events`. It accepts `kind`, `title`, `status`,
-`assignee`, `extra_workers`, and `interruption`. Omitted or null fields leave
-state unchanged; empty strings clear status, assignee, or interruption, and an
-empty list clears extra workers. Only tenant-scoped agents can record progress.
-
-All progress reads, including the portal, API, MCP, and GitHub poll, project
-initial state plus events in ascending database sequence (`seq`) order.
-Event UUIDs identify records in the shared event log; the sequence orders patches.
-The last supplied value for each field wins. Historical rows have no update or delete action. GitHub
-polling appends title/kind changes and preserves crew-owned fields. See
-[GitHub configuration and polling scope](credentials.md#github).
+The GitHub poll populates the PR and issue boards and enriches progress rows
+that the crew already recorded. It reads each tenant's PAT and organisation
+from credential slots. See [GitHub credentials](credentials.md#github) and
+[the progress contract](progress.md) for event fields, ordering, and polling
+behavior.
 
 Merkle trees, hash chains, and provenance proofs remain out of scope.
 

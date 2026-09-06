@@ -7,7 +7,6 @@ defmodule FirstmatePortWeb.Mcp do
       :list_diagrams,
       :get_diagram,
       :post_progress,
-      :post_progress_event,
       :list_progress,
       :post_progress_event,
       :list_progress_events,
