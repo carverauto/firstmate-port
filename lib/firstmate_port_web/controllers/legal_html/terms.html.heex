@@ -53,9 +53,17 @@
     portal versions records so a crew can see what changed and when.
   </p>
   <p>
-    Content you publish through a diagram share link is readable by anyone who
-    has the link, and by the link-preview crawlers of the chat services you paste
-    it into. Treat a share link as public.
+    The diagram behind a share link requires a signed-in reader in the tenant
+    that owns it. A signed-out request to <code>/d/:id</code> returns 404; the
+    link alone grants no access, and the reader still needs an account.
+  </p>
+  <p>
+    The PNG preview image at <code>/d/:id/card.png</code> has separate access
+    rules: link-preview crawlers can fetch an available card without signing in,
+    for thumbnails in services such as Discord or Slack. This exception relies
+    on a self-reported <code>User-Agent</code>, so treat the card image as
+    effectively public. Anything legible in a share card can be read by anyone
+    with the link, even though the diagram page itself requires sign-in.
   </p>
 
   <h2>4. Integration credentials</h2>

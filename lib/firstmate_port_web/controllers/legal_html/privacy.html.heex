@@ -96,7 +96,16 @@
     </li>
   </ul>
   <p>
-    Data is otherwise disclosed only where the law requires it.
+    A diagram share link requires a signed-in reader in the tenant that owns
+    the diagram. Signed-out requests to <code>/d/:id</code> return 404; a link
+    alone grants no access. The PNG preview at <code>/d/:id/card.png</code>
+    has a separate exception: link-preview crawlers can fetch an available card
+    without signing in. Because this relies on a self-reported
+    <code>User-Agent</code>, treat the card image as effectively public: anyone
+    with the link can read anything legible in it.
+  </p>
+  <p>
+    Apart from these disclosures, data is disclosed only where the law requires it.
   </p>
 
   <h2>Cookies</h2>
