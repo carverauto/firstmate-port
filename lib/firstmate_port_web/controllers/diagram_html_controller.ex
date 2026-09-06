@@ -1,4 +1,14 @@
 defmodule FirstmatePortWeb.DiagramHTMLController do
+  @moduledoc """
+  Serves an uploaded Archify diagram.
+
+  A diagram is tenant data, so reading one needs an actor. A visitor who is not
+  signed in is sent to sign in and returned here afterwards rather than being
+  told the diagram does not exist - a link pasted into a chat should land on the
+  diagram, not on a 404 that looks like the upload failed. Link-unfurling
+  crawlers get the Open Graph card instead, since they cannot sign in.
+  """
+
   use FirstmatePortWeb, :controller
 
   alias FirstmatePort.Portal.Diagram
@@ -6,18 +16,28 @@ defmodule FirstmatePortWeb.DiagramHTMLController do
   def show(conn, %{"id" => id}) do
     ua = conn |> get_req_header("user-agent") |> List.first() || ""
 
-    case Diagram.get(id, FirstmatePort.Tenancy.opts(conn.assigns.current_user)) do
-      {:ok, diagram} ->
-        if crawler?(ua) and is_nil(conn.assigns.current_user) do
-          og(conn, diagram)
-        else
-          conn
-          |> put_resp_content_type("text/html")
-          |> send_resp(200, diagram.html)
+    cond do
+      is_nil(conn.assigns.current_user) and crawler?(ua) ->
+        case Diagram.get(id, FirstmatePort.Tenancy.opts(crawler_actor())) do
+          {:ok, diagram} -> og(conn, diagram)
+          {:error, _} -> not_found(conn)
         end
 
-      {:error, _} ->
-        conn |> put_status(:not_found) |> text("diagram not found")
+      is_nil(conn.assigns.current_user) ->
+        conn
+        |> put_session(:return_to, conn.request_path)
+        |> redirect(to: ~p"/login")
+
+      true ->
+        case Diagram.get(id, FirstmatePort.Tenancy.opts(conn.assigns.current_user)) do
+          {:ok, diagram} ->
+            conn
+            |> put_resp_content_type("text/html")
+            |> send_resp(200, diagram.html)
+
+          {:error, _} ->
+            not_found(conn)
+        end
     end
   end
 
@@ -78,4 +98,6 @@ defmodule FirstmatePortWeb.DiagramHTMLController do
   end
 
   defp crawler_actor, do: %{role: :human, email: "crawler@localhost"}
+
+  defp not_found(conn), do: conn |> put_status(:not_found) |> text("diagram not found")
 end

@@ -59,8 +59,11 @@ defmodule FirstmatePort.Portal.Diagram do
       authorize_if actor_present()
     end
 
+    # Archify uploads from whatever is signed in: the crew's agent key, or the
+    # captain's own `fm-steer` session. The tenant an upload lands in is the
+    # actor's own either way, so widening this does not cross a tenant.
     policy action(:upload) do
-      authorize_if expr(^actor(:role) == :agent)
+      authorize_if actor_present()
     end
   end
 

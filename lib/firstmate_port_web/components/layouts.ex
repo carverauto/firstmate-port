@@ -154,6 +154,7 @@ defmodule FirstmatePortWeb.Layouts do
         <nav class="nav" aria-label="Primary">
           <.link navigate={~p"/"}>Log</.link>
           <.link navigate={~p"/search"}>Search</.link>
+          <.link navigate={~p"/inbox"}>Inbox</.link>
           <.link navigate={~p"/prs"}>PRs</.link>
           <.link navigate={~p"/issues"}>Issues</.link>
           <.link navigate={~p"/no-mistakes"}>no-mistakes</.link>
@@ -161,6 +162,7 @@ defmodule FirstmatePortWeb.Layouts do
           <.link navigate={~p"/usage"}>Usage</.link>
           <.link navigate={~p"/steer"}>fm-steer</.link>
           <.link navigate={~p"/settings/credentials"}>Credentials</.link>
+          <.link navigate={~p"/settings/sessions"}>Sessions</.link>
         </nav>
         <div class="topbar-end">
           <.account_menu :if={@current_user} current_user={@current_user} />
