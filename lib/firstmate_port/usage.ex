@@ -56,15 +56,12 @@ defmodule FirstmatePort.Usage do
   @doc """
   Average daily consumption across the current billing window.
 
-  `used` falls back to zero when a window resets, so samples at or before
-  the last drop belong to a spent window and would understate burn. Only
-  the run since that drop counts.
+  `snapshots` are the window's boundary samples from
+  `FirstmatePort.Usage.BurnWindow`, which already drops everything at or
+  before the last reset.
   """
   def daily_burn(snapshots) do
-    ordered =
-      snapshots
-      |> Enum.sort_by(&as_unix(inserted_at(&1)))
-      |> since_last_reset()
+    ordered = Enum.sort_by(snapshots, &as_unix(inserted_at(&1)))
 
     case {List.first(ordered), List.last(ordered)} do
       {nil, _} ->
@@ -100,21 +97,8 @@ defmodule FirstmatePort.Usage do
       pct_used: pct_used(account),
       status: status(account),
       runway_days: runway_days(account, snapshots),
-      spend_priority: account.spend_priority,
-      reset_at: account.reset_at
+      spend_priority: account.spend_priority
     }
-  end
-
-  defp since_last_reset(ordered) do
-    ordered
-    |> Enum.reduce([], fn
-      snap, [prev | _] = acc ->
-        if (used_of(snap) || 0) < (used_of(prev) || 0), do: [snap], else: [snap | acc]
-
-      snap, [] ->
-        [snap]
-    end)
-    |> Enum.reverse()
   end
 
   defp inserted_at(%{inserted_at: at}), do: at

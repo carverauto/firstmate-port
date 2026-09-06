@@ -5,8 +5,9 @@ defmodule FirstmatePortWeb.UsageController do
   """
   use FirstmatePortWeb, :controller
 
-  alias FirstmatePort.Portal.{UsageAccount, UsageSnapshot}
+  alias FirstmatePort.Portal.UsageAccount
   alias FirstmatePort.{Tenancy, Usage}
+  alias FirstmatePort.Usage.BurnWindow
 
   def index(conn, _params) do
     actor = conn.assigns.current_user
@@ -16,10 +17,7 @@ defmodule FirstmatePortWeb.UsageController do
       data =
         accounts
         |> Usage.sort_for_spend()
-        |> Enum.map(fn account ->
-          {:ok, snaps} = UsageSnapshot.for_account(account.id, opts)
-          Usage.summarize(account, snaps)
-        end)
+        |> Enum.map(&Usage.summarize(&1, BurnWindow.for_account(&1.id, Tenancy.slug(actor))))
 
       json(conn, %{tenant: Tenancy.slug(actor), data: data})
     else
@@ -33,8 +31,10 @@ defmodule FirstmatePortWeb.UsageController do
 
     case UsageAccount.record(attrs(params), Tenancy.opts(actor)) do
       {:ok, account} ->
-        {:ok, snaps} = UsageSnapshot.for_account(account.id, Tenancy.opts(actor))
-        json(conn, Usage.summarize(account, snaps))
+        json(
+          conn,
+          Usage.summarize(account, BurnWindow.for_account(account.id, Tenancy.slug(actor)))
+        )
 
       {:error, error} ->
         conn |> put_status(:unprocessable_entity) |> json(%{error: inspect(error)})
@@ -48,7 +48,6 @@ defmodule FirstmatePortWeb.UsageController do
     |> put_given(:used, number(params["used"]))
     |> put_given(:window, one_of(params["window"], ~w(monthly weekly daily one_time)))
     |> put_given(:spend_priority, integer(params["spend_priority"]))
-    |> put_given(:reset_at, datetime(params["reset_at"]))
   end
 
   defp put_given(attrs, _key, nil), do: attrs
@@ -81,15 +80,4 @@ defmodule FirstmatePortWeb.UsageController do
   end
 
   defp integer(_), do: nil
-
-  defp datetime(nil), do: nil
-
-  defp datetime(s) when is_binary(s) do
-    case DateTime.from_iso8601(s) do
-      {:ok, dt, _} -> dt
-      _ -> nil
-    end
-  end
-
-  defp datetime(_), do: nil
 end

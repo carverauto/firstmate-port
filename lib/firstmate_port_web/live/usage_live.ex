@@ -6,8 +6,9 @@ defmodule FirstmatePortWeb.UsageLive do
   """
   use FirstmatePortWeb, :live_view
 
-  alias FirstmatePort.Portal.{UsageAccount, UsageSnapshot}
+  alias FirstmatePort.Portal.UsageAccount
   alias FirstmatePort.{Tenancy, Usage}
+  alias FirstmatePort.Usage.BurnWindow
 
   on_mount {FirstmatePortWeb.LiveUser, :require_user}
 
@@ -42,13 +43,12 @@ defmodule FirstmatePortWeb.UsageLive do
     opts = Tenancy.opts(actor)
     {:ok, accounts} = UsageAccount.list(opts)
 
+    slug = Tenancy.slug(actor)
+
     rows =
       accounts
       |> Usage.sort_for_spend()
-      |> Enum.map(fn account ->
-        {:ok, snaps} = UsageSnapshot.for_account(account.id, opts)
-        Usage.summarize(account, snaps)
-      end)
+      |> Enum.map(&Usage.summarize(&1, BurnWindow.for_account(&1.id, slug)))
 
     assign(socket, :accounts, rows)
   end

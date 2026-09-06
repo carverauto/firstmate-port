@@ -53,31 +53,18 @@ defmodule FirstmatePort.UsageTest do
     assert Usage.status(account(%{allowance: nil})) == :unknown
   end
 
-  test "runway scores the current window, not history across a reset" do
+  test "runway scores only the window it is handed" do
     now = DateTime.utc_now()
 
-    across_reset = [
-      %{used: 10.0, inserted_at: DateTime.add(now, -34, :day)},
-      %{used: 90.0, inserted_at: DateTime.add(now, -15, :day)},
+    # The window's own boundary samples: 15 used over 10 days is 1.5/day,
+    # remaining 80 -> 53.3 days. Samples from a spent window never reach
+    # here; the burn window drops them in SQL.
+    current_window = [
       %{used: 5.0, inserted_at: DateTime.add(now, -10, :day)},
       %{used: 20.0, inserted_at: now}
     ]
 
-    # Only the post-reset run counts: 15 used over 10 days is 1.5/day,
-    # remaining 80 -> 53.3 days, not the 272 the spent window implies.
-    assert Usage.runway_days(account(%{used: 20.0}), across_reset) == 53.3
-  end
-
-  test "runway is nil when the window just reset and only one sample follows" do
-    now = DateTime.utc_now()
-
-    snaps = [
-      %{used: 10.0, inserted_at: DateTime.add(now, -34, :day)},
-      %{used: 90.0, inserted_at: DateTime.add(now, -15, :day)},
-      %{used: 20.0, inserted_at: now}
-    ]
-
-    assert Usage.runway_days(account(%{used: 20.0}), snaps) == nil
+    assert Usage.runway_days(account(%{used: 20.0}), current_window) == 53.3
   end
 
   test "runway is nil without enough history" do
@@ -110,8 +97,7 @@ defmodule FirstmatePort.UsageTest do
         Map.merge(account(), %{
           id: "abc",
           unit: :usd,
-          window: :monthly,
-          reset_at: nil
+          window: :monthly
         })
       )
 

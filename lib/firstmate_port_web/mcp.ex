@@ -14,8 +14,6 @@ defmodule FirstmatePortWeb.Mcp do
       :list_no_mistakes,
       :record_usage,
       :list_usage,
-      :record_usage_snapshot,
-      :list_usage_snapshots,
       :list_open_prs,
       :list_open_issues,
       :upsert_github_item,

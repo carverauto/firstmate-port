@@ -23,8 +23,6 @@ defmodule FirstmatePort.Portal do
     tool :list_no_mistakes, FirstmatePort.Portal.NoMistakesRun, :read
     tool :record_usage, FirstmatePort.Portal.UsageAccount, :record
     tool :list_usage, FirstmatePort.Portal.UsageAccount, :read
-    tool :record_usage_snapshot, FirstmatePort.Portal.UsageSnapshot, :record
-    tool :list_usage_snapshots, FirstmatePort.Portal.UsageSnapshot, :by_account
     tool :list_open_prs, FirstmatePort.Portal.GithubItem, :open_prs
     tool :list_open_issues, FirstmatePort.Portal.GithubItem, :open_issues
     tool :upsert_github_item, FirstmatePort.Portal.GithubItem, :upsert

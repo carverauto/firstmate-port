@@ -223,7 +223,7 @@ func TestUsageJSONPassesLedgerThrough(t *testing.T) {
 			"data": []map[string]any{
 				{"id": "acct-1", "provider": "openrouter", "label": "captain",
 					"allowance": 100.0, "used": 25.0, "remaining": 75.0, "status": "ok",
-					"pct_used": 0.25, "spend_priority": 10, "reset_at": "2026-10-01T00:00:00Z"},
+					"pct_used": 0.25, "spend_priority": 10},
 			},
 		})
 	}))
@@ -243,7 +243,7 @@ func TestUsageJSONPassesLedgerThrough(t *testing.T) {
 	if len(got.Data) != 1 {
 		t.Fatalf("data %v", got.Data)
 	}
-	for _, key := range []string{"id", "spend_priority", "pct_used", "reset_at"} {
+	for _, key := range []string{"id", "spend_priority", "pct_used"} {
 		if _, ok := got.Data[0][key]; !ok {
 			t.Errorf("--json dropped %q from the portal ledger", key)
 		}

@@ -2,7 +2,7 @@ defmodule FirstmatePortWeb.UsageControllerTest do
   use FirstmatePortWeb.ConnCase, async: true
 
   alias FirstmatePort.Accounts.User
-  alias FirstmatePort.Portal.UsageSnapshot
+  alias FirstmatePort.Usage.BurnWindow
 
   setup do
     token = "fmh_test_" <> Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
@@ -135,15 +135,13 @@ defmodule FirstmatePortWeb.UsageControllerTest do
         "provider" => "openrouter",
         "label" => "captain",
         "allowance" => true,
-        "spend_priority" => %{},
-        "reset_at" => 123
+        "spend_priority" => %{}
       })
       |> json_response(200)
 
     assert body["allowance"] == nil
     assert body["status"] == "unknown"
     assert body["spend_priority"] == 100
-    assert body["reset_at"] == nil
   end
 
   test "posted readings build the history runway needs", %{
@@ -165,9 +163,9 @@ defmodule FirstmatePortWeb.UsageControllerTest do
     [row] =
       auth(build_conn(), token) |> get(~p"/api/usage") |> json_response(200) |> Map.get("data")
 
-    {:ok, snaps} = UsageSnapshot.for_account(row["id"], FirstmatePort.Tenancy.opts(agent))
+    window = BurnWindow.for_account(row["id"], FirstmatePort.Tenancy.slug(agent))
 
-    assert snaps |> Enum.map(& &1.used) |> Enum.sort() == [10.0, 40.0]
+    assert Enum.map(window, & &1.used) == [10.0, 40.0]
   end
 
   test "a post that only configures the account records no reading", %{
@@ -190,8 +188,7 @@ defmodule FirstmatePortWeb.UsageControllerTest do
       |> Map.get("data")
       |> Enum.filter(&(&1["label"] == "config-only"))
 
-    {:ok, snaps} = UsageSnapshot.for_account(row["id"], FirstmatePort.Tenancy.opts(agent))
-    assert snaps == []
+    assert BurnWindow.for_account(row["id"], FirstmatePort.Tenancy.slug(agent)) == []
   end
 
   test "a busy fleet's readings are all retained, so runway survives", %{
@@ -214,10 +211,10 @@ defmodule FirstmatePortWeb.UsageControllerTest do
       |> Map.get("data")
       |> Enum.filter(&(&1["label"] == "busy"))
 
-    {:ok, snaps} = UsageSnapshot.for_account(row["id"], FirstmatePort.Tenancy.opts(agent))
+    window = BurnWindow.for_account(row["id"], FirstmatePort.Tenancy.slug(agent))
 
-    assert length(snaps) == 61
-    assert List.first(snaps).used == 1.0
+    assert length(window) == 2
+    assert Enum.map(window, & &1.used) == [1.0, 61.0]
   end
 
   test "readings older than the retention window drop out", %{
@@ -238,16 +235,39 @@ defmodule FirstmatePortWeb.UsageControllerTest do
       |> Map.get("data")
       |> Enum.filter(&(&1["label"] == "aged"))
 
-    {:ok, [oldest | _]} = UsageSnapshot.for_account(row["id"], FirstmatePort.Tenancy.opts(agent))
-
     FirstmatePort.Repo.query!(
-      "update usage_snapshots set inserted_at = $1 where id = $2",
-      [DateTime.add(DateTime.utc_now(), -40, :day), Ecto.UUID.dump!(oldest.id)]
+      "update usage_snapshots set inserted_at = $1 where used = 5.0",
+      [DateTime.add(DateTime.utc_now(), -40, :day)]
     )
 
-    {:ok, kept} = UsageSnapshot.for_account(row["id"], FirstmatePort.Tenancy.opts(agent))
+    window = BurnWindow.for_account(row["id"], FirstmatePort.Tenancy.slug(agent))
 
-    assert Enum.map(kept, & &1.used) == [9.0]
+    assert Enum.map(window, & &1.used) == [9.0]
+  end
+
+  test "the burn window starts at the last drop in used", %{
+    conn: conn,
+    token: token,
+    agent: agent
+  } do
+    auth(conn, token)
+    |> post(~p"/api/usage", %{"provider" => "grok", "label" => "reset", "allowance" => 100.0})
+
+    for used <- [10.0, 90.0, 5.0, 20.0] do
+      auth(build_conn(), token)
+      |> post(~p"/api/usage", %{"provider" => "grok", "label" => "reset", "used" => used})
+    end
+
+    [row] =
+      auth(build_conn(), token)
+      |> get(~p"/api/usage")
+      |> json_response(200)
+      |> Map.get("data")
+      |> Enum.filter(&(&1["label"] == "reset"))
+
+    window = BurnWindow.for_account(row["id"], FirstmatePort.Tenancy.slug(agent))
+
+    assert Enum.map(window, & &1.used) == [5.0, 20.0]
   end
 
   test "unauthenticated usage is rejected", %{conn: conn} do

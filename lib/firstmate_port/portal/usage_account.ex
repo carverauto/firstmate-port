@@ -48,7 +48,6 @@ defmodule FirstmatePort.Portal.UsageAccount do
         :allowance,
         :used,
         :window,
-        :reset_at,
         :spend_priority
       ]
 
@@ -107,8 +106,6 @@ defmodule FirstmatePort.Portal.UsageAccount do
       allow_nil? false
       public? true
     end
-
-    attribute :reset_at, :utc_datetime, public?: true
 
     attribute :spend_priority, :integer do
       default 100
