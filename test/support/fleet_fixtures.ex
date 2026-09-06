@@ -80,7 +80,10 @@ defmodule FirstmatePort.FleetFixtures do
   def progress_item(actor, attrs \\ %{}) do
     {:ok, item} =
       ProgressItem.record(
-        Map.merge(%{kind: :note, title: "A note", url: "", body: "", worker: "crew-fixture"}, attrs),
+        Map.merge(
+          %{kind: :note, title: "A note", url: "", body: "", worker: "crew-fixture"},
+          attrs
+        ),
         opts(actor)
       )
 
