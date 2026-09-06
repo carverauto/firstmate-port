@@ -36,6 +36,27 @@ defmodule FirstmatePort.Security.RateLimiterTest do
     assert last <= first
   end
 
+  test "reset stays anchored to the recorded attempt after delayed denials", %{subject: subject} do
+    opts = [limit: 1, window_seconds: 60]
+    before = System.system_time(:second)
+    empty_reset = RateLimiter.reset_at(:auth_local, subject, opts)
+    assert empty_reset >= before + 60
+    assert empty_reset <= System.system_time(:second) + 60
+
+    assert :ok = RateLimiter.check_and_record(:auth_local, subject, opts)
+    reset = RateLimiter.reset_at(:auth_local, subject, opts)
+    Process.sleep(2_100)
+
+    for _ <- 1..2 do
+      before = System.system_time(:second)
+      assert {:error, retry_after} = RateLimiter.check_and_record(:auth_local, subject, opts)
+      after_request = System.system_time(:second)
+      assert RateLimiter.reset_at(:auth_local, subject, opts) == reset
+      assert retry_after in max(reset - after_request, 1)..max(reset - before, 1)
+      assert reset < before + 60
+    end
+  end
+
   test "subjects do not share a budget", %{subject: subject} do
     opts = [limit: 1, window_seconds: 60]
     other = subject <> "-other"
@@ -90,3 +111,4 @@ defmodule FirstmatePort.Security.RateLimiterTest do
     end
   end
 end
+

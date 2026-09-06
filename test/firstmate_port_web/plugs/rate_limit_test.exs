@@ -69,6 +69,27 @@ defmodule FirstmatePortWeb.Plugs.RateLimitTest do
       assert ["3"] = get_resp_header(conn, "x-ratelimit-remaining")
     end
 
+    test "delayed denials keep the original reset and a matching retry-after" do
+      tighten(:cli_device_auth, 1)
+      first = post(build_conn(), ~p"/api/cli/auth/device")
+      assert json_response(first, 200)
+      assert [reset_header] = get_resp_header(first, "x-ratelimit-reset")
+      reset = String.to_integer(reset_header)
+      Process.sleep(2_100)
+
+      for _ <- 1..2 do
+        before = System.system_time(:second)
+        conn = post(build_conn(), ~p"/api/cli/auth/device")
+        after_request = System.system_time(:second)
+        assert %{"retry_after" => retry_after} = json_response(conn, 429)
+        assert [^reset_header] = get_resp_header(conn, "x-ratelimit-reset")
+        assert [retry_header] = get_resp_header(conn, "retry-after")
+        assert String.to_integer(retry_header) == retry_after
+        assert retry_after in max(reset - after_request, 1)..max(reset - before, 1)
+        assert reset < before + 60
+      end
+    end
+
     test "report nothing remaining on a denial" do
       tighten(:cli_device_auth, 1)
 

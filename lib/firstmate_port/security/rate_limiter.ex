@@ -101,6 +101,19 @@ defmodule FirstmatePort.Security.RateLimiter do
     ArgumentError -> 0
   end
 
+  @doc "Returns the oldest in-window attempt's expiry as an epoch second, or now plus the window."
+  @spec reset_at(bucket(), subject(), opts()) :: integer()
+  def reset_at(bucket, subject, opts \\ []) do
+    {_limit, window} = resolve_bucket(bucket, opts)
+    now = System.system_time(:second)
+
+    try do
+      reset_from_attempts(attempts({bucket, subject}, now - window), window, now)
+    rescue
+      ArgumentError -> now + window
+    end
+  end
+
   @doc "Returns `{limit, window_seconds}` for `bucket`, with `opts` overriding config."
   @spec resolve_bucket(bucket(), opts()) :: {pos_integer(), pos_integer()}
   def resolve_bucket(bucket, opts \\ []) do
@@ -135,8 +148,8 @@ defmodule FirstmatePort.Security.RateLimiter do
     recent = attempts(key, now - window)
 
     if length(recent) >= limit do
-      oldest = Enum.min(recent, fn -> now end)
-      {:reply, {:error, max(oldest + window - now, 1)}, state}
+      reset = reset_from_attempts(recent, window, now)
+      {:reply, {:error, max(reset - now, 1)}, state}
     else
       :ets.insert(@table, {key, [now | recent]})
       {:reply, :ok, state}
@@ -178,9 +191,14 @@ defmodule FirstmatePort.Security.RateLimiter do
     end
   end
 
+  defp reset_from_attempts(recent, window, now) do
+    Enum.min(recent, fn -> now end) + window
+  end
+
   defp schedule_cleanup, do: Process.send_after(self(), :cleanup, @cleanup_interval)
 
   defp normalize_buckets(buckets) when is_map(buckets), do: buckets
   defp normalize_buckets(buckets) when is_list(buckets), do: Map.new(buckets)
   defp normalize_buckets(_other), do: %{}
 end
+

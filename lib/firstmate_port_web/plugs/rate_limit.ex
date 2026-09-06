@@ -68,18 +68,22 @@ defmodule FirstmatePortWeb.Plugs.RateLimit do
   @impl true
   def call(conn, config) do
     subject = subject_key(conn, config.subject)
-    {limit, window} = RateLimiter.resolve_bucket(config.bucket, config.limiter_opts)
+    {limit, _window} = RateLimiter.resolve_bucket(config.bucket, config.limiter_opts)
 
-    case RateLimiter.check_and_record(config.bucket, subject, config.limiter_opts) do
+    result = RateLimiter.check_and_record(config.bucket, subject, config.limiter_opts)
+    reset = RateLimiter.reset_at(config.bucket, subject, config.limiter_opts)
+
+    case result do
       :ok ->
         remaining = RateLimiter.remaining(config.bucket, subject, config.limiter_opts)
-        put_rate_limit_headers(conn, limit, remaining, window)
+        put_rate_limit_headers(conn, limit, remaining, reset)
 
-      {:error, retry_after} ->
+      {:error, _retry_after} ->
+        retry_after = max(reset - System.system_time(:second), 1)
         report_denied(conn, config.bucket, retry_after)
 
         conn
-        |> put_rate_limit_headers(limit, 0, window)
+        |> put_rate_limit_headers(limit, 0, reset)
         |> put_resp_header("retry-after", Integer.to_string(retry_after))
         |> deny(retry_after, config)
         |> halt()
@@ -123,13 +127,13 @@ defmodule FirstmatePortWeb.Plugs.RateLimit do
     {ClientIP.resolve(conn), actor}
   end
 
-  defp put_rate_limit_headers(conn, limit, remaining, window) do
+  defp put_rate_limit_headers(conn, limit, remaining, reset) do
     conn
     |> put_resp_header("x-ratelimit-limit", Integer.to_string(limit))
     |> put_resp_header("x-ratelimit-remaining", Integer.to_string(max(remaining, 0)))
     |> put_resp_header(
       "x-ratelimit-reset",
-      Integer.to_string(System.system_time(:second) + window)
+      Integer.to_string(reset)
     )
   end
 
