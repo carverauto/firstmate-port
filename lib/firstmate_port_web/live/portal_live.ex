@@ -1,6 +1,15 @@
 defmodule FirstmatePortWeb.PortalLive do
-  @moduledoc false
+  @moduledoc """
+  The home fleet log.
+
+  Progress is a preview here, not an archive: the newest
+  `ProgressItem.preview_size/0` rows, fetched with a server-side limit, and a
+  "see all" link to `/progress` once there are more. The full list is never
+  rendered and then hidden.
+  """
   use FirstmatePortWeb, :live_view
+
+  import FirstmatePortWeb.ProgressComponents
 
   alias FirstmatePort.BuildTracking
 
@@ -10,6 +19,7 @@ defmodule FirstmatePortWeb.PortalLive do
     DockerBuild,
     NoMistakesRun,
     ProgressItem,
+    ProgressProjection,
     Roll
   }
 
@@ -20,7 +30,9 @@ defmodule FirstmatePortWeb.PortalLive do
     actor = socket.assigns.current_user
     opts = FirstmatePort.Tenancy.opts(actor)
     {:ok, diagrams} = Diagram.list(opts)
-    {:ok, progress} = ProgressItem.list(opts)
+    {:ok, progress} = ProgressItem.list_recent(opts)
+    {:ok, projections} = ProgressProjection.load(progress, opts)
+    {:ok, progress_total} = Ash.count(ProgressItem, opts)
     {:ok, nm} = NoMistakesRun.list(opts)
 
     show_kubernetes = BuildTracking.kubernetes_enabled?()
@@ -36,8 +48,11 @@ defmodule FirstmatePortWeb.PortalLive do
     {:ok,
      socket
      |> assign(:page_title, "firstmate")
+     |> assign(:preview_size, ProgressItem.preview_size())
      |> assign(:diagrams, diagrams)
-     |> assign(:progress, progress)
+     |> assign(:progress, projections)
+     |> assign(:progress_total, progress_total)
+     |> assign(:detail, nil)
      |> assign(:rolls, rolls)
      |> assign(:docker_builds, docker_builds)
      |> assign(:invocations, invocations)
@@ -50,9 +65,12 @@ defmodule FirstmatePortWeb.PortalLive do
 
   @impl true
   def handle_params(params, _uri, socket) do
-    tab = params["tab"] || "all"
+    opts = FirstmatePort.Tenancy.opts(socket.assigns.current_user)
 
-    {:noreply, assign(socket, :filter, tab)}
+    {:noreply,
+     socket
+     |> assign(:filter, params["tab"] || "all")
+     |> assign(:detail, load_detail(params["item"], socket.assigns.progress, opts))}
   end
 
   @impl true
@@ -112,15 +130,17 @@ defmodule FirstmatePortWeb.PortalLive do
       <section :if={@filter in ["all", "progress"]} class="plate">
         <h2>Progress</h2>
         <p :if={@progress == []} class="empty-state">No PRs, issues, or achievements recorded.</p>
-        <ol class="rows">
-          <li :for={p <- @progress} id={p.id}>
-            <span>
-              <span class="kind">{p.kind}</span>
-              {p.title}
-            </span>
-            <a :if={p.url != ""} href={p.url}>{p.url}</a>
-          </li>
-        </ol>
+        <.progress_table
+          :if={@progress != []}
+          id="progress-preview"
+          projections={@progress}
+          detail_path={&detail_path(@filter, &1)}
+        />
+        <p :if={@progress_total > @preview_size} class="see-all">
+          <.link navigate={~p"/progress"}>
+            See all {@progress_total} PRs, issues, and achievements
+          </.link>
+        </p>
       </section>
 
       <section :if={@show_kubernetes and @filter in ["all", "kubernetes"]} class="plate">
@@ -180,7 +200,33 @@ defmodule FirstmatePortWeb.PortalLive do
           </li>
         </ol>
       </section>
+
+      <.progress_details projection={@detail} close_path={close_path(@filter)} />
     </Layouts.app>
     """
+  end
+
+  defp detail_path(filter, id), do: ~p"/?tab=#{filter}&item=#{id}"
+  defp close_path(filter), do: ~p"/?tab=#{filter}"
+
+  # The preview only holds 20 rows, so a deep link to an older row still has to
+  # be fetched by id.
+  defp load_detail(nil, _projections, _opts), do: nil
+  defp load_detail("", _projections, _opts), do: nil
+
+  defp load_detail(id, projections, opts) do
+    case Enum.find(projections, &(&1.item.id == id)) do
+      nil -> fetch_detail(id, opts)
+      found -> found
+    end
+  end
+
+  defp fetch_detail(id, opts) do
+    with {:ok, item} when not is_nil(item) <- ProgressItem.get_by_id(id, opts),
+         {:ok, projection} <- ProgressProjection.load_one(item, opts) do
+      projection
+    else
+      _ -> nil
+    end
   end
 end
