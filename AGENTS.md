@@ -25,6 +25,7 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 - Progress is crew work, not a GitHub mirror. `ProgressItem.record` requires a `worker`, so the org poll cannot catalogue Progress - it only enriches rows the crew already logged (title, and a merge/close status event). The `/prs` and `/issues` boards are the org mirror. See `docs/progress.md`.
 - The fleet log is append-only. `ProgressItem` is identity; everything that happened to it is a `ProgressEvent` row, and the resource has no update or destroy action on purpose. Status, assignee, duration, tokens, and interrupted are projections (`ProgressProjection`), never stored on the item.
 - Missing telemetry is not zero. A metric nobody reported renders as an em dash or "no telemetry yet"; only a real count renders as a number.
+- Public-edge access and security posture are documented in `docs/security.md`; read it before adding a public route or changing a router pipeline.
 - Do not add `notify.py`, `watch.py`, or the launchd plist. Those stay in firstmate-notify.
 - Site hostnames, OIDC issuer URLs, registry namespaces, and email allowlists belong in env samples / compose overrides / `deploy/examples`. Defaults run on localhost.
 - Auth is two modes on one image, both environment-driven: local sign-in (`LOCAL_AUTH`, older name `DEV_AUTH`) is a bootstrap admin account and needs no IdP; OIDC is optional. See `docs/deploy.md` "Sign-in".

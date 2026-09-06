@@ -171,6 +171,7 @@ defmodule FirstmatePortWeb.Layouts do
         <.flash_group flash={@flash} />
         {render_slot(@inner_block)}
       </main>
+      <.site_footer />
     </div>
     """
   end
@@ -191,7 +192,61 @@ defmodule FirstmatePortWeb.Layouts do
       <div class="auth-main">
         {render_slot(@inner_block)}
       </div>
+      <.site_footer class="auth-footer" />
     </div>
+    """
+  end
+
+  @doc """
+  Chrome for the pages a signed-out visitor is allowed to read: the terms and
+  privacy pages Discord's Developer Portal links to.
+
+  Deliberately not `auth/1`. That layout is a two-column sign-in composition
+  with a fixed-position header; a legal document wants one readable column and
+  ordinary page flow.
+
+  No flash and no theme toggle: these pages run outside a LiveView, where a
+  `phx-click` binding is inert, and there is no session to carry a flash. The
+  reader's stored theme still applies — the root layout reads it before paint.
+  """
+  attr :page_title, :string, required: true
+  slot :inner_block, required: true
+
+  def public(assigns) do
+    ~H"""
+    <div class="shell">
+      <header class="topbar">
+        <.link href={~p"/"} class="brand">firstmate port</.link>
+      </header>
+      <main class="main">
+        <article class="legal">
+          <h1>{@page_title}</h1>
+          {render_slot(@inner_block)}
+        </article>
+      </main>
+      <.site_footer />
+    </div>
+    """
+  end
+
+  @doc """
+  Footer carrying the public legal links.
+
+  Discord's Developer Portal wants a Terms of Service URL and a Privacy Policy
+  URL, and both have to stay reachable for as long as the app is installed. The
+  footer is what keeps them discoverable from the product itself rather than
+  only from a form field in Discord's dashboard.
+  """
+  attr :class, :string, default: nil
+
+  def site_footer(assigns) do
+    ~H"""
+    <footer class={["site-footer", @class]}>
+      <nav aria-label="Legal">
+        <.link href={~p"/terms"}>Terms</.link>
+        <.link href={~p"/privacy"}>Privacy</.link>
+      </nav>
+    </footer>
     """
   end
 end

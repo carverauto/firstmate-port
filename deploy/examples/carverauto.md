@@ -1,12 +1,12 @@
 # Example overlay: carverauto
 
-These values are an example of a private deployment. They are not compiled into
+These values are an example of a public deployment. They are not compiled into
 the portal. Copy them into GitOps overlays, `.env`, or `docker-compose.override.yml`.
 
 | Setting | Example |
 | --- | --- |
-| Portal hostname | `firstmate.carverauto.dev` |
-| LAN VIP | `192.168.6.87` |
+| Portal hostname | `firstmate.carverauto.dev` (public, Cloudflare-proxied) |
+| LAN VIP (previous gateway) | `192.168.6.87` |
 | OIDC issuer (Authentik) | `https://auth.carverauto.dev/application/o/firstmate/` |
 | Image | `ghcr.io/carverauto/firstmate-port` |
 | Discord interactions | `discord-firstmate.carverauto.dev` |
@@ -20,11 +20,22 @@ Gateways in this cluster:
 
 | Route | Gateway | Section | Hostname |
 | --- | --- | --- | --- |
-| Portal (LAN only) | `lan-edge/lan-shared-gateway` (VIP `192.168.6.87`) | `https-carverauto` / `http-carverauto` | `firstmate.carverauto.dev` |
-| Discord interactions | `serviceradar-system/serviceradar-shared-gateway` | `https-carverauto` | `discord-firstmate.carverauto.dev`, path-only `/interactions` |
+| Portal | `serviceradar-system/serviceradar-shared-gateway` | `https-carverauto` / `http-carverauto` | `firstmate.carverauto.dev`, whole app |
+| Discord interactions | same Gateway | `https-carverauto` / `http-carverauto` | `discord-firstmate.carverauto.dev`, path-only `/interactions` |
 
-The namespace needs both gateway selector labels:
-`carverauto.com/lan-gateway-access=true` and `serviceradar.com/gateway-access=true`.
+The portal was LAN-only (`lan-edge/lan-shared-gateway`, VIP `192.168.6.87`) until
+Discord needed reachable Terms of Service and Privacy Policy URLs. Both hostnames
+now sit on the public Gateway, so the namespace needs one selector label,
+`serviceradar.com/gateway-access=true`; the LAN label went with the LAN route.
+
+Being public is why this overlay carries `portal-rate-limit-policy.yaml` and why
+the portal container sets `CLIENT_IP_HEADER=cf-connecting-ip`. See
+[docs/security.md](../../docs/security.md) — including the note that
+`LEGAL_CONTACT_EMAIL` has to point at a real mailbox before those URLs go into
+Discord's Developer Portal.
+
+MCP and NATS gain no hostname of their own: `/mcp` stays a path on the portal
+behind the agent token, and NATS stays inside the cluster.
 
 A ready-to-apply kustomize overlay of exactly this table is in
 [`carverauto/`](carverauto/). It is an example overlay, never a compiled-in default.

@@ -1588,3 +1588,106 @@ table.data-table .num {
     height: 7.5rem;
   }
 }
+
+/* Public legal pages (/terms, /privacy) and the footer that links to them. */
+
+/* Keep the footer at the bottom of a short page. `.shell` is already a full
+   viewport tall, so without this the footer lands directly under the content
+   with dead space beneath it. */
+.shell {
+  display: flex;
+  flex-direction: column;
+}
+
+.shell > .topbar {
+  flex: none;
+}
+
+.shell > .main {
+  flex: 1 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  padding: 1.25rem;
+  display: flex;
+  justify-content: center;
+}
+
+.site-footer nav {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.site-footer a {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.site-footer a:hover {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* The sign-in shell is a two-column grid; span the footer across both so it
+   sits under the hero and the panel rather than becoming a third column. */
+.auth-footer {
+  grid-column: 1 / -1;
+  border-top: 0;
+}
+
+.legal {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 1.5rem 0 2rem;
+}
+
+.legal h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: -0.04em;
+  font-weight: 600;
+}
+
+.legal h2 {
+  margin: 2rem 0 0.5rem;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+.legal h3 {
+  margin: 1.25rem 0 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.legal p,
+.legal li {
+  margin: 0 0 0.75rem;
+  max-width: 68ch;
+}
+
+.legal ul {
+  margin: 0 0 0.75rem;
+  padding-left: 1.1rem;
+}
+
+.legal code {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 0.85em;
+}
+
+.legal-updated {
+  margin: 0.35rem 0 1.5rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.legal-lede {
+  font-size: 1rem;
+  color: var(--muted);
+}

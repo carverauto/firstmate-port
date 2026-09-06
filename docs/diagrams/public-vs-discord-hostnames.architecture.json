@@ -1,0 +1,315 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "firstmate port: public portal vs Discord hostname",
+    "output": "public-vs-discord-hostnames.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "portal-path",
+        "label": "Portal hostname",
+        "focus": [
+          "crew",
+          "cloudflare",
+          "gateway",
+          "portal_route",
+          "plugs",
+          "legal",
+          "portal"
+        ],
+        "note": "A crew browser reaches the whole app; see docs/security.md for public access rules."
+      },
+      {
+        "id": "discord-path",
+        "label": "Discord hostname",
+        "focus": [
+          "discord",
+          "cloudflare",
+          "gateway",
+          "discord_route",
+          "plugs",
+          "interactions"
+        ],
+        "note": "Discord reaches exactly one path, on a hostname that serves nothing else."
+      },
+      {
+        "id": "edge-limits",
+        "label": "Where traffic is limited",
+        "focus": [
+          "portal_route",
+          "discord_route",
+          "plugs"
+        ],
+        "note": "Envoy limits per source address at the edge; Phoenix limits per endpoint inside."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "crew",
+      "type": "external",
+      "label": "Crew browser",
+      "sublabel": "and fm-steer",
+      "pos": [
+        40,
+        140
+      ],
+      "size": [
+        140,
+        62
+      ]
+    },
+    {
+      "id": "discord",
+      "type": "external",
+      "label": "Discord",
+      "sublabel": "interactions webhook",
+      "pos": [
+        40,
+        400
+      ],
+      "size": [
+        140,
+        62
+      ]
+    },
+    {
+      "id": "cloudflare",
+      "type": "cloud",
+      "label": "Cloudflare",
+      "sublabel": "proxied, sets cf-connecting-ip",
+      "pos": [
+        220,
+        270
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "gateway",
+      "type": "cloud",
+      "label": "serviceradar-shared-gateway",
+      "sublabel": "Envoy, https-carverauto",
+      "pos": [
+        430,
+        270
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "tag": "serviceradar-system"
+    },
+    {
+      "id": "portal_route",
+      "type": "security",
+      "label": "Portal hostname",
+      "sublabel": "firstmate.carverauto.dev",
+      "pos": [
+        660,
+        140
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "tag": "600 req/min/IP"
+    },
+    {
+      "id": "discord_route",
+      "type": "security",
+      "label": "Discord hostname",
+      "sublabel": "discord-firstmate.carverauto.dev",
+      "pos": [
+        660,
+        400
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "tag": "300 req/min/IP"
+    },
+    {
+      "id": "plugs",
+      "type": "security",
+      "label": "Router pipelines",
+      "sublabel": "rate limit, lockout, headers",
+      "pos": [
+        900,
+        270
+      ],
+      "size": [
+        190,
+        64
+      ]
+    },
+    {
+      "id": "legal",
+      "type": "frontend",
+      "label": "/terms and /privacy",
+      "sublabel": "public, no session cookie",
+      "pos": [
+        1130,
+        130
+      ],
+      "size": [
+        175,
+        62
+      ]
+    },
+    {
+      "id": "portal",
+      "type": "backend",
+      "label": "Portal, API, /mcp",
+      "sublabel": "sign-in required",
+      "pos": [
+        1130,
+        271
+      ],
+      "size": [
+        175,
+        62
+      ]
+    },
+    {
+      "id": "interactions",
+      "type": "backend",
+      "label": "POST /interactions",
+      "sublabel": "Ed25519, then JetStream",
+      "pos": [
+        1130,
+        402
+      ],
+      "size": [
+        175,
+        62
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Kubernetes namespace: firstmate",
+      "wraps": [
+        "portal_route",
+        "discord_route",
+        "plugs",
+        "legal",
+        "portal",
+        "interactions"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Envoy BackendTrafficPolicy, per source address",
+      "wraps": [
+        "portal_route",
+        "discord_route"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "crew-edge",
+      "from": "crew",
+      "to": "cloudflare",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "discord-edge",
+      "from": "discord",
+      "to": "cloudflare",
+      "label": "signed POST"
+    },
+    {
+      "id": "edge-gateway",
+      "from": "cloudflare",
+      "to": "gateway",
+      "label": "TLS terminate",
+      "labelDy": -30
+    },
+    {
+      "id": "gateway-portal",
+      "from": "gateway",
+      "to": "portal_route",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "left",
+      "label": "PathPrefix /"
+    },
+    {
+      "id": "gateway-discord",
+      "from": "gateway",
+      "to": "discord_route",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "label": "Exact /interactions"
+    },
+    {
+      "id": "portal-plugs",
+      "from": "portal_route",
+      "to": "plugs",
+      "variant": "emphasis"
+    },
+    {
+      "id": "discord-plugs",
+      "from": "discord_route",
+      "to": "plugs"
+    },
+    {
+      "id": "plugs-legal",
+      "from": "plugs",
+      "to": "legal",
+      "label": "cacheable"
+    },
+    {
+      "id": "plugs-portal",
+      "from": "plugs",
+      "to": "portal"
+    },
+    {
+      "id": "plugs-interactions",
+      "from": "plugs",
+      "to": "interactions"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Public edge",
+      "items": [
+        "Both hostnames are Cloudflare-proxied on the same shared Envoy Gateway",
+        "Envoy limits per source address; the app limits per endpoint"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Portal hostname",
+      "items": [
+        "Serves the whole app, so it is the one that can host the legal pages",
+        "/terms and /privacy answer signed out and set no cookie"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Discord hostname",
+      "items": [
+        "Path-only: the portal UI is not reachable from it",
+        "Phoenix verifies Ed25519 itself, so there is no sidecar"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Not exposed",
+      "items": [
+        "MCP stays a path on the portal behind the agent token",
+        "NATS stays in the cluster; neither gets a hostname"
+      ]
+    }
+  ]
+}

@@ -13,6 +13,11 @@ defmodule FirstmatePort.Application do
 
     children = [
       FirstmatePortWeb.Telemetry,
+      # Before the Endpoint: the plugs that gate the public edge call into
+      # these, and a request that arrives before they are up would otherwise
+      # be served unlimited.
+      FirstmatePort.Security.RateLimiter,
+      FirstmatePort.Security.Lockouts,
       # Before the Repo: nothing may read a credential row without the vault.
       FirstmatePort.Vault,
       FirstmatePort.Repo,

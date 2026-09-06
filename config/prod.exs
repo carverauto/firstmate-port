@@ -8,6 +8,22 @@ import Config
 config :firstmate_port, FirstmatePortWeb.Endpoint,
   cache_static_manifest: "priv/static/cache_manifest.json"
 
+# Session cookie configuration for release builds. `Plug.Session` options are
+# compiled into the endpoint module, so these are read at `mix release` time
+# rather than at boot. The values below are stable defaults; rotating either
+# salt forces every active session to sign in again on the next request.
+#
+#   SESSION_SIGNING_SALT     — rotate to invalidate signed session cookies
+#   SESSION_ENCRYPTION_SALT  — rotate to invalidate encrypted session cookies
+#   SESSION_COOKIE_SECURE    — "true" (default); "false" only for a staging
+#                              deployment genuinely served over plain HTTP
+config :firstmate_port, :session,
+  signing_salt:
+    System.get_env("SESSION_SIGNING_SALT") || "firstmate-port-prod-session-signing-v1",
+  encryption_salt:
+    System.get_env("SESSION_ENCRYPTION_SALT") || "firstmate-port-prod-session-encryption-v1",
+  secure: System.get_env("SESSION_COOKIE_SECURE", "true") in ~w(true 1 yes)
+
 # Configures Swoosh API Client
 config :swoosh, api_client: Swoosh.ApiClient.Req
 

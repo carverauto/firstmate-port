@@ -174,6 +174,11 @@ kubectl -n firstmate create secret docker-registry ghcr-io-cred \
   --docker-server=ghcr.io --docker-username=<github-user> --docker-password=<token>
 ```
 
+## Public hostnames
+
+For public access, gateway trust settings, legal-page operator identity, and
+rollout order, see [Public-edge security](security.md).
+
 Site-specific hostnames, issuer URLs, allowlists, and ghcr namespaces live in:
 
 - `.env` / `docker-compose.override.yml` (from the `.example` files)
@@ -184,7 +189,7 @@ They are not compiled-in defaults.
 
 ## Kubernetes
 
-`k8s/` is a generic firstmate namespace: CNPG, 3-replica NATS JetStream, portal Deployment, HTTPRoute to `firstmate.example.com`. Overlay real hostnames and registry tags in your GitOps repo.
+`k8s/` is a generic firstmate namespace: CNPG, 3-replica NATS JetStream, portal Deployment, HTTPRoute to `firstmate.example.com`. Overlay real hostnames and registry tags in your GitOps repo. `deploy/examples/carverauto/` shows a public deployment, including the Envoy `BackendTrafficPolicy` that rate limits the hostname at the edge.
 
 ```sh
 kubectl apply -k k8s

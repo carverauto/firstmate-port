@@ -1,6 +1,9 @@
 defmodule FirstmatePortWeb.Router do
   use FirstmatePortWeb, :router
 
+  alias FirstmatePortWeb.Plugs.RateLimit
+  alias FirstmatePortWeb.Plugs.SecurityHeaders
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -8,41 +11,97 @@ defmodule FirstmatePortWeb.Router do
     plug :put_root_layout, html: {FirstmatePortWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug SecurityHeaders, csp: :browser
     plug FirstmatePortWeb.Plugs.LoadActor
   end
 
+  # Stored Archify artifacts are whole HTML documents with their own inline
+  # script and style, so `/d/:id` cannot run under the nonced portal policy.
+  # Everything else about the pipeline matches :browser.
+  pipeline :diagram do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug :put_root_layout, html: {FirstmatePortWeb.Layouts, :root}
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+    plug SecurityHeaders, csp: :embed
+    plug FirstmatePortWeb.Plugs.LoadActor
+  end
+
+  # Static legal documents. No session, no CSRF token, no actor lookup: nothing
+  # on these pages reads or writes any of them, and a page that sets no cookie
+  # is one a shared cache in front of the app can safely hold. `:browser` would
+  # attach a session cookie to every response, which makes `cache-control:
+  # public` a way to hand one reader's cookie to another.
+  pipeline :public_page do
+    plug :accepts, ["html"]
+    plug :put_root_layout, html: {FirstmatePortWeb.Layouts, :root}
+    plug :put_secure_browser_headers
+    plug SecurityHeaders, csp: :browser
+  end
+
+  # The limiter runs before `LoadActor` here because this bucket keys on the
+  # address alone: a flood of requests carrying a bogus bearer token should be
+  # refused without first asking the database to look each one up. The
+  # pipelines below key on the actor too, so their limiter has to come after.
   pipeline :api do
     plug :accepts, ["json"]
+    plug SecurityHeaders, csp: :api
+    plug RateLimit, bucket: :api_default, response_mode: :json
+    plug FirstmatePortWeb.Plugs.LoadActor
+  end
+
+  # RFC 8628 device-code endpoints. Their own pipeline so the tight per-endpoint
+  # buckets declared on `CliAuthController` are the only limit that applies —
+  # `fm-steer` polls `/auth/token` on a timer and must not also spend the shared
+  # read budget while it waits.
+  pipeline :cli_auth do
+    plug :accepts, ["json"]
+    plug SecurityHeaders, csp: :api
     plug FirstmatePortWeb.Plugs.LoadActor
   end
 
   pipeline :api_write do
     plug :accepts, ["json"]
+    plug SecurityHeaders, csp: :api
     plug FirstmatePortWeb.Plugs.LoadActor
+    plug RateLimit, bucket: :api_write, subject: :ip_and_actor, response_mode: :json
     plug FirstmatePortWeb.Plugs.RequireAgent
   end
 
   pipeline :cli do
     plug :accepts, ["json"]
+    plug SecurityHeaders, csp: :api
     plug FirstmatePortWeb.Plugs.LoadActor
+    plug RateLimit, bucket: :api_default, subject: :ip_and_actor, response_mode: :json
     plug FirstmatePortWeb.Plugs.RequireUser
   end
 
   pipeline :authed do
+    plug SecurityHeaders, csp: :api
     plug :accepts, ["json"]
     plug FirstmatePortWeb.Plugs.LoadActor
+    plug RateLimit, bucket: :api_write, subject: :ip_and_actor, response_mode: :json
     plug FirstmatePortWeb.Plugs.RequireActor
   end
 
   pipeline :mcp do
     plug :accepts, ["json"]
+    plug SecurityHeaders, csp: :api
     plug FirstmatePortWeb.Plugs.LoadActor
+    plug RateLimit, bucket: :mcp, subject: :ip_and_actor, response_mode: :json
     plug FirstmatePortWeb.Plugs.RequireAgent
     plug :put_mcp_actor
   end
 
+  # Discord fans interactions out from many addresses and expects an answer
+  # inside 3s, so this bucket is a runaway-loop guard, not an access control.
+  # The Ed25519 signature check in the controller is the access control.
   pipeline :discord_http do
     plug :accepts, ["json"]
+    plug SecurityHeaders, csp: :api
+    plug RateLimit, bucket: :discord_interactions, response_mode: :json
   end
 
   scope "/.well-known", FirstmatePortWeb do
@@ -80,7 +139,7 @@ defmodule FirstmatePortWeb.Router do
   end
 
   scope "/api/cli", FirstmatePortWeb do
-    pipe_through :api
+    pipe_through :cli_auth
 
     post "/auth/device", CliAuthController, :device
     post "/auth/token", CliAuthController, :token
@@ -142,6 +201,20 @@ defmodule FirstmatePortWeb.Router do
     get "/steer/docs/fm-steer", SteerController, :doc_fm_steer
     get "/steer/docs/routing", SteerController, :doc_routing
     get "/steer/docs/usage", SteerController, :doc_usage
+  end
+
+  # Public on purpose: Discord's Developer Portal needs both URLs to answer a
+  # signed-out GET before an application can be distributed.
+  scope "/", FirstmatePortWeb do
+    pipe_through :public_page
+
+    get "/terms", LegalController, :terms
+    get "/privacy", LegalController, :privacy
+  end
+
+  scope "/", FirstmatePortWeb do
+    pipe_through :diagram
+
     get "/d/:id/card.png", DiagramHTMLController, :card
     get "/d/:id", DiagramHTMLController, :show
   end

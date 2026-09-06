@@ -108,6 +108,49 @@ config :firstmate_port, FirstmatePort.Auth.Guardian,
   secret_key: "dev-guardian-secret-change-in-runtime",
   ttl: {12, :hours}
 
+# Session cookie salts. These are development defaults, shipped so the app runs
+# out of the box, and they are NOT secrets — anyone reading this repo has them.
+# `config/prod.exs` overrides all three from the environment. Confidentiality
+# rests on SECRET_KEY_BASE, which is required from the environment at runtime.
+config :firstmate_port, :session,
+  signing_salt: "firstmate-port-dev-session-signing",
+  encryption_salt: "firstmate-port-dev-session-encryption",
+  secure: false
+
+# Which request header carries the client address, and how many proxies sit in
+# front. `nil` means trust nothing and use the socket peer, which is right for
+# `mix phx.server` and Docker Compose. Behind a gateway, set it — otherwise every
+# request shares one rate-limit bucket. See FirstmatePort.Security.ClientIP.
+config :firstmate_port, :client_ip, header: nil, trusted_hops: 0
+
+# Sign-in lockout: 10 failures for one account inside 15 minutes locks that
+# account for 15 minutes, however many source addresses the failures came from.
+config :firstmate_port, FirstmatePort.Security.Lockouts,
+  threshold: 10,
+  window_seconds: 900,
+  lock_seconds: 900
+
+# Per-bucket limits live in FirstmatePort.Security.RateLimiter as compiled-in
+# defaults so a deployment that configures nothing is still limited. Override a
+# single bucket here or in config/runtime.exs:
+#
+#     config :firstmate_port, FirstmatePort.Security.RateLimiter,
+#       buckets: %{auth_local: [limit: 5, window_seconds: 60]}
+
+# CSP starts in report-only so a policy mistake is a console warning rather than
+# a blank portal. Flip to `:enforce` once the browser console is clean — the
+# inline theme script is already nonced, so nothing should be reported.
+config :firstmate_port, FirstmatePortWeb.Plugs.SecurityHeaders,
+  csp_mode: :report_only,
+  csp_report_uri: nil
+
+# Operator identity on the public /terms and /privacy pages. Deployment
+# identity, not product copy: see FirstmatePort.Legal.
+config :firstmate_port, :legal,
+  operator: nil,
+  contact_email: nil,
+  governing_law: nil
+
 # OIDC is optional and vendor-neutral. Compiled defaults configure no issuer, so
 # a fresh checkout and the public image run on local auth alone. Real values are
 # read from the environment in config/runtime.exs; nothing here is baked into a

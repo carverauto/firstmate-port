@@ -5,6 +5,17 @@ defmodule FirstmatePortWeb.CliAuthController do
   alias FirstmatePort.Accounts.User
   alias FirstmatePort.Auth.DeviceCode
   alias FirstmatePort.Auth.Guardian
+  alias FirstmatePortWeb.Plugs.RateLimit
+
+  plug RateLimit, [bucket: :cli_device_auth, response_mode: :json] when action == :device
+
+  # RFC 8628 gives the client a way to be told it is polling too fast:
+  # `slow_down`, which fm-steer answers by adding 5s to its interval. Reusing
+  # that error for the 429 body turns a rate-limit hit into the CLI backing off
+  # instead of the login failing.
+  plug RateLimit,
+       [bucket: :cli_token_poll, response_mode: :json, json_error: "slow_down"]
+       when action == :token
 
   def device(conn, _params) do
     case DeviceCode.issue(%{}, authorize?: false) do
