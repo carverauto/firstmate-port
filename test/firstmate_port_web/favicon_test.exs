@@ -33,4 +33,36 @@ defmodule FirstmatePortWeb.FaviconTest do
     assert body =~ ~s|rel="icon" href="/favicon.ico"|
     assert body =~ ~s|rel="apple-touch-icon" href="/apple-touch-icon.png"|
   end
+
+  test "signed-in portal links icons that the endpoint serves" do
+    alias FirstmatePort.Accounts.{Tenant, User}
+
+    {:ok, _} = Tenant.seed(%{slug: "favicon", name: "Favicon"}, authorize?: false)
+
+    {:ok, user} =
+      User.upsert_oidc(
+        %{email: "favicon@example.com", name: "Favicon", tenant_slug: "favicon"},
+        authorize?: false
+      )
+
+    {:ok, token, _} = FirstmatePort.Auth.Guardian.encode_and_sign(user, %{})
+
+    body =
+      build_conn()
+      |> init_test_session(%{guardian_token: token})
+      |> get(~p"/")
+      |> html_response(200)
+
+    assert body =~ "Fleet log"
+
+    for path <- [
+          "/favicon.ico",
+          "/images/steering-wheel-black.svg",
+          "/images/steering-wheel-white.svg",
+          "/apple-touch-icon.png"
+        ] do
+      assert body =~ ~s|href="#{path}"|
+      assert build_conn() |> get(path) |> response(200) != ""
+    end
+  end
 end
