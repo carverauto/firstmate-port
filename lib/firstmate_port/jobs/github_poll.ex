@@ -251,7 +251,7 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
     case ProgressItem.get_by_url(html_url, opts) do
       {:ok, item} when not is_nil(item) ->
         item
-        |> touch_if_changed(kind, title, opts)
+        |> append_subject_if_changed(kind, title, opts)
         |> append_status(kind, raw, opts)
 
       _ ->
@@ -261,10 +261,13 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
 
   def enrich_progress(_raw, _kind, _actor), do: :ok
 
-  defp touch_if_changed(existing, kind, title, opts) do
+  defp append_subject_if_changed(existing, kind, title, opts) do
     if progress_changed?(existing, kind, title) do
-      case ProgressItem.touch(existing, %{kind: kind, title: title}, opts) do
-        {:ok, touched} -> touched
+      case ProgressLog.append(
+             %{item_id: existing.id, type: :subject, kind: kind, title: title},
+             opts
+           ) do
+        {:ok, _event} -> %{existing | kind: kind, title: title}
         _ -> existing
       end
     else

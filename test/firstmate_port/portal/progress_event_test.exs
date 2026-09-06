@@ -59,6 +59,29 @@ defmodule FirstmatePort.Portal.ProgressEventTest do
     end
   end
 
+  test "subject changes project title and kind without rewriting identity", ctx do
+    assert {:ok, event} =
+             ProgressEvent.append(
+               %{item_id: ctx.item.id, type: :subject, title: "Renamed", kind: :achievement},
+               ctx.opts
+             )
+
+    assert {:ok, item} = ProgressItem.get_by_id(ctx.item.id, ctx.opts)
+    assert {item.title, item.kind} == {"Renamed", :achievement}
+
+    assert %{rows: [[title, kind]]} =
+             FirstmatePort.Repo.query!(
+               "SELECT title, kind FROM progress_items WHERE id = $1",
+               [item.id]
+             )
+
+    assert {title, kind} == {ctx.item.title, Atom.to_string(ctx.item.kind)}
+    projection = FirstmatePort.Portal.ProgressProjection.project(ctx.item, [event])
+    assert {projection.item.title, projection.item.kind} == {"Renamed", :achievement}
+    assert {:ok, loaded} = FirstmatePort.Portal.ProgressProjection.load_one(ctx.item, ctx.opts)
+    assert loaded.item.title == "Renamed"
+  end
+
   describe "payload validation" do
     test "a :status event needs a status", ctx do
       assert {:error, error} =

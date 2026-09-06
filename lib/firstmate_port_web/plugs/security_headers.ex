@@ -63,14 +63,12 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeaders do
   @baseline "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
   @embed_baseline "frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
 
-  # Archify artifacts are whole standalone pages stored as HTML. Their inline
-  # script and style are the diagram, so this policy cannot forbid inline; it
-  # restricts off-origin loads and form submission. Same-origin scripts and
-  # fetches remain allowed; this policy does not isolate HTML from the session.
+  @diagram_baseline @embed_baseline <> "; sandbox allow-scripts"
+
   @embed_policy "default-src 'self'; script-src 'self' 'unsafe-inline' blob:; " <>
                   "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " <>
                   "font-src 'self' data:; connect-src 'self'; frame-src 'none'; " <>
-                  @embed_baseline
+                  @diagram_baseline
 
   @api_policy "default-src 'none'; " <> @embed_baseline
 
@@ -170,7 +168,7 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeaders do
 
   # `{always enforced, full policy}`.
   defp policies(conn, :browser), do: {@baseline, browser_policy(conn.assigns[:csp_nonce])}
-  defp policies(_conn, :embed), do: {@embed_baseline, @embed_policy}
+  defp policies(_conn, :embed), do: {@diagram_baseline, @embed_policy}
   # A JSON response has no subresources to break, so there is nothing to soak.
   defp policies(_conn, :api), do: {@api_policy, @api_policy}
 

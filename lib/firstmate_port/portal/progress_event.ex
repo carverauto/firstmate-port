@@ -41,7 +41,7 @@ defmodule FirstmatePort.Portal.ProgressEvent do
     end
   end
 
-  @types [:status, :assignment, :contribution, :interruption, :note]
+  @types [:status, :assignment, :contribution, :interruption, :note, :subject]
   @statuses FirstmatePort.Portal.ProgressStatus.all()
   @roles [:implement, :review]
 
@@ -90,6 +90,8 @@ defmodule FirstmatePort.Portal.ProgressEvent do
       accept [
         :item_id,
         :type,
+        :title,
+        :kind,
         :status,
         :worker,
         :role,
@@ -144,6 +146,12 @@ defmodule FirstmatePort.Portal.ProgressEvent do
       allow_nil? false
       public? true
     end
+
+    attribute :title, :string, public?: true
+
+    attribute :kind, :atom,
+      public?: true,
+      constraints: [one_of: [:pr, :issue, :achievement, :note]]
 
     attribute :status, :atom do
       constraints one_of: @statuses

@@ -60,6 +60,12 @@ defmodule FirstmatePort.Portal.ProgressProjection do
   def project(item, events) when is_list(events) do
     events = sort_events(events)
 
+    item =
+      Enum.reduce(events, item, fn
+        %{type: :subject, title: title, kind: kind}, item -> %{item | title: title, kind: kind}
+        _, item -> item
+      end)
+
     status_event = last_of(events, :status)
     assignment_events = Enum.filter(events, &(&1.type == :assignment))
     contributions = Enum.filter(events, &(&1.type == :contribution))
@@ -147,8 +153,16 @@ defmodule FirstmatePort.Portal.ProgressProjection do
 
   @doc "Projects a bounded item page using database summaries, without loading histories."
   def load(items, opts) when is_list(items) do
-    with {:ok, summaries} <- ProgressSummary.load(Enum.map(items, & &1.id), opts) do
-      {:ok, Enum.map(items, &apply_summary(project(&1, []), Map.get(summaries, &1.id)))}
+    ids = Enum.map(items, & &1.id)
+
+    with {:ok, summaries} <- ProgressSummary.load(ids, opts),
+         {:ok, subjects} <-
+           FirstmatePort.Portal.ProjectProgressSubject.load(ids, Keyword.fetch!(opts, :tenant)) do
+      {:ok,
+       Enum.map(items, fn item ->
+         item = Map.merge(item, Map.get(subjects, item.id, %{}))
+         apply_summary(project(item, []), Map.get(summaries, item.id))
+       end)}
     end
   end
 

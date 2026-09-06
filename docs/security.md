@@ -135,6 +135,8 @@ once. Say so in advance; subsequent deploys are seamless.
 Every pipeline must select an explicit `:browser`, `:embed` or `:api` preset.
 Browser and embed resource directives follow `CSP_MODE`; their framing,
 object, base-uri and form-action baseline stays enforced in either mode.
+Diagram documents additionally enforce `sandbox allow-scripts` in both modes,
+giving uploaded scripts an opaque origin without changing the stored HTML.
 The API preset is always enforced.
 
 The `:diagram` exception is the interesting one. Stored diagram HTML is

@@ -738,6 +738,7 @@ defmodule FirstmatePortWeb.ProgressComponents do
   end
 
   defp event_summary(%{type: :interruption} = e), do: "interrupted: #{e.interrupted}"
+  defp event_summary(%{type: :subject} = e), do: "#{e.kind}: #{e.title}"
   defp event_summary(e), do: blank(e.detail)
 
   # Ash casts an empty string to nil on the way into the database, so "not set"

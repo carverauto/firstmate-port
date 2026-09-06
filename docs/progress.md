@@ -219,3 +219,10 @@ the timeline, and contributor bars describe the selected event page; summary
 status, assignee, duration, tokens, and interruption cover the whole log through
 database aggregation. Worker-name previews are capped at 100, with
 `worker_count` and `workers_truncated` describing the complete set in HTTP.
+
+### Subject changes
+
+A `subject` event supplies both `title` and `kind`. GitHub enrichment appends
+these events instead of changing the original ProgressItem. Reads project the
+latest subject by `occurred_at`, then `inserted_at`, then event ID, matching the
+rest of the log. API and MCP event appends accept the same fields.
