@@ -107,7 +107,9 @@ yourself before the first boot. In Kubernetes, the Deployment requires both
 keys in `firstmate-admin` and waits until the secret exists; it does not fall
 back to a generated password. Set `ADMIN_EMAIL` when running
 `deploy/bootstrap-secrets.sh` to choose the secret's email, or create the secret
-yourself with `email` and `password` keys. Read its email with
+yourself with `email` and `password` keys. Re-running the script against a
+secret that predates the `email` key backfills it without rotating the
+password. Read its email with
 `kubectl -n firstmate get secret firstmate-admin -o jsonpath='{.data.email}' | base64 -d`.
 Changing the password environment variable or secret later does not reset an
 existing account's password. A generated Compose password is printed once and
