@@ -20,7 +20,7 @@ fm-steer queue post ──HTTP──▶ POST /api/queues ──▶ Queues.Tracke
 
 `fm-steer` never dials NATS. It POSTs a queue fact to the portal; the portal
 records it and publishes the normalized entry on `<tenant>.steer.queue`, which
-the tenant's existing `<tenant>.steer` stream already owns — no new stream and
+the tenant's existing `<tenant>_steer` stream already owns — no new stream and
 no `<tenant>.>` catch-all. `FirstmatePort.NATS.QueueListener` folds messages
 from that subject back into the tracker, which is how a second portal node sees
 work recorded on the first.
@@ -57,3 +57,13 @@ scoped to the caller's tenant.
 The tracker keeps finished work for 15 minutes and work that has gone quiet
 without reporting a stop for 2 hours, capped at 200 entries per tenant. Removals
 are broadcast, so an open page stops showing work that is no longer in flight.
+
+## Broker regression test
+
+With `nats-server` on PATH, run
+`NATS_SERVER_TESTS=1 unbuffer mix test test/firstmate_port/queue_broker_test.exs`.
+The test starts isolated brokers to check stream provisioning, persisted queue
+payloads, and prompt reporting when JetStream is unavailable. Provisioning runs
+in the existing listener; queue reports only publish and never wait for stream
+management. Stream names use underscores because JetStream forbids dots in names;
+subject names retain dots.

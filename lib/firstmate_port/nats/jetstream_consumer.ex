@@ -5,8 +5,8 @@ defmodule FirstmatePort.NATS.JetstreamConsumer do
   Firstmate subjects, not ServiceRadar subject names.
 
   Stream ownership is per tenant on one NATS account:
-  * `<tenant>.steer` — subjects `<tenant>.steer.>` only
-  * `<tenant>.inbound` — subject `<tenant>.discord.inbound` only
+  * `<tenant>_steer` — subjects `<tenant>.steer.>` only
+  * `<tenant>_inbound` — subject `<tenant>.discord.inbound` only
 
   The API must not create a `<tenant>.>` catch-all.
   """
@@ -43,7 +43,7 @@ defmodule FirstmatePort.NATS.JetstreamConsumer do
   defdelegate inbound_subjects(tenant), to: Tenancy
 
   defp subjects_for(name) do
-    case String.split(name, ".", parts: 2) do
+    case String.split(name, "_", parts: 2) do
       [tenant, "steer"] -> steer_subjects(tenant)
       [tenant, "inbound"] -> inbound_subjects(tenant)
       _ -> []

@@ -6,7 +6,7 @@ defmodule FirstmatePort.Queues do
   The API is the only JetStream client, so the flow is one-way. `fm-steer`
   POSTs a queue fact to the portal; the portal records it in
   `FirstmatePort.Queues.Tracker` and publishes it on `<tenant>.steer.queue`,
-  which the existing `<tenant>.steer` stream already owns — no new stream and no
+  which the existing `<tenant>_steer` stream already owns — no new stream and no
   `<tenant>.>` catch-all. `FirstmatePort.NATS.QueueListener` folds messages from
   that subject back into the tracker, which is how a second portal node sees
   work recorded on the first.
@@ -48,13 +48,6 @@ defmodule FirstmatePort.Queues do
   defdelegate absorb(tenant, params), to: Tracker, as: :track
 
   defp publish(tenant, entry) do
-    case NATS.Connection.get() do
-      {:ok, conn} ->
-        _ = NATS.JetstreamConsumer.ensure_owned_streams(conn, tenant)
-        NATS.Connection.publish(subject(tenant), Jason.encode!(Entry.to_map(entry)))
-
-      _ ->
-        :ok
-    end
+    NATS.Connection.publish(subject(tenant), Jason.encode!(Entry.to_map(entry)))
   end
 end
