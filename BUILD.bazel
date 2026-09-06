@@ -280,6 +280,8 @@ go_library(
         "internal/fmsteer/inbox.go",
         "internal/fmsteer/ingest.go",
         "internal/fmsteer/queue.go",
+        "internal/fmsteer/route.go",
+        "internal/fmsteer/usage.go",
     ],
     importpath = "github.com/mfreeman451/firstmate-port/internal/fmsteer",
 )
@@ -317,6 +319,7 @@ go_test(
     srcs = [
         "internal/fmsteer/build_test.go",
         "internal/fmsteer/fmsteer_test.go",
+        "internal/fmsteer/route_usage_test.go",
     ],
     embed = [":fmsteer_lib"],
 )

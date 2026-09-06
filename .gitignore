@@ -67,8 +67,6 @@ third_party/bazel-disk-cache/
 third_party/distdir/*
 !third_party/distdir/README.md
 
-# BazelCI workflow is site-specific; do not check it in.
-buildbuddy.yaml
 
 # Archify visual-check evidence: regenerate with `archify visual-check`, do not commit.
 docs/diagrams/*.visual-check.*

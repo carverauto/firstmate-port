@@ -1,0 +1,81 @@
+# BazelCI. Runner identity is copied from serviceradar's self-hosted
+# workflows pool (k8s/buildbuddy/values-workflows.yaml). --config=ci
+# belongs on this runner only. Isolate laptops with ./tools/bazel.
+#
+# Images go to ghcr.io, not Harbor. Kick Publish OCI from the BuildBuddy
+# workflow UI (or a push to main); do not docker-build on a workstation.
+actions:
+  - name: "BazelCI"
+    env:
+      OCI_REGISTRY: "ghcr.io"
+      OCI_PROJECT: "carverauto"
+    self_hosted: true
+    pool: "workflows"
+    container_image: "docker://registry.carverauto.dev/serviceradar/buildbuddy-workflow-runner:v1.0.24.3"
+    platform_properties:
+      OSFamily: "linux"
+      Arch: "amd64"
+      # Under `oci` isolation this is a BOOLEAN in disguise. ociruntime.go reduces the property
+      # to `networkEnabled: networkMode != "off"`
+      dockerNetwork: "bridge"
+    triggers:
+      pull_request:
+        branches:
+          - "main"
+      push:
+        branches:
+          - "main"
+    resource_requests:
+      memory: "16GB"
+      disk: "40GB"
+    steps:
+      - run: bazel build -c opt --config=ci //...
+      - run: bazel test -c opt --config=ci //... --test_tag_filters=-integration_test
+
+  - name: "Publish OCI"
+    env:
+      OCI_REGISTRY: "ghcr.io"
+      OCI_PROJECT: "carverauto"
+    self_hosted: true
+    pool: "workflows"
+    container_image: "docker://registry.carverauto.dev/serviceradar/buildbuddy-workflow-runner:v1.0.24.3"
+    platform_properties:
+      OSFamily: "linux"
+      Arch: "amd64"
+      dockerNetwork: "bridge"
+    triggers:
+      push:
+        branches:
+          - "main"
+        tags:
+          - "v*"
+    resource_requests:
+      memory: "16GB"
+      disk: "40GB"
+    steps:
+      # GHCR login: the GitHub app token on this runner, same as publish-oci.yml.
+      - run: |
+          set -euo pipefail
+          user="${GITHUB_ACTOR:-x-access-token}"
+          token="${GHCR_TOKEN:-${GITHUB_TOKEN:-}}"
+          if [ -z "${token}" ]; then
+            echo "GITHUB_TOKEN/GHCR_TOKEN is required to push ghcr.io/${OCI_PROJECT}/firstmate-port" >&2
+            exit 1
+          fi
+          echo "${token}" | docker login ghcr.io -u "${user}" --password-stdin
+      - run: |
+          set -euo pipefail
+          tag="sha-$(git rev-parse --short HEAD)"
+          repo="${OCI_REGISTRY}/${OCI_PROJECT}/firstmate-port"
+          bazel run -c opt --config=ci //:portal_image_push -- --repository "${repo}" --tag "${tag}"
+          if [ -n "${GIT_TAG:-}" ]; then
+            bazel run -c opt --config=ci //:portal_image_push -- --repository "${repo}" --tag "${GIT_TAG}"
+          fi
+      - run: |
+          set -euo pipefail
+          tag="sha-$(git rev-parse --short HEAD)"
+          repo="${OCI_REGISTRY}/${OCI_PROJECT}/fm-steer"
+          bazel run -c opt --config=ci //:fm-steer_image_push -- --repository "${repo}" --tag "${tag}"
+          if [ -n "${GIT_TAG:-}" ]; then
+            bazel run -c opt --config=ci //:fm-steer_image_push -- --repository "${repo}" --tag "${GIT_TAG}"
+          fi

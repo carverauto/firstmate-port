@@ -48,7 +48,7 @@ Local `mix assets.deploy` requires `mix compile` first: the
 
 ## CI and OCI
 
-`buildbuddy.yaml` is gitignored (site-specific BazelCI). GitHub Actions `.github/workflows/bazel.yml` builds Go targets; `.github/workflows/publish-oci.yml` pushes ghcr.io images via `//:portal_image_push`, logging in with the workflow `GITHUB_TOKEN`. Write the BuildBuddy API key into gitignored `.bazelrc.remote` from a secret, never commit it. `--config=ci` belongs on a runner only.
+`buildbuddy.yaml` is BazelCI: same self-hosted `workflows` pool and runner image as serviceradar. The **Publish OCI** action pushes `ghcr.io/<owner>/firstmate-port` and `fm-steer` via `//:portal_image_push` / `//:fm-steer_image_push`. GitHub Actions `.github/workflows/bazel.yml` builds Go targets; `.github/workflows/publish-oci.yml` is the same push from a runner. Write the BuildBuddy API key into gitignored `.bazelrc.remote` from a secret, never commit it. `--config=ci` belongs on a runner only.
 
 ```sh
 # Publish (ghcr.io is the registry; the repository is always passed explicitly)
