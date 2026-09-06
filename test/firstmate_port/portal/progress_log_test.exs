@@ -49,52 +49,26 @@ defmodule FirstmatePort.Portal.ProgressLogTest do
              FirstmatePort.Portal.ProgressProjection.load([ctx.item], ctx.opts)
   end
 
-  describe "record_status/4" do
-    test "the first status is appended even when it matches the kind default", ctx do
-      assert {:ok, :appended, event} =
-               ProgressLog.record_status(ctx.item, :in_progress, %{}, ctx.opts)
+  test "observations preserve crew judgements and deduplicate terminal states", ctx do
+    append(ctx.item, %{type: :status, status: :ready_for_review}, ctx.opts)
 
-      assert event.status == :in_progress
-      # The row's own :assignment event, plus this status.
-      assert {:ok, 2} = Ash.count(ProgressEvent, ctx.opts)
-    end
+    assert {:ok, :ignored, :in_progress} =
+             ProgressLog.record_observed_status(ctx.item, :in_progress, %{}, ctx.opts)
 
-    test "an unchanged status appends nothing", ctx do
-      assert {:ok, :appended, _} = ProgressLog.record_status(ctx.item, :merged, %{}, ctx.opts)
+    assert {:ok, :appended, event} =
+             ProgressLog.record_observed_status(
+               ctx.item,
+               :merged,
+               %{detail: "github poll"},
+               ctx.opts
+             )
 
-      assert {:ok, :unchanged, :merged} =
-               ProgressLog.record_status(ctx.item, :merged, %{}, ctx.opts)
+    assert event.detail == "github poll"
 
-      assert {:ok, :unchanged, :merged} =
-               ProgressLog.record_status(ctx.item, :merged, %{}, ctx.opts)
+    assert {:ok, :unchanged, :merged} =
+             ProgressLog.record_observed_status(ctx.item, :merged, %{}, ctx.opts)
 
-      assert {:ok, 2} = Ash.count(ProgressEvent, ctx.opts)
-    end
-
-    test "a moved status appends a new row and leaves the old one alone", ctx do
-      {:ok, :appended, first} = ProgressLog.record_status(ctx.item, :in_progress, %{}, ctx.opts)
-      {:ok, :appended, second} = ProgressLog.record_status(ctx.item, :merged, %{}, ctx.opts)
-
-      assert {:ok, events} = ProgressEvent.list_for_item(ctx.item.id, ctx.opts)
-      assert [%{type: :assignment}, one, two] = events
-      assert [one.id, two.id] == [first.id, second.id]
-      assert Enum.map(events, & &1.status) == [nil, :in_progress, :merged]
-    end
-
-    test "extra attributes ride along on the appended event", ctx do
-      assert {:ok, :appended, event} =
-               ProgressLog.record_status(ctx.item, :merged, %{detail: "github poll"}, ctx.opts)
-
-      assert event.detail == "github poll"
-    end
-
-    test "a status outside the three is refused", ctx do
-      assert {:error, :invalid_status} =
-               ProgressLog.record_status(ctx.item, "abandoned", %{}, ctx.opts)
-
-      # Only the row's own :assignment event; nothing was appended.
-      assert {:ok, 1} = Ash.count(ProgressEvent, ctx.opts)
-    end
+    assert {:ok, 3} = Ash.count(ProgressEvent, ctx.opts)
   end
 
   describe "find_item/2" do

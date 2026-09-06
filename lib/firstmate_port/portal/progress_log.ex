@@ -3,10 +3,8 @@ defmodule FirstmatePort.Portal.ProgressLog do
   The write side of the fleet log. Every function here appends; none of them
   update or delete.
 
-  `record_status/4` is the one producers should reach for when they are polling
-  rather than reporting: it reads the current projection first and appends only
-  when the status actually moved, so a poll that runs every few minutes does not
-  fill the log with a hundred identical "still in progress" rows.
+  GitHub observations append only when the transition is new and the observed
+  status may replace the crew's current judgement.
   """
 
   require Ash.Query
@@ -17,38 +15,37 @@ defmodule FirstmatePort.Portal.ProgressLog do
   def append(attrs, opts), do: ProgressEvent.append(attrs, opts)
 
   @doc """
-  Appends a `:status` event only when it differs from the item's current
-  projected status.
+  Appends a new GitHub-observed status without replacing more specific crew
+  judgements with an open state. Historical transitions already recorded at
+  the observed timestamp are unchanged.
 
-  Returns `{:ok, :appended, event}`, `{:ok, :unchanged, status}`, or
-  `{:error, reason}`.
-  """
-  def record_status(item, status, extra \\ %{}, opts) do
-    do_record_status(item, status, extra, opts, fn _projection, _observed -> :allow end)
-  end
-
-  @doc """
-  The GitHub poll's way in. Same as `record_status/4`, but it will not drag a
-  crew judgement backwards.
-
-  The poll can see that a pull request merged or an issue closed, and that
-  always wins. It cannot tell "draft" from "ready for review" from "stalled" —
-  they all look open to the search API — so an observed `:in_progress` is
-  dropped whenever the crew has already said something more specific.
-
-  Returns `{:ok, :ignored, status}` in that case.
+  Returns `{:ok, :appended, event}`, `{:ok, :unchanged, status}`,
+  `{:ok, :ignored, status}`, or `{:error, reason}`.
   """
   def record_observed_status(item, status, extra \\ %{}, opts) do
-    with {:ok, canonical} <- ProgressStatus.parse(status),
-         {:ok, recorded?} <- observed_transition?(item, canonical, Map.new(extra), opts) do
-      if recorded? do
-        {:ok, :unchanged, canonical}
-      else
-        do_record_status(item, canonical, extra, opts, fn projection, observed ->
-          if ProgressStatus.github_may_report?(observed, current_status(projection)),
-            do: :allow,
-            else: :ignore
-        end)
+    with {:ok, status} <- ProgressStatus.parse(status),
+         {:ok, recorded?} <- observed_transition?(item, status, Map.new(extra), opts),
+         {:ok, [projection]} <- ProgressProjection.load([item], opts) do
+      cond do
+        recorded? ->
+          {:ok, :unchanged, status}
+
+        not ProgressStatus.github_may_report?(status, current_status(projection)) ->
+          {:ok, :ignored, status}
+
+        projection.status == status and projection.status_source == :log ->
+          {:ok, :unchanged, status}
+
+        true ->
+          attrs =
+            extra
+            |> Map.new()
+            |> Map.merge(%{item_id: item.id, type: :status, status: status})
+
+          case append(attrs, opts) do
+            {:ok, event} -> {:ok, :appended, event}
+            {:error, error} -> {:error, error}
+          end
       end
     else
       :error -> {:error, :invalid_status}
@@ -68,34 +65,6 @@ defmodule FirstmatePort.Portal.ProgressLog do
 
   defp current_status(%{status_source: :log, status: status}), do: status
   defp current_status(_projection), do: nil
-
-  defp do_record_status(item, status, extra, opts, gate) do
-    with {:ok, status} <- ProgressStatus.parse(status),
-         {:ok, [projection]} <- ProgressProjection.load([item], opts) do
-      case gate.(projection, status) do
-        :ignore ->
-          {:ok, :ignored, status}
-
-        :allow ->
-          if projection.status == status and projection.status_source == :log do
-            {:ok, :unchanged, status}
-          else
-            attrs =
-              extra
-              |> Map.new()
-              |> Map.merge(%{item_id: item.id, type: :status, status: status})
-
-            case append(attrs, opts) do
-              {:ok, event} -> {:ok, :appended, event}
-              {:error, error} -> {:error, error}
-            end
-          end
-      end
-    else
-      :error -> {:error, :invalid_status}
-      {:error, error} -> {:error, error}
-    end
-  end
 
   @doc """
   Resolves the item an inbound event names, by portal id or by the GitHub URL

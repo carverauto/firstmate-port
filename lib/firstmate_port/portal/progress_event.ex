@@ -55,7 +55,6 @@ defmodule FirstmatePort.Portal.ProgressEvent do
     define :list, action: :read
     define :append, action: :append
     define :list_for_item, action: :for_item, args: [:item_id]
-    define :list_for_items, action: :for_items, args: [:item_ids]
   end
 
   actions do
@@ -68,22 +67,6 @@ defmodule FirstmatePort.Portal.ProgressEvent do
       description "A bounded event page, oldest first; continue with offset and limit."
       argument :item_id, :string, allow_nil?: false
       filter expr(item_id == ^arg(:item_id))
-      argument :limit, :integer, default: 100, allow_nil?: false
-      argument :offset, :integer, default: 0, allow_nil?: false
-      validate compare(:limit, greater_than: 0, less_than_or_equal_to: 100)
-      validate compare(:offset, greater_than_or_equal_to: 0)
-      prepare build(sort: [occurred_at: :asc, inserted_at: :asc, id: :asc])
-      prepare fn query, _ ->
-        query
-        |> Ash.Query.limit(query.arguments.limit)
-        |> Ash.Query.offset(query.arguments.offset)
-      end
-    end
-
-    read :for_items do
-      description "A bounded event page for a bounded set of items, oldest first."
-      argument :item_ids, {:array, :string}, allow_nil?: false, constraints: [max_length: 1000]
-      filter expr(item_id in ^arg(:item_ids))
       argument :limit, :integer, default: 100, allow_nil?: false
       argument :offset, :integer, default: 0, allow_nil?: false
       validate compare(:limit, greater_than: 0, less_than_or_equal_to: 100)

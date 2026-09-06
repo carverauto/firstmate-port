@@ -118,14 +118,13 @@ defmodule FirstmatePort.Portal.ProgressProjection do
   """
   def status_spans(events, status_event) do
     statuses = Enum.filter(events, &(&1.type == :status))
-    last_at = events |> List.last() |> occurred_at()
     closed? = status_event && ProgressStatus.terminal?(status_event.status)
 
     statuses
     |> Enum.chunk_every(2, 1, [nil])
     |> Enum.map(fn
       [event, nil] ->
-        span(event, if(closed?, do: event.occurred_at, else: last_at), not closed?)
+        span(event, if(closed?, do: event.occurred_at, else: nil), not closed?)
 
       [event, next] ->
         span(event, next.occurred_at, false)

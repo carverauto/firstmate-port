@@ -22,6 +22,30 @@ defmodule FirstmatePort.Portal.ProgressProjectionTest do
      )}
   end
 
+  test "an unfinished status has no measured endpoint or duration", ctx do
+    started = DateTime.utc_now()
+    append(ctx.item, %{type: :status, status: :in_progress, occurred_at: started}, ctx.opts)
+
+    assert {:ok, projection} = ProgressProjection.load_one(ctx.item, ctx.opts)
+
+    assert [%{status: :in_progress, to: nil, duration_ms: nil, open?: true}] =
+             projection.status_spans
+
+    append(
+      ctx.item,
+      %{type: :note, detail: "still working", occurred_at: DateTime.add(started, 3600)},
+      ctx.opts
+    )
+
+    assert {:ok, projection} = ProgressProjection.load_one(ctx.item, ctx.opts)
+    assert [%{to: nil, duration_ms: nil, open?: true}] = projection.status_spans
+
+    finished = DateTime.add(started, 7200)
+    append(ctx.item, %{type: :status, status: :merged, occurred_at: finished}, ctx.opts)
+    assert {:ok, projection} = ProgressProjection.load_one(ctx.item, ctx.opts)
+    assert [%{to: ^finished, duration_ms: 7_200_000, open?: false}] = projection.status_spans
+  end
+
   describe "status" do
     test "an empty log falls back to the kind, and says so", ctx do
       assert {:ok, projection} = ProgressProjection.load_one(ctx.item, ctx.opts)

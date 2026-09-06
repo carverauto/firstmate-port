@@ -136,21 +136,6 @@ defmodule FirstmatePort.Portal.ProgressEventTest do
     end
   end
 
-  test "for_items fetches a whole page of logs in one read", ctx do
-    items = seed_items(ctx.opts, 3)
-    for item <- items, do: append(item, %{type: :status, status: :complete}, ctx.opts)
-
-    ids = Enum.map(items, & &1.id)
-    assert {:ok, events} = ProgressEvent.list_for_items(ids, ctx.opts)
-
-    # One :assignment from opening each row, plus the status appended to each.
-    assert length(events) == 6
-    assert events |> Enum.map(& &1.item_id) |> Enum.uniq() |> Enum.sort() == Enum.sort(ids)
-    assert Enum.count(events, &(&1.type == :assignment)) == 3
-
-    assert {:ok, []} = ProgressEvent.list_for_items([], ctx.opts)
-  end
-
   describe "crew attribution" do
     test "a row cannot be opened without naming the crew member doing the work", ctx do
       assert {:error, error} =

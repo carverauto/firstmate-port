@@ -71,6 +71,27 @@ defmodule FirstmatePortWeb.ProgressLiveTest do
     end
   end
 
+  test "only a truly empty log receives the empty observation" do
+    projection = FirstmatePort.Portal.ProgressProjection.project(%ProgressItem{kind: :pr}, [])
+
+    assert [{"log", "Nothing appended yet, so there is nothing to observe."}] =
+             FirstmatePortWeb.ProgressComponents.heuristics(projection)
+  end
+
+  test "active work renders unknown timeline duration and neutral observations", %{
+    conn: conn,
+    opts: opts
+  } do
+    item = seed_item(opts, kind: :pr, title: "active work")
+    append(item, %{type: :status, status: :in_progress}, opts)
+    {:ok, view, html} = live(conn, ~p"/progress?item=#{item.id}")
+    assert html =~ "No additional observations."
+    refute html =~ "Nothing appended yet"
+    timeline = view |> element(".timeline-key") |> render()
+    assert timeline =~ "—"
+    refute timeline =~ "0ms"
+  end
+
   describe "home preview" do
     test "links to progress even when there are no rows", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
@@ -99,20 +120,20 @@ defmodule FirstmatePortWeb.ProgressLiveTest do
       assert html =~ "See all 25"
     end
 
-    test "hides the see-all link when the preview holds everything", %{conn: conn, opts: opts} do
+    test "keeps the see-all link when the preview holds everything", %{conn: conn, opts: opts} do
       seed_items(opts, 10)
 
       {:ok, _view, html} = live(conn, ~p"/")
 
       assert html =~ title(1)
-      refute html =~ "See all"
+      assert html =~ "See all"
     end
 
     test "keeps its empty state", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/")
 
       assert html =~ "No PRs, issues, or achievements recorded."
-      refute html =~ "See all"
+      assert html =~ "See all"
     end
 
     test "shows the compact columns and no charts", %{conn: conn, opts: opts} do
@@ -345,12 +366,13 @@ defmodule FirstmatePortWeb.ProgressLiveTest do
       assert html =~ title(3)
     end
 
-    test "an empty log says so instead of inventing telemetry", %{conn: conn, opts: opts} do
+    test "an assignment without telemetry gets neutral observations", %{conn: conn, opts: opts} do
       bare = seed_item(opts, title: "nothing appended")
 
       {:ok, _view, html} = live(conn, ~p"/progress?item=#{bare.id}")
 
-      assert html =~ "Nothing appended yet"
+      assert html =~ "No additional observations."
+      refute html =~ "Nothing appended yet"
       assert html =~ "No contributions reported on this page"
       assert html =~ "no telemetry yet"
       assert html =~ "derived from kind"

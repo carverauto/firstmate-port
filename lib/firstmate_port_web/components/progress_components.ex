@@ -593,7 +593,10 @@ defmodule FirstmatePortWeb.ProgressComponents do
     |> then(&(&1 ++ hands_heuristic(projection)))
     |> then(&(&1 ++ interrupt_heuristic(projection)))
     |> case do
-      [] -> [{"log", "Nothing appended yet, so there is nothing to observe."}]
+      [] when projection.event_count == 0 ->
+        [{"log", "Nothing appended yet, so there is nothing to observe."}]
+
+      [] -> [{"log", "No additional observations."}]
       lines -> lines
     end
   end
