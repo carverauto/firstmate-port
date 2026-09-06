@@ -328,4 +328,3 @@ defmodule FirstmatePort.Portal.ProgressProjectionTest do
 
   defp at(n), do: DateTime.add(~U[2026-01-01 00:00:00.000000Z], n, :minute)
 end
-

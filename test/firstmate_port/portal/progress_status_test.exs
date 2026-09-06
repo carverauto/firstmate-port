@@ -154,4 +154,3 @@ defmodule FirstmatePort.Portal.ProgressStatusTest do
     end
   end
 end
-

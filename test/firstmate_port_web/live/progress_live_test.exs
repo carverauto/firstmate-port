@@ -654,4 +654,3 @@ defmodule FirstmatePortWeb.ProgressLiveTest do
     |> json_response(200)
   end
 end
-

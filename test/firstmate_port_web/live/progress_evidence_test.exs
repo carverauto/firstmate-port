@@ -112,7 +112,7 @@ defmodule FirstmatePortWeb.ProgressEvidenceTest do
         model: "gpt-6",
         effort: "high",
         tokens: 28000,
-        duration_ms: 2400000,
+        duration_ms: 2_400_000,
         interrupted: true,
         occurred_at: "2026-09-05T10:40:00Z"
       },
@@ -132,7 +132,7 @@ defmodule FirstmatePortWeb.ProgressEvidenceTest do
         model: "gpt-6",
         effort: "high",
         tokens: 9000,
-        duration_ms: 600000,
+        duration_ms: 600_000,
         occurred_at: "2026-09-05T10:50:00Z"
       },
       %{type: "status", status: "complete", occurred_at: "2026-09-05T10:55:00Z"},
