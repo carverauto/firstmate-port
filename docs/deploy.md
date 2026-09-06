@@ -33,18 +33,9 @@ fm-steer auth login --instance http://localhost:4000
 fm-steer inbox put --task fm-port --body "hello"
 ```
 
-Crew shape against the live portal (set `FIRSTMATE_INSTANCE` to
-`https://firstmate.carverauto.dev`; a bare `put` files under task
-`firstmate`, and `next` with no `--task` takes the next item from the one
-shared inbox — there is no second inbox):
-
-```sh
-fm-steer auth login
-fm-steer inbox put --body "hello from second mate"
-fm-steer inbox next
-fm-steer inbox ack --ack <ack-from-next>
-fm-steer inbox list
-```
+For crew steering and the optional liaison, use the
+[portal-steering integration](../integrations/firstmate/README.md). It defines
+recipient-specific task keys and the cutover procedure for existing workers.
 
 For Fleet log posting commands and authentication, see the
 [fm-steer CLI guide](../README.md#fm-steer-cli).
