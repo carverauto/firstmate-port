@@ -97,4 +97,3 @@ defmodule FirstmatePortWeb.Endpoint do
     end
   end
 end
-

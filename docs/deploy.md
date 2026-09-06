@@ -176,18 +176,8 @@ kubectl -n firstmate create secret docker-registry ghcr-io-cred \
 
 ## Public hostnames
 
-The portal hostname is public, not LAN-only: Discord's Developer Portal will not
-accept an application whose Terms of Service and Privacy Policy URLs it cannot
-fetch, and those pages live on the portal. `/terms` and `/privacy` answer a
-signed-out GET; everything else still requires sign-in.
-
-Before exposing an instance, read [docs/security.md](security.md). Two settings
-there are not optional in Kubernetes:
-
-- `CLIENT_IP_HEADER`, or rate limiting keys on the Gateway's address and
-  throttles every user at once.
-- `LEGAL_CONTACT_EMAIL`, or the published privacy policy has no route back to a
-  human.
+For public access, gateway trust settings, legal-page operator identity, and
+rollout order, see [Public-edge security](security.md).
 
 Site-specific hostnames, issuer URLs, allowlists, and ghcr namespaces live in:
 

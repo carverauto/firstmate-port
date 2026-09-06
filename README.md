@@ -4,6 +4,9 @@ Phoenix/Ash companion portal for firstmate. Crew reviews Archify diagrams, PRs, 
 
 Each tenant stores its own credentials - Discord keys, GitHub tokens, provider API keys - in the portal, encrypted with AshCloak before they reach Postgres. No per-tenant `kubectl create secret`.
 
+Terms of Service and Privacy Policy are available from the footer on the
+sign-in and portal pages, at `/terms` and `/privacy`.
+
 ## Local
 
 ```sh

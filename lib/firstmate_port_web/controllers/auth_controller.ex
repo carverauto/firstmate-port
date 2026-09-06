@@ -218,4 +218,3 @@ defmodule FirstmatePortWeb.AuthController do
     end
   end
 end
-

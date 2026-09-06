@@ -148,4 +148,3 @@ defmodule FirstmatePortWeb.Plugs.RateLimit do
   defp pluralize(1), do: "second"
   defp pluralize(_seconds), do: "seconds"
 end
-

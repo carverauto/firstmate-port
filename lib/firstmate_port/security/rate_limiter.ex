@@ -194,4 +194,3 @@ defmodule FirstmatePort.Security.RateLimiter do
   defp normalize_buckets(buckets) when is_list(buckets), do: Map.new(buckets)
   defp normalize_buckets(_other), do: %{}
 end
-

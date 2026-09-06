@@ -31,6 +31,20 @@ cluster.
 [`docs/diagrams/public-vs-discord-hostnames.html`](diagrams/public-vs-discord-hostnames.html)
 draws the split, including which plugs each hostname's traffic passes through.
 
+## Public access
+
+`/terms` and `/privacy` serve legal documents without a session and may be
+cached publicly for five minutes. `/login`, `/healthz`, static assets, sign-in
+endpoints, device-code issuance and polling, and OAuth discovery metadata also
+answer without an existing sign-in. The router in
+`lib/firstmate_port_web/router.ex` owns the complete route inventory.
+
+Portal work pages require a user; API reads enforce resource authorization,
+CLI operations require a user token, and ingest writes and MCP require agent
+authorization. Discord interactions use signature verification rather than a
+browser session. Diagram and preview-card access differ; see the “Your content”
+section of `/terms` for that disclosure.
+
 ## What has to be set
 
 | Variable | Required | Default | Notes |
@@ -45,11 +59,12 @@ draws the split, including which plugs each hostname's traffic passes through.
 | `CSP_REPORT_URI` | no | unset | Where browsers post violation reports. |
 | `SESSION_SIGNING_SALT` | no | stable default | Read at `mix release` time. Rotating signs everyone out. |
 | `SESSION_ENCRYPTION_SALT` | no | stable default | Same. |
-| `SESSION_COOKIE_SECURE` | no | `true` in prod | `false` only for staging genuinely on plain HTTP. |
+| `SESSION_COOKIE_SECURE` | no | `true` in prod | Build-time setting, like the salts; `false` only for a deployment genuinely on plain HTTP. |
 
 ### Getting `CLIENT_IP_HEADER` right matters more than it looks
 
-Rate limiting and lockout key on the client address. Behind a proxy,
+Rate limiting uses the client address; sign-in lockout keys on the account.
+Behind a proxy,
 `conn.remote_ip` is the proxy, so leaving this unset in Kubernetes puts every
 request on earth into one bucket — the limiter would then throttle everyone at
 once, which is worse than not having it.
@@ -147,8 +162,13 @@ by the replica count — the edge policy is what holds the line then.
 Denied requests get `429` with `retry-after` and
 `{"error": "rate_limited", "retry_after": N}`, or a `303` back to `/login` with
 a flash for browsers. Each mounted plug explicitly selects JSON or HTML; the
-request Accept header does not select the response. Every response carries `x-ratelimit-limit`,
-`x-ratelimit-remaining` and `x-ratelimit-reset`.
+request Accept header does not select the response. Every response passing the
+rate-limit plug carries `x-ratelimit-limit`,
+`x-ratelimit-remaining` and `x-ratelimit-reset`. The limiter returns the decision,
+limit, remaining count and reset epoch second from one snapshot. Reset is the
+oldest in-window attempt plus the window (or now plus the window when empty);
+denials are not recorded. `retry-after` is reset minus the current second,
+floored at one second.
 
 One endpoint answers differently on purpose: `POST /api/cli/auth/token` returns
 `{"error": "slow_down"}`, the RFC 8628 code that tells `fm-steer` to widen its

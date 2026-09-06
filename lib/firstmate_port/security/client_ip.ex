@@ -1,6 +1,6 @@
 defmodule FirstmatePort.Security.ClientIP do
   @moduledoc """
-  Resolves the client address that rate limiting and lockouts key on.
+  Resolves the client address used for rate limiting and lockout metadata.
 
   Behind a proxy `conn.remote_ip` is the proxy's address, so every request
   collapses into one bucket and the limiter would lock out the whole internet

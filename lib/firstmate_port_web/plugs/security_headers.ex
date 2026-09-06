@@ -65,8 +65,8 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeaders do
 
   # Archify artifacts are whole standalone pages stored as HTML. Their inline
   # script and style are the diagram, so this policy cannot forbid inline; it
-  # forbids everything that would let a stored artifact reach off-origin or act
-  # on the session instead.
+  # restricts off-origin loads and form submission. Same-origin scripts and
+  # fetches remain allowed; this policy does not isolate HTML from the session.
   @embed_policy "default-src 'self'; script-src 'self' 'unsafe-inline' blob:; " <>
                   "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " <>
                   "font-src 'self' data:; connect-src 'self'; frame-src 'none'; " <>
@@ -209,4 +209,3 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeaders do
   defp append_if(parts, true, value), do: parts ++ [value]
   defp append_if(parts, _false, _value), do: parts
 end
-
