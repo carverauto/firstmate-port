@@ -49,7 +49,7 @@ See [README.md](../README.md) for the product introduction and common usage.
 - Do not schedule a Mac Bazel cache wipe in AshOban or Kubernetes
 - Do not relocate `~/.no-mistakes` into the cluster
 - Do not `kubectl create secret` per-tenant credentials, and never return a stored secret over HTTP or MCP
-- Do not add a public route without deciding its rate-limit bucket and CSP preset; do not put MCP or NATS on a public hostname
+- For public routes, rate-limit buckets, CSP presets, and MCP/NATS exposure boundaries, follow [docs/security.md](../docs/security.md).
 - Local Bazel: `--output_base=/tmp/fm-fm-port/bazel`. `--config=remote` is fine; never `--config=ci` locally
 - ghcr.io is the registry; do not invent a second forge
 
