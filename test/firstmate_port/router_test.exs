@@ -64,7 +64,6 @@ defmodule FirstmatePort.RouterTest do
 
     assert got.harness == "grok"
     assert got.effort == "low"
-    assert got.checkpoint == nil
   end
 
   test "a docs task naming a prefix is not code" do
@@ -80,7 +79,7 @@ defmodule FirstmatePort.RouterTest do
     assert got.effort == "medium"
   end
 
-  test "a prefixed ops verb keeps its kind, blast radius and checkpoint" do
+  test "a prefixed ops verb keeps its kind and blast radius" do
     for text <- ["redeploy the api gateway", "undeploy the canary", "autoscale the workers"] do
       assert Router.classify(text).kind == :ops, "#{text} lost its ops kind"
     end
@@ -93,7 +92,6 @@ defmodule FirstmatePort.RouterTest do
 
     assert got.harness == "claude"
     assert got.effort == "high"
-    assert got.checkpoint == "human-review"
   end
 
   test "a preview feature is not hard-routed to the code-review model" do
@@ -128,15 +126,16 @@ defmodule FirstmatePort.RouterTest do
 
     got = Router.route("store the openrouter api token in the vault")
     assert got.harness == "claude"
-    assert got.checkpoint == "human-review"
+    assert got.effort == "high"
+    assert got.model == "claude-opus-5"
   end
 
-  test "credential rotation gets a human-review checkpoint" do
+  test "credential rotation runs the top claude model" do
     got = Router.route("rotate the openrouter api token")
 
     assert got.harness == "claude"
     assert got.effort == "high"
-    assert got.checkpoint == "human-review"
+    assert got.model == "claude-opus-5"
   end
 
   test "a token counter task stays in the cheap lane" do
@@ -144,7 +143,6 @@ defmodule FirstmatePort.RouterTest do
 
     refute got.harness == "claude"
     assert got.effort == "low"
-    assert got.checkpoint == nil
   end
 
   test "route sends standard code work to codex at medium effort" do
@@ -155,7 +153,6 @@ defmodule FirstmatePort.RouterTest do
     assert got.model == "gpt-6-astra"
     assert got.model_display == "GPT-6-Astra"
     assert got.model_source == "fleet_matrix"
-    assert got.checkpoint == nil
     assert got.intel_sources == ["fleet_matrix", "fleet_evals"]
     assert length(got.reasons) > 0
   end
@@ -170,13 +167,13 @@ defmodule FirstmatePort.RouterTest do
     assert Enum.any?(got.reasons, &String.contains?(&1, "hard-routed"))
   end
 
-  test "route escalates production deploys to claude with a checkpoint" do
+  test "route escalates production deploys to claude at high effort" do
     got = Router.route("deploy the portal to production and run the database migration")
 
     assert got.harness == "claude"
     assert got.effort == "high"
-    assert got.checkpoint == "human-review"
-    assert Enum.any?(got.reasons, &String.contains?(&1, "checkpoint"))
+    assert got.model == "claude-opus-5"
+    assert Enum.any?(got.reasons, &String.contains?(&1, "blast_radius"))
   end
 
   test "route sends live-web research to the web lane" do
@@ -193,7 +190,6 @@ defmodule FirstmatePort.RouterTest do
       )
 
     assert got.harness == "claude"
-    assert got.checkpoint == "human-review"
   end
 
   test "unknown axis overrides are ignored" do

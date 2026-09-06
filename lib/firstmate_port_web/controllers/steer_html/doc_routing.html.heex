@@ -22,7 +22,7 @@
        &quot;axes&quot;: &#123;&quot;blast_radius&quot;: &quot;high&quot;&#125;&#125;'</pre>
 
   <h2>Capability matrix</h2>
-  <p>The fleet matrix lists the lanes the fleet can drive (claude, codex, grok, opencode). Routing filters lanes on hard constraints, then picks the cheapest survivor, breaking ties on latency and quality. Effort (low, medium, high) rises with ambiguity, blast radius, and risk. High blast radius or risk adds a <code>human-review</code> checkpoint.</p>
+  <p>The fleet matrix lists the lanes the fleet can drive (claude, codex, grok, opencode). Routing filters lanes on hard constraints, then picks the cheapest survivor, breaking ties on latency and quality. Effort (low, medium, high) rises with ambiguity, blast radius, and risk, and the lane names the model it runs at that effort.</p>
 
   <h2>Hard routes</h2>
   <p>Code review bypasses the matrix: it always returns harness <code>codex</code> with model <code>gpt-6-astra</code> (GPT-6-Astra). Review never goes to a chat or docs lane, even with provider intel enabled.</p>

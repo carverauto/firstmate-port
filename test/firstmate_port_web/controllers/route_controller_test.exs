@@ -47,7 +47,6 @@ defmodule FirstmatePortWeb.RouteControllerTest do
 
     body = json_response(conn, 200)
     assert body["harness"] == "claude"
-    assert body["checkpoint"] == "human-review"
   end
 
   test "code review is hard-routed to codex with GPT-6-Astra", %{conn: conn, token: token} do
@@ -74,7 +73,6 @@ defmodule FirstmatePortWeb.RouteControllerTest do
 
     body = json_response(conn, 200)
     assert body["harness"] == "claude"
-    assert body["checkpoint"] == "human-review"
   end
 
   test "response axes round-trip with the request spelling", %{conn: conn, token: token} do

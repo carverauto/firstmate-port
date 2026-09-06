@@ -128,6 +128,56 @@ func TestRoutePostsDescriptionToPortal(t *testing.T) {
 	}
 }
 
+func TestRouteFlagsWorkInEitherPosition(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args func(url string) []string
+	}{
+		{"flags first", func(u string) []string {
+			return []string{"--instance", u, "--intel", "--json", "fix the failing test"}
+		}},
+		{"flags after the task", func(u string) []string {
+			return []string{"--instance", u, "fix the failing test", "--intel", "--json"}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("XDG_CONFIG_HOME", dir)
+			var gotDesc string
+			var gotIntel bool
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var body map[string]any
+				_ = json.NewDecoder(r.Body).Decode(&body)
+				gotDesc, _ = body["description"].(string)
+				gotIntel, _ = body["intel"].(bool)
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"harness": "codex", "model": "gpt-6-astra", "effort": "medium",
+				})
+			}))
+			defer srv.Close()
+			if err := writeCreds(srv.URL, "jwt", "local"); err != nil {
+				t.Fatal(err)
+			}
+
+			out := captureStdout(t, func() { routeRun(tc.args(srv.URL)) })
+
+			if gotDesc != "fix the failing test" {
+				t.Errorf("task text was corrupted by a flag: %q", gotDesc)
+			}
+			if !gotIntel {
+				t.Error("--intel was not honored")
+			}
+			var decoded map[string]any
+			if err := json.Unmarshal([]byte(out), &decoded); err != nil {
+				t.Fatalf("--json was not honored, got %q", out)
+			}
+			if decoded["harness"] != "codex" {
+				t.Errorf("harness %v", decoded["harness"])
+			}
+		})
+	}
+}
+
 func TestUsageListsAccountsFromPortal(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)

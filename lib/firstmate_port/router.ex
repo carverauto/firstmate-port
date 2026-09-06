@@ -50,7 +50,7 @@ defmodule FirstmatePort.Router do
 
   @doc """
   Route a task description to `%{harness:, model:, model_source:, effort:,
-  reasons:, axes:, intel_sources:, checkpoint:}`.
+  reasons:, axes:, intel_sources:}`.
 
   Options:
 
@@ -68,27 +68,16 @@ defmodule FirstmatePort.Router do
     end
   end
 
-  defp answer(
-         harness,
-         model,
-         model_display,
-         model_source,
-         effort,
-         reasons,
-         axes,
-         intel,
-         checkpoint
-       ) do
+  defp answer(harness, model, model_display, model_source, effort, reasons, axes, intel) do
     %{
       harness: harness,
       model: model,
       model_display: model_display,
       model_source: model_source,
       effort: effort,
-      reasons: reasons ++ checkpoint_reasons(checkpoint),
+      reasons: reasons,
       axes: axes,
-      intel_sources: Enum.uniq(["fleet_matrix", "fleet_evals"] ++ ProviderIntel.sources(intel)),
-      checkpoint: checkpoint
+      intel_sources: Enum.uniq(["fleet_matrix", "fleet_evals"] ++ ProviderIntel.sources(intel))
     }
   end
 
@@ -108,8 +97,7 @@ defmodule FirstmatePort.Router do
           "code review never goes to a chat or docs lane"
       ],
       axes,
-      intel,
-      checkpoint_for(axes)
+      intel
     )
   end
 
@@ -127,8 +115,7 @@ defmodule FirstmatePort.Router do
       effort,
       reasons ++ model_reasons,
       axes,
-      intel,
-      checkpoint_for(axes)
+      intel
     )
   end
 
@@ -234,17 +221,8 @@ defmodule FirstmatePort.Router do
     axes.ambiguity == :low and axes.blast_radius == :low and axes.risk == :low
   end
 
-  defp checkpoint_for(%{blast_radius: :high}), do: "human-review"
-  defp checkpoint_for(%{risk: :high}), do: "human-review"
-  defp checkpoint_for(_), do: nil
-
   defp model_ok?(%{expect_model: want}, %{model: got}), do: want == got
   defp model_ok?(_case, _got), do: false
-
-  defp checkpoint_reasons(nil), do: []
-
-  defp checkpoint_reasons(checkpoint),
-    do: ["checkpoint=#{checkpoint}: high blast radius or risk needs a human before side effects"]
 
   # -- classification heuristics -----------------------------------------
 

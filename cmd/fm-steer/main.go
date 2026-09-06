@@ -266,9 +266,9 @@ func routeRun(args []string) {
 	instance := fs.String("instance", env("FIRSTMATE_INSTANCE", ""), "API base URL")
 	intel := fs.Bool("intel", false, "fold in live provider intel (Artificial Analysis)")
 	asJSON := fs.Bool("json", false, "print the full route response as JSON")
-	_ = fs.Parse(args)
+	words := parseInterspersed(fs, args)
 
-	description := strings.Join(fs.Args(), " ")
+	description := strings.Join(words, " ")
 	if description == "" {
 		raw, err := io.ReadAll(os.Stdin)
 		if err != nil {
@@ -296,11 +296,26 @@ func routeRun(args []string) {
 		display = out.Model
 	}
 	fmt.Printf("harness %s\nmodel %s (%s)\neffort %s\n", out.Harness, display, out.Model, out.Effort)
-	if out.Checkpoint != "" {
-		fmt.Printf("checkpoint %s\n", out.Checkpoint)
-	}
 	for _, r := range out.Reasons {
 		fmt.Printf("- %s\n", r)
+	}
+}
+
+// parseInterspersed parses flags wherever they appear and returns the
+// positional words. Go's flag package stops at the first non-flag, which
+// would fold a trailing --json into the task text.
+func parseInterspersed(fs *flag.FlagSet, args []string) []string {
+	var words []string
+	rest := args
+
+	for {
+		_ = fs.Parse(rest)
+		rest = fs.Args()
+		if len(rest) == 0 {
+			return words
+		}
+		words = append(words, rest[0])
+		rest = rest[1:]
 	}
 }
 
@@ -314,7 +329,6 @@ type routeResponse struct {
 	Reasons      []string       `json:"reasons"`
 	Axes         map[string]any `json:"axes"`
 	Intel        []string       `json:"intel_sources"`
-	Checkpoint   string         `json:"checkpoint"`
 }
 
 // usageRun shows per-account token usage and remaining allowance from the
@@ -356,7 +370,6 @@ type usageAccount struct {
 	Status     string   `json:"status"`
 	RunwayDays *float64 `json:"runway_days"`
 	Window     string   `json:"window"`
-	Source     string   `json:"source"`
 }
 
 type usageResponse struct {
