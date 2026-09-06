@@ -25,6 +25,7 @@ defmodule FirstmatePortWeb.SessionsLiveTest do
     assert html =~ "fm-steer/workstation"
     assert html =~ "active"
     assert html =~ "never used"
+    FirstmatePort.PortalEvidence.save("sessions-active-current", html)
   end
 
   test "revoking from the page stops that token", %{conn: conn, captain: captain} do
@@ -41,6 +42,7 @@ defmodule FirstmatePortWeb.SessionsLiveTest do
 
     html = view |> element("button[phx-value-id='#{session.id}']") |> render_click()
     assert html =~ "revoked"
+    FirstmatePort.PortalEvidence.save("sessions-revoked-current", html)
 
     assert build_conn()
            |> put_req_header("accept", "application/json")

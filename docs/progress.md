@@ -57,7 +57,7 @@ that mirror. Against Progress it only ever *enriches*:
 
 - it cannot create a `ProgressItem`, because `:record` requires a worker and an
   org listing has none to name;
-- it refreshes the title of a row the crew already logged;
+- it appends a subject event when the title or kind of tracked work changes;
 - it appends a status event when a PR merges or an issue closes.
 
 It maps only the three states GitHub can actually observe, and never reads the
@@ -149,7 +149,8 @@ cannot fork a second fleet-log row — it returns `404` instead.
 | field | type | notes |
 |---|---|---|
 | `item_id` / `url` | string | one of the two is required |
-| `type` | `status`, `assignment`, `contribution`, `interruption`, `note` | required |
+| `type` | see [`ProgressEvent.types/0`](../lib/firstmate_port/portal/progress_event.ex) | required; includes `subject` for title/kind changes |
+| `title` / `kind` | string / progress kind | both required on `subject`; kind must be compatible with the item's existing URL |
 | `status` | one of the seven above | required on `status`; canonical underscore spellings only |
 | `worker` | string | required on `assignment` and `contribution` |
 | `role` | `implement` \| `review` | on `contribution`; review work shows as review |
@@ -161,6 +162,9 @@ cannot fork a second fleet-log row — it returns `404` instead.
 | `interrupted` | boolean | required on `interruption`; absent means *unknown*, not *no* |
 | `detail` | string | required on `note` |
 | `occurred_at` | ISO 8601 | defaults to now |
+
+A subject event leaves the original ProgressItem unchanged. Reads project the
+latest title and kind by `occurred_at`, then `inserted_at`, then event ID.
 
 Every field the producer omits stays missing rather than becoming a zero. The UI
 distinguishes "nobody reported this" from "this measured zero" everywhere.
@@ -219,10 +223,3 @@ the timeline, and contributor bars describe the selected event page; summary
 status, assignee, duration, tokens, and interruption cover the whole log through
 database aggregation. Worker-name previews are capped at 100, with
 `worker_count` and `workers_truncated` describing the complete set in HTTP.
-
-### Subject changes
-
-A `subject` event supplies both `title` and `kind`. GitHub enrichment appends
-these events instead of changing the original ProgressItem. Reads project the
-latest subject by `occurred_at`, then `inserted_at`, then event ID, matching the
-rest of the log. API and MCP event appends accept the same fields.

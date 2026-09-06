@@ -2,6 +2,7 @@ package fmsteer
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -164,8 +165,8 @@ func TestGetJSONFailsOnUnauthorized(t *testing.T) {
 	if err == nil {
 		t.Fatal("HTTP 401 was reported as success")
 	}
-	if !strings.Contains(err.Error(), "unauthorized") {
-		t.Fatalf("error %v drops the portal message", err)
+	if !errors.Is(err, ErrSignedOut) {
+		t.Fatalf("error %v, want ErrSignedOut for a stale authenticated token", err)
 	}
 }
 

@@ -24,6 +24,7 @@ defmodule FirstmatePortWeb.InboxLiveTest do
     assert html =~ "second mate: PR is green"
     assert html =~ to_string(captain.email)
     assert html =~ "firstmate"
+    FirstmatePort.PortalEvidence.save("inbox-current", html)
   end
 
   test "a message filed while the page is open arrives without a reload", %{

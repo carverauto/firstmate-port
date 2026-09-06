@@ -85,7 +85,7 @@ Approval is a human step in a browser. Do not ask an agent to do it for you.
 | --- | --- | --- |
 | `inbox put` | `--task <id>` (defaults to `firstmate`), `--body <text>` (stdin when omitted) | Prints the stored item as JSON, including its `ack` token |
 | `inbox next` | `--task <id>` (optional) | Prints the oldest pending item as JSON; exit 1 and no output when the inbox is empty |
-| `inbox ack` | `--ack <token>` (required) | Marks that item handled; prints `acked` and exits 0 even when the portal rejected the token (`{"error":"not_found"}`), so confirm with `inbox list` |
+| `inbox ack` | `--ack <token>` (required) | Marks that item handled; prints `acked` on success and exits nonzero if the portal rejects it |
 | `inbox list` | `--task <id>` (optional) | Prints `{"data":[...]}` — everything pending or delivered-but-unacked |
 
 Bodies may be multi-line; omit `--body` and pipe them in:
@@ -167,8 +167,8 @@ from another machine (from a phone, from a laptop away from the fleet):
   after that send succeeds run
   `fm-steer inbox ack --ack <the item's ack>`. Never ack something you have not
   delivered. Never mirror this portal-origin delivery back with `inbox put`.
-- `fm-steer inbox ack` prints `acked` even when the portal rejected the token, so
-  confirm with `fm-steer inbox list --task <the item's task>` that the item is gone.
+- If acknowledgement fails, report the error; use
+  `fm-steer inbox list --task <the item's task>` to check outstanding delivery.
 ```
 
 Nothing polls on its own — firstmate checks when a session runs and you ask it

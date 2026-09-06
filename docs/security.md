@@ -25,7 +25,7 @@ describe the portal. A LAN-only hostname cannot serve either.
 | `discord-firstmate.carverauto.dev` | same Gateway, `https-carverauto` | `/interactions` only |
 
 Both are Cloudflare-proxied. MCP and NATS gain no hostname of their own: `/mcp`
-stays a path on the portal behind the agent token, and NATS stays inside the
+stays an authenticated path on the portal, and NATS stays inside the
 cluster.
 
 [`docs/diagrams/public-vs-discord-hostnames.html`](diagrams/public-vs-discord-hostnames.html)
@@ -40,10 +40,11 @@ answer without an existing sign-in. The router in
 `lib/firstmate_port_web/router.ex` owns the complete route inventory.
 
 Portal work pages require a user; API reads enforce resource authorization,
-CLI operations require a user token, and ingest writes and MCP require agent
-authorization. Discord interactions use signature verification rather than a
-browser session. Diagram and preview-card access differ; see the “Your content”
-section of `/terms` for that disclosure.
+CLI operations and MCP require a signed-in actor, with resource policies
+authorizing each operation. Ingest writes require an agent except for
+[diagram uploads](fleet-log.md#diagrams). Discord interactions use signature
+verification rather than a browser session. Diagram and preview-card access
+differ; see the “Your content” section of `/terms` for that disclosure.
 
 ## What has to be set
 
