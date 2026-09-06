@@ -55,8 +55,10 @@ including when the build fails - `--status failure` with the reason in
 | `--tokens` | tokens the run cost you, **cumulative for the whole run**, on the finish call. Omit it when you cannot count them; never guess. |
 | `--image` / `--image-tag` | for container work: repository and tag. |
 | `--cluster` / `--namespace` | for cluster work. |
+| `--started-at` / `--finished-at` | RFC 3339 timestamps on `start` / `finish`, respectively. Each defaults to the current UTC time; override it when reporting work that already started or finished. |
 
-`finish` needs only `--run-id` and `--status`: the API carries the rest of the
+`finish` requires `--run-id`; `--status` defaults to `success`, so explicitly
+set it for failures or cancellations. The API carries the rest of the
 run's context forward from the start event, so repeat a field only to correct
 or add to it.
 

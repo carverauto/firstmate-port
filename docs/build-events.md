@@ -17,7 +17,10 @@ shows:
 
 - the newest event that reported a field wins; an event that omits a field
   leaves it alone,
-- `started_at` is the earliest report, `finished_at` the latest,
+- events are ordered by insertion time: `started_at` is the first non-null
+  reported start time, `finished_at` the last non-null reported finish time
+  (not the minimum and maximum timestamp values). Without a reported start
+  time, the projection uses the first event's insertion time,
 - `tokens` is the newest non-zero report, so callers send cumulative usage for
   the run rather than a per-event delta,
 - `status` is the newest event's status, and `finished?` is any status other
@@ -63,5 +66,16 @@ self-describing without anything being rewritten.
 ```
 
 `status` is one of `started`, `success`, `failure`, `cancelled`.
-`GET /api/build-runs` returns the same fields folded,
-plus `duration_ms`, `events`, `finished?`, and `updated_at`.
+Successful `POST` calls return `id`, `run_id`, `kind`, `status`, and `url`.
+Both `GET` endpoints wrap their rows in `{"data": [...]}` and scope them to
+the caller's tenant. Raw events include `id` and `recorded_at`;
+`GET /api/build-runs` returns the payload fields folded, plus `id` (the last
+event's id), `duration_ms`, `events`, `finished?`, `updated_at`, and `url`.
+The run list is ordered by most recent activity and defaults to 10 rows;
+positive `limit` values are capped at 200, while missing, nonpositive, or
+unparseable values use the default. The raw event list is not capped.
+
+`duration_ms` is the reported finish time minus the projected start time,
+or `null` without a finish time. Direct API callers supply their own times;
+the CLI's timestamp defaults and overrides are covered by the
+[build-tracking skill](../skills/build-tracking/SKILL.md#what-to-report).

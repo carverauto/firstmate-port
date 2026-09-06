@@ -6,11 +6,8 @@ defmodule FirstmatePort.BuildEvents do
   folded from that run's events oldest to newest, so a projection never
   requires rewriting history.
 
-  The fold rule is "the newest report that said something wins": a later event
-  replaces the fields it fills in and leaves the fields it omits alone.
-  `started_at` keeps the earliest report and `finished_at` the latest, and
-  `tokens` keeps the newest non-zero report - callers report cumulative usage
-  for the run rather than a per-event delta.
+  See `docs/build-events.md` for field precedence, timestamp selection, and
+  cumulative token reporting.
   """
 
   alias FirstmatePort.Portal.BuildEvent

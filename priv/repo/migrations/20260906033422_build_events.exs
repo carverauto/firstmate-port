@@ -50,7 +50,8 @@ defmodule FirstmatePort.Repo.Migrations.BuildEvents do
             name: "build_events_versions_version_source_id_fkey",
             type: :text,
             prefix: "public"
-          ), null: false
+          ),
+          null: false
 
       add :changes, :map
 
