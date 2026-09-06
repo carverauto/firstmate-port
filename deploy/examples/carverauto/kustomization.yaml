@@ -1,5 +1,5 @@
 # Example overlay only. These hostnames, gateways, and the ghcr namespace are a
-# private deployment's identity; they are never compiled-in defaults. Copy this
+# deployment's identity; they are never compiled-in defaults. Copy this
 # directory into a GitOps repo, or apply it directly:
 #
 #   kubectl apply -k deploy/examples/carverauto

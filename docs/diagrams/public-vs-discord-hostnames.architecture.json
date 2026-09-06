@@ -18,7 +18,7 @@
           "legal",
           "portal"
         ],
-        "note": "A crew browser reaches the whole app; only the legal pages answer signed out."
+        "note": "A crew browser reaches the whole app; see docs/security.md for public access rules."
       },
       {
         "id": "discord-path",

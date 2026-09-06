@@ -128,9 +128,9 @@ once. Say so in advance; subsequent deploys are seamless.
 
 | Pipeline | Policy |
 | --- | --- |
-| `:browser` | same-origin everything, inline script only via the request's nonce, websockets for LiveView |
+| `:browser`, `:public_page` | same-origin everything, inline script only via the request's nonce, websockets for LiveView |
 | `:diagram` (`/d/:id`) | allows inline script and style, because a stored Archify artifact *is* an inline-script document; still forbids framing, plugins, form posts and off-origin loads |
-| `:api`, `:cli_auth`, `:mcp`, `:discord_http` | `default-src 'none'` |
+| `:api`, `:api_write`, `:cli`, `:cli_auth`, `:authed`, `:mcp`, `:discord_http` | `default-src 'none'` |
 
 Every pipeline must select an explicit `:browser`, `:embed` or `:api` preset.
 Browser and embed resource directives follow `CSP_MODE`; their framing,
