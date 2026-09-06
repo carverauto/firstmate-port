@@ -77,22 +77,37 @@ config :firstmate_port,
     FirstmatePort.Jobs
   ],
   public_url: "http://localhost:4000",
-  allowed_email_domain: "localhost",
+  # Unset means any account an identity provider vouches for may sign in. A
+  # domain here is an extra restriction on top of the provider, not the login.
+  allowed_email_domain: nil,
   oidc_issuer: nil,
-  dev_auth: false,
+  # Local sign-in is the default way in: a fresh portal must be signable-into
+  # without an identity provider.
+  local_auth: true,
+  # Seam, not a feature. Public images are OSS and compile with this off; the
+  # SaaS lane owns sign-up, tenant provisioning, and billing in its own repo.
+  # Tenancy is already attribute-based, so nothing here needs rewriting later.
+  enable_saas: false,
   default_tenant_slug: "local"
+
+# Deliberately slow. Test config lowers it; nothing else should.
+config :firstmate_port, FirstmatePort.Accounts.Password, iterations: 210_000
 
 config :firstmate_port, FirstmatePort.Auth.Guardian,
   issuer: "firstmate_port",
   secret_key: "dev-guardian-secret-change-in-runtime",
   ttl: {12, :hours}
 
-config :firstmate_port, FirstmatePortWeb.Auth.OIDCStrategy,
-  client_id: System.get_env("OIDC_CLIENT_ID") || "firstmate-port",
-  client_secret: System.get_env("OIDC_CLIENT_SECRET"),
-  issuer: System.get_env("OIDC_ISSUER"),
-  discovery_url: System.get_env("OIDC_DISCOVERY_URL"),
-  redirect_uri: System.get_env("OIDC_REDIRECT_URI") || "http://localhost:4000/auth/oidc/callback",
+# OIDC is optional and vendor-neutral. Compiled defaults configure no issuer, so
+# a fresh checkout and the public image run on local auth alone. Real values are
+# read from the environment in config/runtime.exs; nothing here is baked into a
+# release.
+config :firstmate_port, FirstmatePort.Auth.OIDC,
+  client_id: nil,
+  client_secret: nil,
+  issuer: nil,
+  discovery_url: nil,
+  redirect_uri: nil,
   scopes: ["openid", "email", "profile"]
 
 config :firstmate_port, FirstmatePort.NATS.Connection,
@@ -105,6 +120,10 @@ config :firstmate_port, FirstmatePort.NATS.Connection,
   password: nil,
   replicas: 1
 
+# Deliberately empty, in every environment. UeberauthOidcc.Application starts one
+# permanent child per entry, and a provider that cannot load its configuration
+# crashes there and terminates the node. FirstmatePort.Auth.OIDC.Supervisor owns
+# the provider instead, as a temporary child.
 config :ueberauth_oidcc, issuers: []
 
 config :ueberauth, Ueberauth,
@@ -112,7 +131,8 @@ config :ueberauth, Ueberauth,
     oidc:
       {Ueberauth.Strategy.Oidcc,
        [
-         issuer: :firstmate_authentik,
+         # The name of the provider process, not a vendor.
+         issuer: :firstmate_oidc,
          client_id: {:system, "OIDC_CLIENT_ID"},
          client_secret: {:system, "OIDC_CLIENT_SECRET"},
          scopes: ["openid", "email", "profile"],

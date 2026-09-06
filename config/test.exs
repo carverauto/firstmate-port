@@ -4,6 +4,10 @@ config :firstmate_port, Oban, testing: :inline
 config :firstmate_port, FirstmatePort.NATS.Connection, enabled: false, replicas: 1
 
 config :firstmate_port, FirstmatePort.Vault, key: "Zmlyc3RtYXRlLXBvcnQgdGVzdCB2YXVsdCBrZXkgISE="
+config :firstmate_port, :local_auth, false
+
+# The work factor is the point in production and pure latency in the suite.
+config :firstmate_port, FirstmatePort.Accounts.Password, iterations: 1_000
 
 config :firstmate_port, FirstmatePort.Auth.Guardian,
   issuer: "firstmate_port",

@@ -11,7 +11,9 @@
 #       PHX_HOST: firstmate.carverauto.dev
 #       PUBLIC_URL: https://firstmate.carverauto.dev
 #       ALLOWED_EMAIL_DOMAIN: carverauto.dev
+#       # Any OpenID Connect issuer; endpoints come from its discovery document.
 #       OIDC_ISSUER: https://auth.carverauto.dev/application/o/firstmate/
-#       OIDC_DISCOVERY_URL: https://auth.carverauto.dev/application/o/firstmate/.well-known/openid-configuration
-#       DEV_AUTH: "false"
+#       OIDC_CLIENT_ID: firstmate-port
+#       OIDC_CLIENT_SECRET: ...
+#       LOCAL_AUTH: "false"
 #       NATS_REPLICAS: "3"

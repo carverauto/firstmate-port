@@ -7,6 +7,10 @@ defmodule FirstmatePort.Application do
 
   @impl true
   def start(_type, _args) do
+    # Before anything opens a TLS socket: a node with no CA bundle must fail
+    # legibly rather than raising out of public_key on first use.
+    _ = FirstmatePort.Auth.CACerts.configure()
+
     children = [
       FirstmatePortWeb.Telemetry,
       # Before the Repo: nothing may read a credential row without the vault.
@@ -21,6 +25,7 @@ defmodule FirstmatePort.Application do
       {Phoenix.PubSub, name: FirstmatePort.PubSub},
       FirstmatePort.Inbox,
       FirstmatePort.NATS.Supervisor,
+      FirstmatePort.Auth.OIDC.Supervisor,
       FirstmatePortWeb.Endpoint
     ]
 
@@ -29,6 +34,7 @@ defmodule FirstmatePort.Application do
     opts = [strategy: :one_for_one, name: FirstmatePort.Supervisor]
     result = Supervisor.start_link(children, opts)
     _ = FirstmatePort.Accounts.Bootstrap.ensure_agent!()
+    _ = FirstmatePort.Accounts.Bootstrap.ensure_admin!()
     result
   end
 

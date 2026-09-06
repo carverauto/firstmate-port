@@ -22,7 +22,7 @@ See [README.md](../README.md) for the product introduction and common usage.
 - Prefix every `npm` with `sfw`
 
 ### Architecture Patterns
-- Browser users: OIDC. Agents: hashed service token + MCP at `/mcp`
+- Browser sign-in: see [Deploy](../docs/deploy.md#sign-in). Agents: hashed service token + MCP at `/mcp`
 - GitHub URLs stored exactly as copied from the API; never assembled from owner/repo/number
 - Site-specific hostnames and allowlists live in env samples / compose overrides / docs, never as the only compiled-in identity
 
@@ -51,6 +51,6 @@ See [README.md](../README.md) for the product introduction and common usage.
 - ghcr.io is the registry; do not invent a second forge
 
 ## External Dependencies
-- Optional OIDC issuer (Authentik or other)
+- Optional OIDC issuer: any OpenID Connect provider, discovered from the issuer URL. No per-vendor adapter.
 - GitHub API (fine-grained PAT) when poll is enabled
 - ghcr.io for image publish

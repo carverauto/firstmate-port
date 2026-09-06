@@ -15,7 +15,9 @@ docker compose up --build
 OpenSSL generates the secret without compiling Mix dependencies. To reuse it across
 shell sessions, save the generated value as `SECRET_KEY_BASE` in `.env`.
 
-http://localhost:4000/login. With `DEV_AUTH=true`, use `captain@localhost`.
+http://localhost:4000/login. The admin account and its password are printed once
+on first boot: `docker compose logs portal | grep -A4 "first-run sign-in"`. No
+identity provider needed.
 
 Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`, Bandit, Ueberauth OIDC, Gnat/JetStream, Tailwind v4 + Geist.
 

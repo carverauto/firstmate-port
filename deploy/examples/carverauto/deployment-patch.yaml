@@ -21,6 +21,9 @@ spec:
               value: https://firstmate.carverauto.dev
             - name: ALLOWED_EMAIL_DOMAIN
               value: carverauto.dev
+            # This site uses Authentik. It is one example issuer, not a
+            # requirement: the portal reads endpoints from discovery, so any
+            # OpenID Connect provider drops in here unchanged.
             - name: OIDC_ISSUER
               value: https://auth.carverauto.dev/application/o/firstmate/
             - name: OIDC_DISCOVERY_URL

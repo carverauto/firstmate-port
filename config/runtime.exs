@@ -20,6 +20,60 @@ if System.get_env("PHX_SERVER") do
   config :firstmate_port, FirstmatePortWeb.Endpoint, server: true
 end
 
+# Authentication is configured the same way in every runtime, so a setting that
+# works in compose works in Kubernetes. Test stays hermetic: it must not pick up
+# an issuer from a developer's shell.
+if config_env() != :test do
+  # Runtime auth settings and compatibility names: docs/deploy.md, "Sign-in".
+  local_auth? = System.get_env("LOCAL_AUTH") || System.get_env("DEV_AUTH")
+
+  oidc_issuer = System.get_env("OIDC_ISSUER")
+  oidc_discovery = System.get_env("OIDC_DISCOVERY_URL")
+
+  # One source of truth for the callback URL. An explicit OIDC_REDIRECT_URI wins;
+  # otherwise derive it from PUBLIC_URL, which is what a portal behind a
+  # TLS-terminating proxy needs so the redirect matches what is registered at the
+  # provider. With neither set, Ueberauth derives it from the request, which is
+  # right for localhost.
+  oidc_redirect_uri =
+    case {System.get_env("OIDC_REDIRECT_URI"), System.get_env("PUBLIC_URL")} do
+      {uri, _} when is_binary(uri) and uri != "" ->
+        uri
+
+      {_, public} when is_binary(public) and public != "" ->
+        String.trim_trailing(public, "/") <> "/auth/oidc/callback"
+
+      _ ->
+        nil
+    end
+
+  config :firstmate_port,
+    allowed_email_domain: System.get_env("ALLOWED_EMAIL_DOMAIN"),
+    oidc_issuer: oidc_issuer,
+    local_auth: local_auth? not in ~w(false 0),
+    enable_saas: System.get_env("ENABLE_SAAS") in ~w(true 1)
+
+  # Optional in every runtime. An unset, wrong, or unreachable issuer leaves the
+  # portal serving local sign-in; it never stops the node.
+  config :firstmate_port, FirstmatePort.Auth.OIDC,
+    client_id: System.get_env("OIDC_CLIENT_ID"),
+    client_secret: System.get_env("OIDC_CLIENT_SECRET"),
+    issuer: oidc_issuer,
+    discovery_url: oidc_discovery,
+    redirect_uri: oidc_redirect_uri,
+    scopes: ["openid", "email", "profile"]
+
+  # Client credentials for the Ueberauth strategy, read at request time. The
+  # issuer list stays empty on purpose; see config/config.exs.
+  oidc_provider_opts =
+    [
+      client_id: System.get_env("OIDC_CLIENT_ID"),
+      client_secret: System.get_env("OIDC_CLIENT_SECRET")
+    ] ++ if(oidc_redirect_uri, do: [redirect_uri: oidc_redirect_uri], else: [])
+
+  config :ueberauth_oidcc, issuers: [], providers: [oidc: oidc_provider_opts]
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||
@@ -56,27 +110,13 @@ if config_env() == :prod do
   config :firstmate_port, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   public_url = System.get_env("PUBLIC_URL") || "http://#{host}:#{port}"
-  oidc_issuer = System.get_env("OIDC_ISSUER")
-  oidc_discovery = System.get_env("OIDC_DISCOVERY_URL")
 
-  config :firstmate_port,
-    public_url: public_url,
-    allowed_email_domain: System.get_env("ALLOWED_EMAIL_DOMAIN") || "localhost",
-    oidc_issuer: oidc_issuer,
-    dev_auth: System.get_env("DEV_AUTH") in ~w(true 1)
+  config :firstmate_port, public_url: public_url
 
   config :firstmate_port, FirstmatePort.Auth.Guardian,
     issuer: "firstmate_port",
     secret_key: secret_key_base,
     ttl: {12, :hours}
-
-  config :firstmate_port, FirstmatePortWeb.Auth.OIDCStrategy,
-    client_id: System.get_env("OIDC_CLIENT_ID") || "firstmate-port",
-    client_secret: System.get_env("OIDC_CLIENT_SECRET"),
-    issuer: oidc_issuer,
-    discovery_url: oidc_discovery,
-    redirect_uri: System.get_env("OIDC_REDIRECT_URI") || public_url <> "/auth/oidc/callback",
-    scopes: ["openid", "email", "profile"]
 
   config :firstmate_port, FirstmatePort.NATS.Connection,
     enabled: System.get_env("NATS_ENABLED") in ~w(true 1),
@@ -110,22 +150,6 @@ if config_env() == :prod do
             raise "CLOAK_KEYS_RETIRED must be comma-separated tag=base64key pairs"
         end
       end)
-
-  issuers =
-    if is_binary(oidc_issuer) and oidc_issuer != "" do
-      [%{name: :firstmate_authentik, issuer: oidc_issuer}]
-    else
-      []
-    end
-
-  config :ueberauth_oidcc,
-    issuers: issuers,
-    providers: [
-      oidc: [
-        client_id: System.get_env("OIDC_CLIENT_ID") || "firstmate-port",
-        client_secret: System.get_env("OIDC_CLIENT_SECRET")
-      ]
-    ]
 
   config :firstmate_port, FirstmatePortWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],

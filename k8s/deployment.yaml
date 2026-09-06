@@ -35,6 +35,24 @@ spec:
               value: firstmate.example.com
             - name: PUBLIC_URL
               value: https://firstmate.example.com
+            # Local sign-in with the bootstrap admin account, no identity
+            # provider required. This is the supported way to bring a cluster
+            # up; add OIDC below once you have a provider.
+            - name: LOCAL_AUTH
+              value: "true"
+            # Read the credentials back with:
+            #   kubectl -n firstmate get secret firstmate-admin \
+            #     -o jsonpath='{.data.password}' | base64 -d
+            - name: BOOTSTRAP_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-admin
+                  key: email
+            - name: BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-admin
+                  key: password
             - name: NATS_ENABLED
               value: "true"
             - name: NATS_HOST
@@ -61,16 +79,23 @@ spec:
                 secretKeyRef:
                   name: firstmate-app
                   key: secret-key-base
+            # OIDC is optional and vendor-neutral: any OpenID Connect provider
+            # works, and the portal keeps serving local sign-in when these are
+            # absent or the provider is unreachable. Every key is optional so a
+            # missing secret cannot block the pod from starting. Set
+            # OIDC_ISSUER in an overlay to turn it on; see deploy/examples.
             - name: OIDC_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: firstmate-authentik-oauth
+                  name: firstmate-oidc
                   key: client-id
+                  optional: true
             - name: OIDC_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: firstmate-authentik-oauth
+                  name: firstmate-oidc
                   key: client-secret
+                  optional: true
             - name: FIRSTMATE_AGENT_TOKEN
               valueFrom:
                 secretKeyRef:

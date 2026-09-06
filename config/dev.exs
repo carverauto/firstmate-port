@@ -70,7 +70,7 @@ config :firstmate_port, FirstmatePortWeb.Endpoint,
 
 # Enable dev routes for dashboard and mailbox
 config :firstmate_port, dev_routes: true
-config :firstmate_port, dev_auth: true
+config :firstmate_port, local_auth: true
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
