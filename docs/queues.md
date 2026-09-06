@@ -27,8 +27,10 @@ work recorded on the first.
 
 Publishing the normalized entry rather than the raw request is what makes that
 round trip safe: the recording node merges its own message back onto an
-identical entry and broadcasts nothing. Token counters only ever climb for the
-same reason — a redelivery cannot walk them backwards.
+identical entry and broadcasts nothing. Reports older than the tracked
+`updated_at` cannot replace status, assignment, descriptive fields, or timing.
+Input and output token counters each retain their highest reported value, even
+from an older report. Without `updated_at`, the portal uses receipt time.
 
 ## Reporting
 
@@ -46,11 +48,20 @@ can send the model up front and the token totals when it finishes. `--task` is
 the only required flag. Statuses are `queued`, `working`, `needs-decision`,
 `blocked`, `paused`, `done`, and `failed` — the same words firstmate status
 lines use. A terminal report stamps the stop time; reporting `working` again
-clears it and the elapsed clock resumes.
+clears it and the elapsed clock resumes, provided the report is not older than
+the tracked update. `--started-at` and `--stopped-at` accept RFC3339 times; the
+start otherwise defaults to the first report.
 
 `POST /api/queues` needs an agent credential (as with fleet log ingest);
 `GET /api/queues` and the page itself need a signed-in account, and both are
-scoped to the caller's tenant.
+scoped to the caller's tenant. Reports use canonical field names, with no
+aliases; [Entry.new/2 and Entry.to_map/1](../lib/firstmate_port/queues/entry.ex)
+define the accepted fields and normalized wire form. Invalid reports return
+HTTP 422. Omitted or null optional values do not explicitly clear prior fields.
+GET returns `{"data": [...]}`; POST returns the normalized entry.
+
+If NATS is unavailable, a valid report still succeeds and updates this node's
+look-in; publication is best effort and other nodes may not receive it.
 
 ## Retention
 

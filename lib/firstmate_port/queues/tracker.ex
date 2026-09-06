@@ -6,8 +6,8 @@ defmodule FirstmatePort.Queues.Tracker do
   present, so the state lives in this process, is capped, and ages out. Nothing
   here survives a restart, and nothing here is the store of record.
 
-  Every accepted report is broadcast on the tenant's PubSub topic so the
-  LiveView can follow along without polling. A report that changes nothing —
+  Changed entries retained after capping are broadcast on the tenant's PubSub
+  topic so the LiveView can follow along without polling. An unchanged report —
   the node's own message coming back around through JetStream — is silent.
   """
 
@@ -104,8 +104,8 @@ defmodule FirstmatePort.Queues.Tracker do
     is_nil(reference) or DateTime.diff(now, reference, :millisecond) > budget
   end
 
-  # A tenant that never stops reporting must not grow without bound; the oldest
-  # rows go first, since the newest are the ones the look-in is about.
+  # Bound each tenant while prioritizing active work; evict terminal entries
+  # before active ones, oldest update first within each group.
   defp cap(entries, tenant) do
     ranked = sorted(entries, tenant)
 

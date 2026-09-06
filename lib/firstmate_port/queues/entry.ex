@@ -10,8 +10,7 @@ defmodule FirstmatePort.Queues.Entry do
 
   Every field except the task is optional on any single report, so a worker can
   send what it knows when it knows it. `merge/2` folds a report onto what is
-  already tracked: absent fields keep their prior value and the token counters
-  only ever climb, which makes a duplicate delivery from JetStream a no-op.
+  already tracked. See `docs/queues.md` for report freshness and counter semantics.
   """
 
   @schema "fm-queue-entry.v1"
@@ -40,15 +39,15 @@ defmodule FirstmatePort.Queues.Entry do
   @doc "The schema tag stamped on every payload published to JetStream."
   def schema, do: @schema
 
-  @doc "Statuses a worker may report, in the order the UI ranks them."
+  @doc "Statuses a worker may report."
   def statuses, do: @statuses
 
   @doc "True once the work has stopped and only retention keeps the row visible."
   def terminal?(%__MODULE__{status: status}), do: status in @terminal
 
   @doc """
-  Normalizes an inbound report into a sparse entry: only the fields the report
-  actually carried are set, so `merge/2` can tell "unchanged" from "cleared".
+  Validates and normalizes an inbound report into a sparse entry. Missing, null,
+  and blank text values remain unset; reports cannot explicitly clear fields.
   """
   @spec new(String.t(), map()) :: {:ok, t()} | {:error, atom()}
   def new(tenant_slug, params) when is_map(params) do
