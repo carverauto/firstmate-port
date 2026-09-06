@@ -1,0 +1,286 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Lighthouse: Rate, Rank, Admit, Reconcile",
+    "locale": "en",
+    "output": "docs/architecture/lighthouse-scheduler.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "route-a-task",
+        "label": "Route a task",
+        "focus": [
+          "task",
+          "rate",
+          "constrain",
+          "rank",
+          "admit"
+        ],
+        "note": "How a description becomes a harness, a model, and an effort level."
+      },
+      {
+        "id": "pinned-review",
+        "label": "Pinned code review",
+        "focus": [
+          "constrain",
+          "hardroute",
+          "admit"
+        ],
+        "note": "Code review bypasses ranking and cannot be re-routed for cost."
+      },
+      {
+        "id": "spend-loop",
+        "label": "Spend feedback loop",
+        "focus": [
+          "admit",
+          "worker",
+          "event",
+          "reconcile",
+          "calibrate",
+          "rate"
+        ],
+        "note": "Projected spend is reserved, then replaced by what the work actually cost."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "rail",
+      "label": "Rate + Rank"
+    },
+    {
+      "id": "sched",
+      "label": "Scheduler + Crew"
+    },
+    {
+      "id": "ledger",
+      "label": "Usage Ledger"
+    }
+  ],
+  "phases": [
+    {
+      "id": "understand",
+      "label": "Understand",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "choose",
+      "label": "Choose the worker",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "spend",
+      "label": "Spend + reconcile",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "task",
+    "rate",
+    "constrain",
+    "rank",
+    "admit",
+    "worker"
+  ],
+  "semanticChecks": {
+    "allowedRoots": [
+      "task"
+    ],
+    "requiredEdges": [
+      {
+        "from": "constrain",
+        "to": "hardroute"
+      },
+      {
+        "from": "hardroute",
+        "to": "admit"
+      },
+      {
+        "from": "calibrate",
+        "to": "rate"
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "task",
+      "lane": "rail",
+      "col": 0,
+      "type": "frontend",
+      "label": "Task",
+      "sublabel": "fm-steer route"
+    },
+    {
+      "id": "rate",
+      "lane": "rail",
+      "col": 1,
+      "type": "backend",
+      "label": "Rate",
+      "sublabel": "axes + difficulty",
+      "tag": "projects cost"
+    },
+    {
+      "id": "constrain",
+      "lane": "rail",
+      "col": 2,
+      "type": "security",
+      "label": "Constraints",
+      "sublabel": "lane filter",
+      "tag": "hard limits"
+    },
+    {
+      "id": "rank",
+      "lane": "rail",
+      "col": 3,
+      "type": "backend",
+      "label": "Rank",
+      "sublabel": "stored scores",
+      "tag": "multi-source"
+    },
+    {
+      "id": "hardroute",
+      "lane": "sched",
+      "col": 3,
+      "type": "security",
+      "label": "Hard Route",
+      "sublabel": "gpt-6-astra",
+      "tag": "pinned"
+    },
+    {
+      "id": "admit",
+      "lane": "sched",
+      "col": 4,
+      "type": "security",
+      "label": "Admission",
+      "sublabel": "admit or defer"
+    },
+    {
+      "id": "worker",
+      "lane": "sched",
+      "col": 5,
+      "type": "cloud",
+      "label": "Crew Worker",
+      "sublabel": "model + effort"
+    },
+    {
+      "id": "event",
+      "lane": "ledger",
+      "col": 4,
+      "type": "database",
+      "label": "UsageEvent",
+      "sublabel": "actual cost"
+    },
+    {
+      "id": "reconcile",
+      "lane": "ledger",
+      "col": 3,
+      "type": "backend",
+      "label": "Reconcile",
+      "sublabel": "headroom"
+    },
+    {
+      "id": "calibrate",
+      "lane": "ledger",
+      "col": 2,
+      "type": "backend",
+      "label": "Calibrate",
+      "sublabel": "cost medians"
+    }
+  ],
+  "edges": [
+    {
+      "from": "task",
+      "to": "rate",
+      "label": "description"
+    },
+    {
+      "from": "rate",
+      "to": "constrain",
+      "label": "difficulty + cost"
+    },
+    {
+      "from": "constrain",
+      "to": "rank",
+      "label": "surviving lanes"
+    },
+    {
+      "from": "constrain",
+      "to": "hardroute",
+      "label": "kind = review",
+      "variant": "security",
+      "role": "branch"
+    },
+    {
+      "from": "rank",
+      "to": "admit",
+      "label": "best in-lane model",
+      "variant": "emphasis"
+    },
+    {
+      "from": "hardroute",
+      "to": "admit",
+      "label": "model pinned",
+      "variant": "security"
+    },
+    {
+      "from": "admit",
+      "to": "worker",
+      "label": "assignment",
+      "variant": "emphasis"
+    },
+    {
+      "from": "worker",
+      "to": "event",
+      "label": "reports actuals"
+    },
+    {
+      "from": "event",
+      "to": "reconcile",
+      "label": "replaces hold"
+    },
+    {
+      "from": "reconcile",
+      "to": "calibrate",
+      "label": "observed cost"
+    },
+    {
+      "from": "calibrate",
+      "to": "rate",
+      "label": "retrains the estimate",
+      "variant": "dashed",
+      "role": "return"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "One Closed Loop",
+      "items": [
+        "Every route publishes what the task is expected to cost",
+        "Admission reserves that projection so bursts cannot overcommit one allowance"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Rules That Cost Never Overrides",
+      "items": [
+        "Code review is pinned to Codex GPT-6-Astra and bypasses ranking",
+        "Quota pressure may lower effort or defer, never re-route a review"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Never One Global Rank",
+      "items": [
+        "Artificial Analysis, LMArena and LiveBench are capped, weighted inputs",
+        "The fleet's own eval set is uncapped and outvotes every public source"
+      ]
+    }
+  ]
+}

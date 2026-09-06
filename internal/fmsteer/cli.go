@@ -30,6 +30,10 @@ func Run(args []string) int {
 		return CmdInbox(args[1:])
 	case "build":
 		return cmdBuild(args[1:])
+	case "route":
+		RouteRun(args[1:])
+	case "usage":
+		UsageRun(args[1:])
 	case "rolls":
 		cmdRolls(args[1:])
 	case "diagrams":
@@ -45,6 +49,8 @@ func Run(args []string) int {
 // Usage prints the CLI synopsis and returns the conventional exit code 2.
 func Usage() int {
 	fmt.Fprintf(os.Stderr, "usage: fm-steer auth login|status|logout | inbox put|next|ack|list\n")
+	fmt.Fprintf(os.Stderr, "       fm-steer route [--intel] [--json] <task description>\n")
+	fmt.Fprintf(os.Stderr, "       fm-steer usage [--json]\n")
 	fmt.Fprintf(os.Stderr, "       fm-steer build start|finish --kind k8s|docker|...\n")
 	fmt.Fprintf(os.Stderr, "       fm-steer rolls|diagrams|no-mistakes post\n")
 	fmt.Fprintf(os.Stderr, "ingest writes require an agent role: set %s to an agent API token.\n", AgentTokenEnv)

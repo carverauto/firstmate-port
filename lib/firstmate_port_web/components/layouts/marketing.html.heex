@@ -1,0 +1,18 @@
+<div class="mkt">
+  <header class="mkt-top">
+    <.link navigate={~p"/steer"} class="brand">firstmate <span>fm-steer</span></.link>
+    <nav class="nav" aria-label="Site">
+      <.link navigate={~p"/steer#routing"}>Routing</.link>
+      <.link navigate={~p"/steer#usage"}>Usage</.link>
+      <.link navigate={~p"/steer/docs"}>Docs</.link>
+      <.link navigate={~p"/login"}>Sign in</.link>
+    </nav>
+  </header>
+  <main>
+    {@inner_content}
+  </main>
+  <footer class="mkt-foot">
+    <span>firstmate-port, the companion portal for firstmate</span>
+    <.link navigate={~p"/steer/docs"}>Docs</.link>
+  </footer>
+</div>

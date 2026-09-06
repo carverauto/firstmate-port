@@ -26,6 +26,8 @@ defmodule FirstmatePort.Portal do
     tool :list_buildbuddy_invocations, FirstmatePort.Portal.BuildBuddyInvocation, :read
     tool :post_no_mistakes, FirstmatePort.Portal.NoMistakesRun, :record
     tool :list_no_mistakes, FirstmatePort.Portal.NoMistakesRun, :read
+    tool :record_usage, FirstmatePort.Portal.UsageAccount, :record
+    tool :list_usage, FirstmatePort.Portal.UsageAccount, :read
     tool :list_open_prs, FirstmatePort.Portal.GithubItem, :open_prs
     tool :list_open_issues, FirstmatePort.Portal.GithubItem, :open_issues
     tool :upsert_github_item, FirstmatePort.Portal.GithubItem, :upsert
@@ -41,5 +43,7 @@ defmodule FirstmatePort.Portal do
     resource FirstmatePort.Portal.BuildEvent
     resource FirstmatePort.Portal.NoMistakesRun
     resource FirstmatePort.Portal.GithubItem
+    resource FirstmatePort.Portal.UsageAccount
+    resource FirstmatePort.Portal.UsageSnapshot
   end
 end

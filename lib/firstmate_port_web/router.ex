@@ -28,6 +28,12 @@ defmodule FirstmatePortWeb.Router do
     plug FirstmatePortWeb.Plugs.RequireUser
   end
 
+  pipeline :authed do
+    plug :accepts, ["json"]
+    plug FirstmatePortWeb.Plugs.LoadActor
+    plug FirstmatePortWeb.Plugs.RequireActor
+  end
+
   pipeline :mcp do
     plug :accepts, ["json"]
     plug FirstmatePortWeb.Plugs.LoadActor
@@ -99,6 +105,14 @@ defmodule FirstmatePortWeb.Router do
     get "/inbox", CliInboxController, :list
   end
 
+  scope "/api", FirstmatePortWeb do
+    pipe_through :authed
+
+    get "/usage", UsageController, :index
+    post "/usage", UsageController, :create
+    post "/route", RouteController, :create
+  end
+
   scope "/api", FirstmatePortWeb.Api do
     pipe_through :api_write
 
@@ -121,6 +135,11 @@ defmodule FirstmatePortWeb.Router do
     post "/auth/local", AuthController, :local_login
     get "/auth/logout", AuthController, :logout
     get "/healthz", PageController, :healthz
+    get "/steer", SteerController, :landing
+    get "/steer/docs", SteerController, :docs
+    get "/steer/docs/fm-steer", SteerController, :doc_fm_steer
+    get "/steer/docs/routing", SteerController, :doc_routing
+    get "/steer/docs/usage", SteerController, :doc_usage
     get "/d/:id/card.png", DiagramHTMLController, :card
     get "/d/:id", DiagramHTMLController, :show
   end
@@ -138,6 +157,7 @@ defmodule FirstmatePortWeb.Router do
     live "/", PortalLive
     live "/search", SearchLive
     live "/queues", QueuesLive
+    live "/usage", UsageLive
     live "/prs", BoardLive
     live "/issues", BoardLive
     live "/rolls/:id", RollLive

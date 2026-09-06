@@ -1,6 +1,6 @@
 # firstmate-port
 
-Phoenix/Ash companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, opt-in build tracking (Kubernetes, Docker, BuildBuddy), NATS queues, and no-mistakes runs in one LiveView UI. Discord inbound is served by Phoenix at POST `/interactions`.
+Phoenix/Ash companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, opt-in build tracking (Kubernetes, Docker, BuildBuddy), NATS queues, token usage, and no-mistakes runs in one LiveView UI. Discord inbound is served by Phoenix at POST `/interactions`.
 
 Each tenant stores its own credentials - Discord keys, GitHub tokens, provider API keys - in the portal, encrypted with AshCloak before they reach Postgres. No per-tenant `kubectl create secret`.
 
@@ -31,11 +31,20 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`,
 - [docs/bazel.md](docs/bazel.md) rules_elixir / BuildBuddy, `--output_base=/tmp/fm-fm-port/bazel`
 - [docs/build-events.md](docs/build-events.md) the append-only build/deploy log and its API
 
+User docs are served by the portal itself, one copy only, from the marketing
+landing page at `/steer`:
+
+- `/steer/docs/fm-steer` CLI: auth, inbox, route, usage
+- `/steer/docs/routing` task router: axes, matrix, intel, evals
+- `/steer/docs/usage` token usage ledger: accounts, runway, readings
+
+Run `mix phx.server` and open <http://localhost:4000/steer/docs>.
+
 Prefix every `npm` invocation with `sfw`.
 
 ## fm-steer CLI
 
-`fm-steer` (Go) authenticates with RFC 8628 device-code against this API and drives inbox put/next/ack/list over HTTP. It does not dial NATS. JWT is stored at `$XDG_CONFIG_HOME/fm-steer/credentials.json` (mode 0600).
+`fm-steer` (Go) authenticates with RFC 8628 device-code against this API and drives inbox put/next/ack/list, `route "<task>"` (the portal picks harness, model and effort and says why), and `usage` (per-account token counters and remaining allowance) over HTTP. It does not dial NATS. JWT is stored at `$XDG_CONFIG_HOME/fm-steer/credentials.json` (mode 0600).
 
 Fleet log ingest (`rolls|diagrams|no-mistakes post`, e.g.
 `fm-steer rolls post --cluster c1 --namespace n1 --status success --image-tag sha-abc`)

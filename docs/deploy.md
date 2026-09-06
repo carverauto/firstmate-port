@@ -193,4 +193,4 @@ See [Sign-in](#sign-in) for bootstrap credentials and backfill behavior. For
 Carverauto, use the
 [deployment-specific bootstrap command](../deploy/examples/carverauto.md).
 
-See the [fm-steer CLI guide](../README.md#fm-steer-cli) for inbox and Fleet log usage. The Phoenix API is the only JetStream client. The on-disk firstmate inbox stays until dual-write is wired.
+See the [fm-steer CLI guide](../README.md#fm-steer-cli) for inbox, routing, usage and Fleet log commands (also served at `/steer/docs/fm-steer`). `fm-steer` talks to the Phoenix API over HTTP only and does not dial NATS. The Phoenix API is the only JetStream client. The on-disk firstmate inbox stays until dual-write is wired.

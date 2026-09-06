@@ -158,6 +158,8 @@ defmodule FirstmatePortWeb.Layouts do
           <.link navigate={~p"/issues"}>Issues</.link>
           <.link navigate={~p"/no-mistakes"}>no-mistakes</.link>
           <.link navigate={~p"/queues"}>Queues</.link>
+          <.link navigate={~p"/usage"}>Usage</.link>
+          <.link navigate={~p"/steer"}>fm-steer</.link>
           <.link navigate={~p"/settings/credentials"}>Credentials</.link>
         </nav>
         <div class="topbar-end">

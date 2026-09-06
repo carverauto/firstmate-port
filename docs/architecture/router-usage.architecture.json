@@ -1,0 +1,391 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "fm-steer routing and usage",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1120,
+      590
+    ],
+    "repository": {
+      "url": "https://github.com/mfreeman451/firstmate-port",
+      "revision": "178384aceb4ce4c654194434123ccdeba6c22cc7"
+    },
+    "views": [
+      {
+        "id": "route-a-task",
+        "label": "Route a task",
+        "focus": [
+          "captain",
+          "fmsteer",
+          "portal",
+          "route",
+          "matrix",
+          "intel",
+          "workers"
+        ],
+        "note": "A task description becomes a harness, model, and effort pick with reasons."
+      },
+      {
+        "id": "track-spend",
+        "label": "Track spend",
+        "focus": [
+          "fmsteer",
+          "portal",
+          "usage",
+          "intel",
+          "pg"
+        ],
+        "note": "Per-account allowance, used, remaining, and runway from one tenant-scoped ledger."
+      },
+      {
+        "id": "trust-boundaries",
+        "label": "Trust boundaries",
+        "focus": [
+          "fmsteer",
+          "portal",
+          "jetstream",
+          "pg",
+          "docs"
+        ],
+        "note": "The CLI talks only to the portal API; the portal is the only JetStream client."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "captain",
+      "type": "external",
+      "label": "Captain / crew",
+      "sublabel": "terminal",
+      "pos": [
+        30,
+        300
+      ],
+      "size": [
+        120,
+        60
+      ]
+    },
+    {
+      "id": "fmsteer",
+      "type": "frontend",
+      "label": "fm-steer",
+      "sublabel": "Go CLI binary",
+      "pos": [
+        240,
+        300
+      ],
+      "size": [
+        130,
+        60
+      ],
+      "sources": [
+        {
+          "path": "cmd/fm-steer/main.go",
+          "label": "route + usage clients"
+        }
+      ]
+    },
+    {
+      "id": "portal",
+      "type": "backend",
+      "label": "Portal API",
+      "sublabel": "Phoenix, tenant wall",
+      "pos": [
+        460,
+        300
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "sources": [
+        {
+          "path": "lib/firstmate_port_web/router.ex",
+          "label": "routes"
+        }
+      ]
+    },
+    {
+      "id": "docs",
+      "type": "frontend",
+      "label": "Landing + docs",
+      "sublabel": "public /steer pages",
+      "pos": [
+        460,
+        40
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "sources": [
+        {
+          "path": "lib/firstmate_port_web/controllers/steer_controller.ex",
+          "label": "public pages"
+        }
+      ]
+    },
+    {
+      "id": "route",
+      "type": "backend",
+      "label": "Task router",
+      "sublabel": "POST /api/route",
+      "pos": [
+        700,
+        180
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "sources": [
+        {
+          "path": "lib/firstmate_port/router.ex",
+          "label": "classify + pick"
+        }
+      ]
+    },
+    {
+      "id": "matrix",
+      "type": "backend",
+      "label": "Matrix + evals",
+      "sublabel": "lanes, review hard route",
+      "pos": [
+        930,
+        40
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "sources": [
+        {
+          "path": "lib/firstmate_port/router/matrix.ex",
+          "label": "lanes"
+        },
+        {
+          "path": "lib/firstmate_port/router/evals.ex",
+          "label": "eval set"
+        }
+      ]
+    },
+    {
+      "id": "workers",
+      "type": "external",
+      "label": "Workers",
+      "sublabel": "claude, codex, grok, opencode",
+      "pos": [
+        680,
+        30
+      ],
+      "size": [
+        190,
+        60
+      ]
+    },
+    {
+      "id": "intel",
+      "type": "external",
+      "label": "Provider intel",
+      "sublabel": "Artificial Analysis",
+      "pos": [
+        900,
+        270
+      ],
+      "size": [
+        180,
+        60
+      ],
+      "sources": [
+        {
+          "path": "lib/firstmate_port/router/provider_intel.ex",
+          "label": "opt-in reason notes"
+        }
+      ]
+    },
+    {
+      "id": "usage",
+      "type": "backend",
+      "label": "Usage ledger",
+      "sublabel": "/api/usage + /usage",
+      "pos": [
+        700,
+        390
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "sources": [
+        {
+          "path": "lib/firstmate_port/usage.ex",
+          "label": "remaining + runway"
+        },
+        {
+          "path": "lib/firstmate_port_web/controllers/usage_controller.ex",
+          "label": "API"
+        }
+      ]
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "Postgres",
+      "sublabel": "usage_accounts, usage_snapshots",
+      "pos": [
+        680,
+        490
+      ],
+      "size": [
+        180,
+        60
+      ]
+    },
+    {
+      "id": "jetstream",
+      "type": "messagebus",
+      "label": "NATS JetStream",
+      "sublabel": "portal-only client",
+      "pos": [
+        460,
+        490
+      ],
+      "size": [
+        140,
+        60
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "portal tenant wall",
+      "wraps": [
+        "portal",
+        "route",
+        "matrix",
+        "usage"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "operate",
+      "from": "captain",
+      "to": "fmsteer",
+      "label": "operates"
+    },
+    {
+      "id": "cli-api",
+      "from": "fmsteer",
+      "to": "portal",
+      "label": "tenant JWT",
+      "variant": "emphasis"
+    },
+    {
+      "id": "serve-docs",
+      "from": "portal",
+      "to": "docs",
+      "label": "serves /steer",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "ask-route",
+      "from": "portal",
+      "to": "route",
+      "label": "route task"
+    },
+    {
+      "id": "filter-lanes",
+      "from": "route",
+      "to": "matrix",
+      "label": "filter lanes"
+    },
+    {
+      "id": "pick-worker",
+      "from": "route",
+      "to": "workers",
+      "label": "worker pick",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelAt": [
+        736,
+        164
+      ]
+    },
+    {
+      "id": "refine-model",
+      "from": "route",
+      "to": "intel",
+      "label": "opt-in note",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          770,
+          300
+        ]
+      ]
+    },
+    {
+      "id": "ask-usage",
+      "from": "portal",
+      "to": "usage",
+      "label": "read + write"
+    },
+    {
+      "id": "ledger-rows",
+      "from": "usage",
+      "to": "pg",
+      "label": "ledger rows",
+      "labelAt": [
+        770,
+        464
+      ]
+    },
+    {
+      "id": "sole-client",
+      "from": "portal",
+      "to": "jetstream",
+      "label": "sole client",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        530,
+        374
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Route",
+      "items": [
+        "Matrix decides the lane and names the model; evals gate regressions",
+        "Code review hard-routes to Codex with GPT-6-Astra"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Usage",
+      "items": [
+        "Allowance, used, remaining, runway per account per tenant",
+        "Unknown allowances stay unknown; posted readings drive runway"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Boundaries",
+      "items": [
+        "fm-steer talks only to the portal API, never JetStream",
+        "Provider keys live in server env, never in git or the CLI"
+      ]
+    }
+  ]
+}

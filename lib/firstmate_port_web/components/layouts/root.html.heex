@@ -4,6 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
+    <meta
+      :if={assigns[:page_description]}
+      name="description"
+      content={assigns[:page_description]}
+    />
     <.live_title default="firstmate port">
       {assigns[:page_title]}
     </.live_title>

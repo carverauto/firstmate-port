@@ -14,11 +14,15 @@ defmodule FirstmatePort.Auth.DeviceCode.Issue do
     |> Ash.Changeset.change_attribute(:status, :pending)
   end
 
-  defp user_code do
-    chars = ~c"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+  @user_code_alphabet ~c"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
-    1..8
-    |> Enum.map(fn _ -> Enum.random(chars) end)
+  defp user_code do
+    size = length(@user_code_alphabet)
+
+    8
+    |> :crypto.strong_rand_bytes()
+    |> :binary.bin_to_list()
+    |> Enum.map(&Enum.at(@user_code_alphabet, rem(&1, size)))
     |> List.to_string()
     |> then(fn s -> String.slice(s, 0, 4) <> "-" <> String.slice(s, 4, 4) end)
   end

@@ -1,0 +1,40 @@
+<div class="doc">
+  <.link navigate={~p"/steer/docs"} class="back">Back to docs</.link>
+  <h1>Usage and billing</h1>
+  <p class="muted">
+    GET /api/usage, the /usage portal page, and fm-steer usage read the same ledger. Every row is tenant-scoped by the caller's credential.
+  </p>
+
+  <h2>Accounts</h2>
+  <p>
+    One row per provider account: provider, label, unit (usd, tokens, credits), allowance per window (monthly, weekly, daily, one_time), used amount, and spend priority.
+  </p>
+  <pre>curl -X POST $PORTAL/api/usage -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '&#123;&quot;provider&quot;: &quot;openrouter&quot;, &quot;label&quot;: &quot;captain&quot;,
+       &quot;unit&quot;: &quot;usd&quot;, &quot;allowance&quot;: 100, &quot;window&quot;: &quot;monthly&quot;,
+       &quot;spend_priority&quot;: 10&#125;'</pre>
+  <p>
+    Agents post readings with the <code>record_usage</code>
+    MCP tool or <code>POST /api/usage</code>. Only the fields present in the request are written, so a reading never clears a configured allowance or spend priority. Every post that carries
+    <code>used</code>
+    also appends a snapshot, which is what gives runway a burn rate. Humans add accounts on the /usage page.
+  </p>
+
+  <h2>Remaining, status, runway</h2>
+  <p>
+    Remaining is allowance minus used. Status is <code>ok</code>
+    below 75 percent, <code>low</code>
+    above it, <code>exhausted</code>
+    at or past the cap, and <code>unknown</code>
+    only when no allowance is set. An allowance of zero is a set allowance, so such an account reads <code>exhausted</code>, never <code>unknown</code>. Unknown allowances stay null through the API, the CLI, and the UI. Nothing is guessed.
+  </p>
+  <p>
+    Runway (days until the allowance runs out) comes from the burn rate across posted readings: at least two, spanning a day, with usage rising since the last drop.
+    <code>used</code>
+    falling means the billing window reset, so readings before that drop are not counted. Without that history the API reports <code>runway_days: null</code>.
+  </p>
+
+  <h2>Spend priority</h2>
+  <p>Lower numbers burn first. The usage list already arrives in spend order.</p>
+</div>

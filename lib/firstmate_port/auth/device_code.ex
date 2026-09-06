@@ -44,8 +44,8 @@ defmodule FirstmatePort.Auth.DeviceCode do
     end
 
     update :approve do
-      accept [:user_id, :tenant_slug]
       require_atomic? false
+      accept [:user_id, :tenant_slug]
       change fn changeset, context -> approve_pending(changeset, context) end
     end
 
@@ -55,8 +55,8 @@ defmodule FirstmatePort.Auth.DeviceCode do
     end
 
     update :consume do
-      accept []
       require_atomic? false
+      accept []
       change fn changeset, context -> consume_approved(changeset, context) end
     end
   end

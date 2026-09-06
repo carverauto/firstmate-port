@@ -16,6 +16,8 @@ defmodule FirstmatePortWeb.Mcp do
       :list_buildbuddy_invocations,
       :post_no_mistakes,
       :list_no_mistakes,
+      :record_usage,
+      :list_usage,
       :list_open_prs,
       :list_open_issues,
       :upsert_github_item,
