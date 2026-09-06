@@ -25,7 +25,7 @@ portal is the only JetStream client.
 | File | What it is |
 | --- | --- |
 | `install.sh` | Idempotent install / status / uninstall |
-| `captain-block.md.tmpl` | The standing prompt, as a copy-paste template |
+| `captain-block.md.tmpl` | Standing prompt template rendered by the installer |
 | `skills/portal-steering/SKILL.md` | The skill: procedures, brief text, second mate, uninstall |
 | `skills/portal-steering/secondmate-charter.md` | Charter for the optional liaison second mate |
 | `install_test.sh` | Proves the idempotency and uninstall claims below |
@@ -81,10 +81,8 @@ Options:
 
 `install.sh status` prints what is installed and what it is set to.
 
-Prefer to do it by hand? Copy `captain-block.md.tmpl` into `$FM_HOME/data/captain.md`
-and replace `@@INSTANCE@@` and `@@SECONDMATE@@`. Keep the two HTML
-comment markers exactly as they are - they are what makes a later install or
-uninstall replace the block instead of stacking another one.
+Use `install.sh` for every import so the captain block, skill, and charter are
+installed together.
 
 ### Where it installs, and why not somewhere else
 

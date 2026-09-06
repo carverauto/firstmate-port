@@ -327,11 +327,16 @@ cmd_status() {
 cmd_uninstall() {
   load_settings
   assert_markers_sane
-  local removed=0
+  local removed=0 name
 
   if block_present; then remove_block; removed=1; fi
   if [ -d "$OWNED_DIR" ] && [ ! -L "$OWNED_DIR" ]; then
-    remove_owned_skill_dir "$OWNED_DIR"; removed=1
+    for name in $OWNED_FILES; do
+      if [ -e "$OWNED_DIR/$name" ] || [ -L "$OWNED_DIR/$name" ]; then
+        remove_owned_skill_dir "$OWNED_DIR"; removed=1
+        break
+      fi
+    done
   fi
 
   if [ "$removed" -eq 0 ]; then

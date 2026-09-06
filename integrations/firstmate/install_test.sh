@@ -215,6 +215,39 @@ else
   bad "uninstall deleted a file it did not write"
 fi
 
+cp "$OWNED/NOTES.md" "$WORK/notes.before"
+if "$INSTALL" uninstall --fm-home "$HOME6" >/dev/null 2>&1; then
+  ok "repeated uninstall succeeds with only unmanaged files remaining"
+else
+  bad "repeated uninstall failed with only unmanaged files remaining"
+fi
+if cmp -s "$WORK/notes.before" "$OWNED/NOTES.md"; then
+  ok "repeated uninstall preserves operator notes byte-for-byte"
+else
+  bad "repeated uninstall changed operator notes"
+fi
+if [ ! -e "$OWNED/SKILL.md" ] && [ ! -e "$OWNED/secondmate-charter.md" ] &&
+   [ ! -e "$OWNED/settings.env" ]; then
+  ok "repeated uninstall leaves managed files absent"
+else
+  bad "repeated uninstall left managed files"
+fi
+
+HOME8=$(new_home home8)
+mkdir -p "$HOME8/data/portal-steering"
+printf 'unverified settings\n' > "$HOME8/data/portal-steering/settings.env"
+cp "$HOME8/data/portal-steering/settings.env" "$WORK/unverified.before"
+if "$INSTALL" uninstall --fm-home "$HOME8" >/dev/null 2>&1; then
+  bad "uninstall accepted managed files without ownership evidence"
+else
+  ok "uninstall refuses managed files without ownership evidence"
+fi
+if cmp -s "$WORK/unverified.before" "$HOME8/data/portal-steering/settings.env"; then
+  ok "ownership refusal preserves unverified files"
+else
+  bad "ownership refusal changed unverified files"
+fi
+
 # A foreign directory that merely shares the name is refused outright.
 HOME7=$(new_home home7)
 FOREIGN="$HOME7/data/portal-steering"
