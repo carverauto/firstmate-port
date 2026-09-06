@@ -64,6 +64,8 @@ defmodule FirstmatePortWeb.Router do
     get "/diagrams", IngestController, :list_diagrams
     get "/progress", IngestController, :list_progress
     get "/rolls", IngestController, :list_rolls
+    get "/docker-builds", IngestController, :list_docker_builds
+    get "/buildbuddy-invocations", IngestController, :list_buildbuddy_invocations
     get "/no-mistakes", IngestController, :list_no_mistakes
   end
 
@@ -100,6 +102,8 @@ defmodule FirstmatePortWeb.Router do
     post "/diagrams", IngestController, :create_diagram
     post "/progress", IngestController, :create_progress
     post "/rolls", IngestController, :create_roll
+    post "/docker-builds", IngestController, :create_docker_build
+    post "/buildbuddy-invocations", IngestController, :create_buildbuddy_invocation
     post "/no-mistakes", IngestController, :create_no_mistakes
   end
 
@@ -131,6 +135,8 @@ defmodule FirstmatePortWeb.Router do
     live "/prs", BoardLive
     live "/issues", BoardLive
     live "/rolls/:id", RollLive
+    live "/docker-builds/:id", DockerBuildLive
+    live "/buildbuddy-invocations/:id", BuildBuddyLive
     live "/no-mistakes", NoMistakesLive
     live "/settings/credentials", CredentialsLive
   end

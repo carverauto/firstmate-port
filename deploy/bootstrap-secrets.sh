@@ -105,4 +105,6 @@ echo "  or through PUT /api/credentials/<provider>/<key>. See docs/credentials.m
 echo "Optional OIDC (any OpenID Connect provider; the portal runs on local sign-in without it):"
 echo "  kubectl -n $NS create secret generic firstmate-oidc --from-literal=client-id=<id> --from-literal=client-secret=<secret>"
 echo "  then set OIDC_ISSUER on the Deployment. See deploy/examples for a worked provider."
+echo "BuildBuddy org API key (optional, enables the BuildBuddy plate):"
+echo "  kubectl -n $NS create secret generic firstmate-buildbuddy --from-literal=org-api-key=<key>"
 echo "done."

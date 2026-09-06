@@ -151,6 +151,17 @@ if config_env() == :prod do
         end
       end)
 
+  # Deployment switches and secret setup: docs/build-tracking.md.
+  config :firstmate_port, :build_tracking,
+    kubernetes_enabled: System.get_env("KUBERNETES_TRACKING_ENABLED") in ~w(true 1),
+    docker_enabled: System.get_env("DOCKER_TRACKING_ENABLED") in ~w(true 1),
+    buildbuddy_host: System.get_env("BUILDBUDDY_HOST"),
+    buildbuddy_api_key:
+      (case System.get_env("BUILDBUDDY_ORG_API_KEY_FILE") do
+         nil -> System.get_env("BUILDBUDDY_ORG_API_KEY")
+         path -> path |> File.read!() |> String.trim()
+       end)
+
   config :firstmate_port, FirstmatePortWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [

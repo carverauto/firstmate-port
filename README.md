@@ -1,6 +1,6 @@
 # firstmate-port
 
-Phoenix/Ash companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, NATS queues, and no-mistakes runs in one LiveView UI. Discord inbound is served by Phoenix at POST `/interactions`.
+Phoenix/Ash companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, opt-in build tracking (Kubernetes, Docker, BuildBuddy), NATS queues, and no-mistakes runs in one LiveView UI. Discord inbound is served by Phoenix at POST `/interactions`.
 
 Each tenant stores its own credentials - Discord keys, GitHub tokens, provider API keys - in the portal, encrypted with AshCloak before they reach Postgres. No per-tenant `kubectl create secret`.
 
@@ -26,6 +26,7 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`,
 - [docs/fm-steer.md](docs/fm-steer.md) `fm-steer` for stock firstmate captains: login, commands, and the standing prompt that makes firstmate mirror steers to the portal (no fork required)
 - [docs/credentials.md](docs/credentials.md) how a tenant stores Discord and other secrets
 - [docs/deploy.md](docs/deploy.md) image publishing, compose, Kubernetes
+- [docs/build-tracking.md](docs/build-tracking.md) opt-in tracking and BuildBuddy secrets
 - [docs/bazel.md](docs/bazel.md) rules_elixir / BuildBuddy, `--output_base=/tmp/fm-fm-port/bazel`
 
 Prefix every `npm` invocation with `sfw`.
@@ -42,6 +43,8 @@ or stored). Without it, the CLI falls back to stored login credentials; a
 regular device-code user JWT cannot authorize ingest writes. When neither
 `--instance`, `FIRSTMATE_INSTANCE`, nor stored credentials name a host, the CLI
 targets `http://localhost:4000`. Set `FIRSTMATE_INSTANCE` for your deployment.
+
+Before recording rolls, enable [Kubernetes tracking](docs/build-tracking.md#switches).
 
 With the agent token supplied in your environment:
 

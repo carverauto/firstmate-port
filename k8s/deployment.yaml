@@ -111,6 +111,21 @@ spec:
             # "GitHub Fleet log ingestion".
             # - name: GITHUB_ORG
             #   value: ""
+
+            # Opt-in build tracking (see docs/build-tracking.md). Absent
+            # config hides the plate; nothing is collected.
+            # - name: KUBERNETES_TRACKING_ENABLED
+            #   value: "true"
+            # - name: DOCKER_TRACKING_ENABLED
+            #   value: "true"
+            # - name: BUILDBUDDY_HOST
+            #   value: https://app.buildbuddy.io
+            - name: BUILDBUDDY_ORG_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-buildbuddy
+                  key: org-api-key
+                  optional: true
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

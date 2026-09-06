@@ -93,6 +93,15 @@ config :firstmate_port,
 # Deliberately slow. Test config lowers it; nothing else should.
 config :firstmate_port, FirstmatePort.Accounts.Password, iterations: 210_000
 
+# Build tracking plates (Kubernetes rolls, Docker builds, BuildBuddy
+# invocations) are opt-in. Absent config hides the plate, it never renders
+# an empty state. See docs/build-tracking.md.
+config :firstmate_port, :build_tracking,
+  kubernetes_enabled: false,
+  docker_enabled: false,
+  buildbuddy_host: nil,
+  buildbuddy_api_key: nil
+
 config :firstmate_port, FirstmatePort.Auth.Guardian,
   issuer: "firstmate_port",
   secret_key: "dev-guardian-secret-change-in-runtime",

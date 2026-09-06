@@ -1,7 +1,8 @@
-defmodule FirstmatePort.Portal.Roll do
+defmodule FirstmatePort.Portal.BuildBuddyInvocation do
   @moduledoc """
-  Kubernetes cluster image build and helm roll events. Recording is
-  opt-in; see `FirstmatePort.BuildTracking`.
+  Opt-in BuildBuddy invocation records. Users record the invocations they
+  care about; rows can be enriched through `FirstmatePort.BuildBuddy` when
+  an org API key is configured.
   """
 
   import Ash.Expr
@@ -14,7 +15,7 @@ defmodule FirstmatePort.Portal.Roll do
     extensions: [AshPaperTrail.Resource, AshEvents.Events]
 
   postgres do
-    table "rolls"
+    table "buildbuddy_invocations"
     repo FirstmatePort.Repo
   end
 
@@ -50,22 +51,21 @@ defmodule FirstmatePort.Portal.Roll do
       primary? true
 
       accept [
-        :cluster,
-        :namespace,
+        :invocation_id,
+        :host,
         :status,
-        :image_tag,
-        :rebuilt,
-        :copied,
-        :helm_revision,
+        :commit_sha,
+        :branch,
+        :repo_url,
+        :buildbuddy_url,
         :pr_url,
-        :issue_url,
         :outcome
       ]
 
-      validate {FirstmatePort.Validations.TrackingEnabled, track: :kubernetes}
+      validate {FirstmatePort.Validations.TrackingEnabled, track: :buildbuddy}
       change FirstmatePort.Changes.AssignPublicId
+      validate {FirstmatePort.Validations.HttpsUrl, attribute: :buildbuddy_url, required?: false}
       validate {FirstmatePort.Validations.HttpsUrl, attribute: :pr_url, required?: false}
-      validate {FirstmatePort.Validations.HttpsUrl, attribute: :issue_url, required?: false}
     end
   end
 
@@ -92,48 +92,42 @@ defmodule FirstmatePort.Portal.Roll do
       constraints min_length: 4, max_length: 64
     end
 
-    attribute :cluster, :string do
+    attribute :invocation_id, :string do
       allow_nil? false
       public? true
     end
 
-    attribute :namespace, :string do
-      allow_nil? false
+    attribute :host, :string do
+      default ""
       public? true
     end
 
-    attribute :status, :atom do
-      constraints one_of: [:started, :success, :failure]
-      allow_nil? false
+    attribute :status, :string do
+      default ""
       public? true
     end
 
-    attribute :image_tag, :string do
-      allow_nil? false
+    attribute :commit_sha, :string do
+      default ""
       public? true
     end
 
-    attribute :rebuilt, {:array, :string} do
-      default []
+    attribute :branch, :string do
+      default ""
       public? true
     end
 
-    attribute :copied, {:array, :string} do
-      default []
+    attribute :repo_url, :string do
+      default ""
       public? true
     end
 
-    attribute :helm_revision, :string do
+    attribute :buildbuddy_url, :string do
       default ""
       public? true
     end
 
     attribute :pr_url, :string do
-      default ""
-      public? true
-    end
-
-    attribute :issue_url, :string do
       default ""
       public? true
     end
@@ -149,5 +143,9 @@ defmodule FirstmatePort.Portal.Roll do
     end
 
     timestamps()
+  end
+
+  identities do
+    identity :unique_invocation, [:invocation_id]
   end
 end

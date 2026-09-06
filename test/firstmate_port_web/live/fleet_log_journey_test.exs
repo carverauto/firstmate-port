@@ -6,16 +6,20 @@ defmodule FirstmatePortWeb.FleetLogJourneyTest do
     conn: conn
   } do
     previous = Req.default_options()
+    previous_tracking = Application.get_env(:firstmate_port, :build_tracking, [])
     old_token = System.get_env("GITHUB_TOKEN")
     old_org = System.get_env("GITHUB_ORG")
 
     on_exit(fn ->
       Req.default_options(previous)
+      Application.put_env(:firstmate_port, :build_tracking, previous_tracking)
 
       for {key, value} <- [{"GITHUB_TOKEN", old_token}, {"GITHUB_ORG", old_org}] do
         if value, do: System.put_env(key, value), else: System.delete_env(key)
       end
     end)
+
+    Application.put_env(:firstmate_port, :build_tracking, kubernetes_enabled: true)
 
     System.put_env("GITHUB_TOKEN", "fixture-token\n")
     System.put_env("GITHUB_ORG", " example \n")
