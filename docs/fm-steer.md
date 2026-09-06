@@ -26,7 +26,8 @@ Mirror after the send; never in place of it.
 Run one locally, or use a shared one:
 
 ```sh
-cp .env.example .env   # SECRET_KEY_BASE=$(mix phx.gen.secret)
+cp .env.example .env
+export SECRET_KEY_BASE="$(openssl rand -base64 48)"
 docker compose up --build
 ```
 
