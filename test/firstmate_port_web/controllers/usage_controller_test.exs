@@ -77,8 +77,7 @@ defmodule FirstmatePortWeb.UsageControllerTest do
       "allowance" => 100.0,
       "used" => 10.0,
       "window" => "weekly",
-      "spend_priority" => 10,
-      "notes" => "captain key"
+      "spend_priority" => 10
     })
 
     reading =
@@ -193,6 +192,62 @@ defmodule FirstmatePortWeb.UsageControllerTest do
 
     {:ok, snaps} = UsageSnapshot.for_account(row["id"], FirstmatePort.Tenancy.opts(agent))
     assert snaps == []
+  end
+
+  test "a busy fleet's readings are all retained, so runway survives", %{
+    conn: conn,
+    token: token,
+    agent: agent
+  } do
+    auth(conn, token)
+    |> post(~p"/api/usage", %{"provider" => "grok", "label" => "busy", "allowance" => 1000.0})
+
+    for i <- 1..61 do
+      auth(build_conn(), token)
+      |> post(~p"/api/usage", %{"provider" => "grok", "label" => "busy", "used" => i * 1.0})
+    end
+
+    [row] =
+      auth(build_conn(), token)
+      |> get(~p"/api/usage")
+      |> json_response(200)
+      |> Map.get("data")
+      |> Enum.filter(&(&1["label"] == "busy"))
+
+    {:ok, snaps} = UsageSnapshot.for_account(row["id"], FirstmatePort.Tenancy.opts(agent))
+
+    assert length(snaps) == 61
+    assert List.first(snaps).used == 1.0
+  end
+
+  test "readings older than the retention window drop out", %{
+    conn: conn,
+    token: token,
+    agent: agent
+  } do
+    auth(conn, token)
+    |> post(~p"/api/usage", %{"provider" => "grok", "label" => "aged", "used" => 5.0})
+
+    auth(build_conn(), token)
+    |> post(~p"/api/usage", %{"provider" => "grok", "label" => "aged", "used" => 9.0})
+
+    [row] =
+      auth(build_conn(), token)
+      |> get(~p"/api/usage")
+      |> json_response(200)
+      |> Map.get("data")
+      |> Enum.filter(&(&1["label"] == "aged"))
+
+    {:ok, [oldest | _]} = UsageSnapshot.for_account(row["id"], FirstmatePort.Tenancy.opts(agent))
+
+    FirstmatePort.Repo.query!(
+      "update usage_snapshots set inserted_at = $1 where id = $2",
+      [DateTime.add(DateTime.utc_now(), -40, :day), Ecto.UUID.dump!(oldest.id)]
+    )
+
+    {:ok, kept} = UsageSnapshot.for_account(row["id"], FirstmatePort.Tenancy.opts(agent))
+
+    assert Enum.map(kept, & &1.used) == [9.0]
   end
 
   test "unauthenticated usage is rejected", %{conn: conn} do

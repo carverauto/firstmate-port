@@ -28,7 +28,7 @@
   <p>Code review bypasses the matrix: it always returns harness <code>codex</code> with model <code>gpt-6-astra</code> (GPT-6-Astra). Review never goes to a chat or docs lane, even with provider intel enabled.</p>
 
   <h2>Provider intel</h2>
-  <p>OpenRouter (model metadata, pricing, context) and Artificial Analysis (quality, latency) are inputs, used only to refine the model pick inside the chosen lane, and only when the request sets <code>"intel": true</code>. No single public leaderboard ever decides: the matrix is the base vote, the bundled eval set is the regression gate, and popularity is never treated as capability.</p>
+  <p>Artificial Analysis (quality, latency) is an input, consulted only when the request sets <code>"intel": true</code>, and it only annotates the answer's reasons. No public leaderboard ever decides: the matrix is the base vote, the bundled eval set is the regression gate, the harness resolves its own model, and popularity is never treated as capability.</p>
 
   <h2>Architecture</h2>
   <p><code>docs/architecture/router-usage.html</code> in the repo is the Archify diagram for this system: router, usage ledger, fm-steer, trust boundaries, and the JetStream rule.</p>

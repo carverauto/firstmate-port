@@ -264,7 +264,7 @@ type creds struct {
 func routeRun(args []string) {
 	fs := flag.NewFlagSet("route", flag.ExitOnError)
 	instance := fs.String("instance", env("FIRSTMATE_INSTANCE", ""), "API base URL")
-	intel := fs.Bool("intel", false, "fold in live provider intel (OpenRouter / Artificial Analysis)")
+	intel := fs.Bool("intel", false, "fold in live provider intel (Artificial Analysis)")
 	asJSON := fs.Bool("json", false, "print the full route response as JSON")
 	_ = fs.Parse(args)
 

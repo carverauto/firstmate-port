@@ -3,8 +3,9 @@ defmodule FirstmatePort.Portal.UsageSnapshot do
   Periodic `used` samples per usage account. The burn rate across the
   current billing window drives the runway estimate in
   `FirstmatePort.Usage`. One is appended for every posted reading that
-  carries `used`. `by_account` returns the most recent samples only:
-  runway never needs history from a spent window.
+  carries `used`. `by_account` returns the last 35 days, bounded by age
+  rather than row count: a busy fleet must not be able to squeeze the
+  retained samples into less than the day `daily_burn/1` needs.
   """
 
   import Ash.Expr
@@ -35,13 +36,17 @@ defmodule FirstmatePort.Portal.UsageSnapshot do
 
     read :by_account do
       argument :usage_account_id, :uuid, allow_nil?: false
-      prepare build(sort: [inserted_at: :desc], limit: 60)
-      filter expr(usage_account_id == ^arg(:usage_account_id))
+      prepare build(sort: [inserted_at: :asc])
+
+      filter expr(
+               usage_account_id == ^arg(:usage_account_id) and
+                 inserted_at > ago(35, :day)
+             )
     end
 
     create :record do
       primary? true
-      accept [:usage_account_id, :used, :source]
+      accept [:usage_account_id, :used]
     end
   end
 
@@ -65,13 +70,6 @@ defmodule FirstmatePort.Portal.UsageSnapshot do
     end
 
     attribute :used, :float do
-      allow_nil? false
-      public? true
-    end
-
-    attribute :source, :atom do
-      constraints one_of: [:manual]
-      default :manual
       allow_nil? false
       public? true
     end

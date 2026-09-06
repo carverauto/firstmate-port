@@ -49,7 +49,6 @@ defmodule FirstmatePortWeb.UsageController do
     |> put_given(:window, one_of(params["window"], ~w(monthly weekly daily one_time)))
     |> put_given(:spend_priority, integer(params["spend_priority"]))
     |> put_given(:reset_at, datetime(params["reset_at"]))
-    |> put_given(:notes, params["notes"])
   end
 
   defp put_given(attrs, _key, nil), do: attrs

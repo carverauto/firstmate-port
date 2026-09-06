@@ -201,22 +201,20 @@ defmodule FirstmatePort.RouterTest do
     assert axes.ambiguity == :high
   end
 
-  test "intel refines the model inside the lane" do
+  test "intel annotates the answer but never narrows the model" do
     intel = %{
-      models: [
-        %{id: "openai/cheap-code", prompt_price: 0.5, completion_price: 1.0, context: 128_000},
-        %{id: "openai/spendy-code", prompt_price: 5.0, completion_price: 10.0, context: 128_000}
-      ],
-      benchmarks: [],
-      sources: ["openrouter"]
+      benchmarks: [%{"model" => "codex-1", "quality_score" => 71}],
+      sources: ["artificial-analysis"]
     }
 
     got = Router.route("fix the failing test", intel: intel)
+    plain = Router.route("fix the failing test")
 
-    assert got.harness == "codex"
-    assert got.model == "openai/cheap-code"
-    assert got.model_source == "openrouter"
-    assert "openrouter" in got.intel_sources
+    assert got.harness == plain.harness
+    assert got.model == "harness-default"
+    assert got.model_source == "harness_default"
+    assert "artificial-analysis" in got.intel_sources
+    assert Enum.any?(got.reasons, &String.contains?(&1, "Artificial Analysis"))
   end
 
   test "bundled eval set stays green" do

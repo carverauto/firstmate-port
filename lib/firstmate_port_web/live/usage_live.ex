@@ -60,7 +60,6 @@ defmodule FirstmatePortWeb.UsageLive do
     |> put_given(:used, parse_float(params["used"]))
     |> put_given(:window, empty_to_nil(params["window"]))
     |> put_given(:spend_priority, parse_int(params["spend_priority"]))
-    |> put_given(:notes, empty_to_nil(params["notes"]))
   end
 
   defp put_given(attrs, _key, nil), do: attrs
@@ -117,7 +116,7 @@ defmodule FirstmatePortWeb.UsageLive do
               <span class="kind">{a.status}</span>
               <strong>{a.provider} / {a.label}</strong>
               <span class="meta">
-                {fmt(a.used)} / {fmt(a.allowance)} {a.unit} · {a.window} · priority {a.spend_priority} · {a.source}
+                {fmt(a.used)} / {fmt(a.allowance)} {a.unit} · {a.window} · priority {a.spend_priority}
               </span>
               <span :if={a.runway_days} class="meta">runway {a.runway_days}d</span>
               <span :if={is_nil(a.runway_days)} class="meta">runway unknown</span>

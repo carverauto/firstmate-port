@@ -14,9 +14,13 @@ defmodule FirstmatePort.Usage do
   def remaining(%{allowance: nil}), do: nil
   def remaining(%{allowance: a, used: u}), do: a - (u || 0)
 
-  @doc "Fraction of allowance consumed, or nil when unknown."
+  @doc """
+  Fraction of allowance consumed, or nil when the allowance is unknown.
+  A non-positive allowance leaves nothing to consume, so it reads as fully
+  spent — the same account `status/1` calls `:exhausted`.
+  """
   def pct_used(%{allowance: nil}), do: nil
-  def pct_used(%{allowance: a}) when a == 0, do: nil
+  def pct_used(%{allowance: a}) when a <= 0, do: 1.0
   def pct_used(%{allowance: a, used: u}), do: (u || 0) / a
 
   @doc """
@@ -97,8 +101,7 @@ defmodule FirstmatePort.Usage do
       status: status(account),
       runway_days: runway_days(account, snapshots),
       spend_priority: account.spend_priority,
-      reset_at: account.reset_at,
-      source: account.source
+      reset_at: account.reset_at
     }
   end
 

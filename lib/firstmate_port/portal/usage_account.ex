@@ -49,9 +49,7 @@ defmodule FirstmatePort.Portal.UsageAccount do
         :used,
         :window,
         :reset_at,
-        :spend_priority,
-        :source,
-        :notes
+        :spend_priority
       ]
 
       change FirstmatePort.Changes.AppendUsageSnapshot
@@ -115,18 +113,6 @@ defmodule FirstmatePort.Portal.UsageAccount do
     attribute :spend_priority, :integer do
       default 100
       allow_nil? false
-      public? true
-    end
-
-    attribute :source, :atom do
-      constraints one_of: [:manual]
-      default :manual
-      allow_nil? false
-      public? true
-    end
-
-    attribute :notes, :string do
-      default ""
       public? true
     end
 

@@ -43,6 +43,9 @@ defmodule FirstmatePort.UsageTest do
   test "a zero or negative allowance is set, so it is exhausted not unknown" do
     assert Usage.status(account(%{allowance: 0.0, used: 25.0})) == :exhausted
     assert Usage.remaining(account(%{allowance: 0.0, used: 25.0})) == -25.0
+    assert Usage.pct_used(account(%{allowance: 0.0, used: 25.0})) == 1.0
+    assert Usage.pct_used(account(%{allowance: -10.0, used: 0.0})) == 1.0
+    assert Usage.pct_used(account(%{allowance: nil})) == nil
 
     assert Usage.status(account(%{allowance: 0.0, used: 0.0})) == :exhausted
     assert Usage.status(account(%{allowance: -10.0, used: 0.0})) == :exhausted
@@ -108,7 +111,6 @@ defmodule FirstmatePort.UsageTest do
           id: "abc",
           unit: :usd,
           window: :monthly,
-          source: :manual,
           reset_at: nil
         })
       )

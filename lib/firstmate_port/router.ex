@@ -13,8 +13,8 @@ defmodule FirstmatePort.Router do
 
   1. `Matrix` lanes (fleet capability) filter on hard constraints.
   2. Cheapest surviving lane wins; ties break on latency, then quality.
-  3. Provider intel (`ProviderIntel`, OpenRouter / Artificial Analysis) only
-     refines the model pick inside the chosen lane.
+  3. Provider intel (`ProviderIntel`, Artificial Analysis) only annotates
+     the reasons; it never changes the lane or the model.
   4. `Evals` pins known tasks to lanes so regressions fail tests.
   """
 
