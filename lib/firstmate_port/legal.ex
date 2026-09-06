@@ -3,8 +3,8 @@ defmodule FirstmatePort.Legal do
   Operator identity shown on the public terms and privacy pages.
 
   The documents themselves are product copy and ship in the repo. Who is
-  operating this particular instance is not: a hostname, a company name and a
-  contact mailbox are deployment identity, and this repo keeps that out of
+  operating this particular instance is not: an operator name, a contact
+  mailbox and governing law are deployment settings, and this repo keeps them out of
   compiled-in defaults (see `AGENTS.md`). So the pages read those three values
   from config, and the defaults describe a localhost instance run by nobody in
   particular.
