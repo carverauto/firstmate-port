@@ -1,0 +1,52 @@
+<!-- BEGIN firstmate-port portal-steering -->
+## Portal steering (fm-steer)
+
+My firstmate-port portal is @@INSTANCE@@. `fm-steer` is on PATH and logged in for this
+user, so every agent spawned on this machine shares that one login.
+
+While this block is here, the portal is the live message plane between me, you, and the
+crew. `state/<id>.inbox/` still exists on disk, but it is no longer where orders are
+read or acknowledged.
+
+- Steer a crewmate by putting the message on the portal under the work item's task key,
+  with the body on stdin in a quoted heredoc:
+
+  ```sh
+  fm-steer inbox put --task <task-id> <<'FMSTEER'
+  <the message, verbatim>
+  FMSTEER
+  ```
+
+  Never pass a steer with `--body "..."`. Steers are multi-line and carry quotes,
+  backticks and `$`, which the shell would mangle or expand.
+- A bare `fm-steer inbox put` with no `--task` files under the key `firstmate`: a
+  message for you, not a crew item. Crew items always carry `--task`.
+- There is one portal inbox. Task keys partition it. Do not stand up a second portal
+  channel, a per-home inbox, or a mirror queue.
+- Crew take their own instructions with `fm-steer inbox next --task <task-id>` and close
+  each one with `fm-steer inbox ack --ack <the item's ack>` after acting on it. The ack
+  is the acknowledgement, the way the `handled/` move used to be. Never ack an item that
+  has not been acted on, and always pass `--task` to `next` - without it the portal
+  hands back the oldest item across every key and a steer meant for another task is
+  consumed here.
+- Every brief you scaffold gets its generated `# Firstmate instruction inbox` section
+  replaced with the portal version before dispatch. Do not patch `bin/fm-brief.sh`; edit
+  the scaffolded `data/<id>/brief.md`. The exact text is in the skill.
+- Ring after put: @@RING@@. The portal does not touch a crewmate's terminal, so with
+  ringing on, follow a successful put with one constant doorbell line through
+  `bin/fm-send.sh <task-id>` that carries no orders; with it off, crew pick steers up at
+  their next checkpoint instead of immediately.
+- A failing `fm-steer` call is a steer that did not happen. Do not carry on as if it
+  landed: say so in one line, send that one message with `bin/fm-send.sh <task-id>`
+  instead, and tell me the portal is unreachable.
+- `not logged in` or `{"error":"unauthorized"}` means my token lapsed. Tell me and stop
+  using the portal plane until I say it is back. The device-code approval is mine to do
+  in a browser; never attempt to log in on my behalf.
+- `fm-steer` speaks HTTP to the portal only. Never give it a NATS URL, NATS credentials,
+  or a token on a command line.
+- Second mate - a portal liaison relays orders to you and completion notices back, and
+  never runs the fleet, spawns crew, or merges. Right now it is @@SECONDMATE@@.
+
+Procedures, the brief section text, the liaison charter, and the uninstall path are in
+`data/portal-steering/SKILL.md`. Read it before the first portal steer of a session.
+<!-- END firstmate-port portal-steering -->

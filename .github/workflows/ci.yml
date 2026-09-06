@@ -29,6 +29,8 @@ jobs:
           go-version: "1.24"
       - name: CLI tests
         run: go test ./cmd/fm-steer
+      - name: firstmate integration tests
+        run: integrations/firstmate/install_test.sh
       - name: Portal tests
         env:
           MIX_ENV: test

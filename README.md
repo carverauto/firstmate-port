@@ -100,10 +100,26 @@ credentials). Without Go, download a release binary instead: every `v*` tag
 publishes `fm-steer_<tag>_<os>_<arch>` assets (linux amd64/arm64, darwin
 amd64/arm64) plus `SHA256SUMS` on the GitHub Release.
 
+## Portal steering for firstmate
+
+[`integrations/firstmate/`](integrations/firstmate/README.md) is an importable
+package that points a stock [firstmate](https://github.com/kunchenguid/firstmate)
+fleet at a portal: a standing captain prompt plus an installable skill that move
+first mate ↔ crew messages off `state/<id>.inbox/` files and onto `fm-steer`, so
+steers and completion notices are visible on the portal instead of only on the
+fleet host. Installing is idempotent, and one command puts the fleet back on
+stock on-disk steering.
+
+```sh
+integrations/firstmate/install.sh install --fm-home "$FM_HOME" --instance https://portal.example.com
+integrations/firstmate/install.sh uninstall --fm-home "$FM_HOME"
+```
+
 ## Layout
 
 - `lib/` Phoenix/Ash portal
 - `cmd/fm-steer` HTTP inbox + Fleet log ingest CLI (device-code; does not dial NATS)
 - `skills/` installable agent skills that drive the CLI
+- `integrations/firstmate/` importable captain prompt + skill for a stock firstmate fleet
 - `k8s/` portal + 3-node NATS + CNPG (Discord interactions are served by Phoenix at `/interactions`; no sidecars)
 - `docker-compose.yml` portal + Postgres + single-node JetStream

@@ -31,6 +31,7 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 - OIDC is generic, never a per-vendor adapter: endpoints come from the issuer's discovery document, and the provider process is `:firstmate_oidc`. Do not name it, or any module, secret, or default, after one vendor - `test/firstmate_port/auth/vendor_neutral_test.exs` enforces this.
 - Never put an issuer in `config :ueberauth_oidcc, :issuers`. That library supervises each entry as a permanent child, so a provider that cannot load its configuration takes the node down. `FirstmatePort.Auth.OIDC.Supervisor` owns it as a temporary child instead.
 - ghcr.io is the image registry (`ghcr.io/<owner>/firstmate-port`). CI logs in with the workflow `GITHUB_TOKEN`; there are no registry robot secrets. Do not invent a second forge.
+- `integrations/firstmate/` is the importable package that points a stock firstmate fleet at a portal (captain prompt + skill + idempotent installer). Anything shipped into a firstmate home installs only under gitignored `data/`: an untracked file elsewhere in that checkout makes it dirty, and firstmate's fast-forward self-update silently skips a dirty home. See `integrations/firstmate/README.md`.
 
 ## Stack
 
