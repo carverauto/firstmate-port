@@ -14,47 +14,47 @@ defmodule FirstmatePort.Security.RateLimiterTest do
   test "allows up to the limit and then denies", %{subject: subject} do
     opts = [limit: 3, window_seconds: 60]
 
-    assert :ok = RateLimiter.check_and_record(:auth_local, subject, opts)
-    assert :ok = RateLimiter.check_and_record(:auth_local, subject, opts)
-    assert :ok = RateLimiter.check_and_record(:auth_local, subject, opts)
-    assert {:error, retry_after} = RateLimiter.check_and_record(:auth_local, subject, opts)
-    assert retry_after > 0
-    assert retry_after <= 60
+    before = System.system_time(:second)
+    assert {:ok, 3, reset, 2} = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert reset >= before + 60
+    assert reset <= System.system_time(:second) + 60
+    assert {:ok, 3, ^reset, 1} = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert {:ok, 3, ^reset, 0} = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert {:error, 3, ^reset, 0} = RateLimiter.check_and_record(:auth_local, subject, opts)
   end
 
   test "a denied attempt is not counted, so hammering does not extend the penalty",
        %{subject: subject} do
     opts = [limit: 1, window_seconds: 60]
 
-    assert :ok = RateLimiter.check_and_record(:auth_local, subject, opts)
-    assert {:error, first} = RateLimiter.check_and_record(:auth_local, subject, opts)
-    Enum.each(1..5, fn _ -> RateLimiter.check_and_record(:auth_local, subject, opts) end)
-    assert {:error, last} = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert {:ok, 1, reset, 0} = RateLimiter.check_and_record(:auth_local, subject, opts)
 
-    # Same single recorded attempt is still the one expiring, so the wait only
-    # shrinks with the clock.
-    assert last <= first
+    for _ <- 1..5 do
+      assert {:error, 1, ^reset, 0} = RateLimiter.check_and_record(:auth_local, subject, opts)
+    end
   end
 
   test "reset stays anchored to the recorded attempt after delayed denials", %{subject: subject} do
     opts = [limit: 1, window_seconds: 60]
-    before = System.system_time(:second)
-    empty_reset = RateLimiter.reset_at(:auth_local, subject, opts)
-    assert empty_reset >= before + 60
-    assert empty_reset <= System.system_time(:second) + 60
-
-    assert :ok = RateLimiter.check_and_record(:auth_local, subject, opts)
-    reset = RateLimiter.reset_at(:auth_local, subject, opts)
+    assert {:ok, 1, reset, 0} = RateLimiter.check_and_record(:auth_local, subject, opts)
     Process.sleep(2_100)
 
     for _ <- 1..2 do
-      before = System.system_time(:second)
-      assert {:error, retry_after} = RateLimiter.check_and_record(:auth_local, subject, opts)
-      after_request = System.system_time(:second)
-      assert RateLimiter.reset_at(:auth_local, subject, opts) == reset
-      assert retry_after in max(reset - after_request, 1)..max(reset - before, 1)
-      assert reset < before + 60
+      assert {:error, 1, ^reset, 0} = RateLimiter.check_and_record(:auth_local, subject, opts)
+      assert reset < System.system_time(:second) + 60
     end
+  end
+
+  test "expired attempts release capacity and produce a new reset", %{subject: subject} do
+    opts = [limit: 1, window_seconds: 1]
+    assert {:ok, 1, reset, 0} = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert {:error, 1, ^reset, 0} = RateLimiter.check_and_record(:auth_local, subject, opts)
+
+    Process.sleep(2_100)
+
+    assert RateLimiter.remaining(:auth_local, subject, opts) == 1
+    assert {:ok, 1, next_reset, 0} = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert next_reset > reset
   end
 
   test "subjects do not share a budget", %{subject: subject} do
@@ -62,34 +62,34 @@ defmodule FirstmatePort.Security.RateLimiterTest do
     other = subject <> "-other"
     on_exit(fn -> RateLimiter.clear(:auth_local, other) end)
 
-    assert :ok = RateLimiter.check_and_record(:auth_local, subject, opts)
-    assert {:error, _} = RateLimiter.check_and_record(:auth_local, subject, opts)
-    assert :ok = RateLimiter.check_and_record(:auth_local, other, opts)
+    assert {:ok, _, _, _} = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert {:error, 1, _, 0} = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert {:ok, _, _, _} = RateLimiter.check_and_record(:auth_local, other, opts)
   end
 
   test "buckets do not share a budget", %{subject: subject} do
     opts = [limit: 1, window_seconds: 60]
     on_exit(fn -> RateLimiter.clear(:cli_device_auth, subject) end)
 
-    assert :ok = RateLimiter.check_and_record(:auth_local, subject, opts)
-    assert {:error, _} = RateLimiter.check_and_record(:auth_local, subject, opts)
-    assert :ok = RateLimiter.check_and_record(:cli_device_auth, subject, opts)
+    assert {:ok, _, _, _} = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert {:error, 1, _, 0} = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert {:ok, _, _, _} = RateLimiter.check_and_record(:cli_device_auth, subject, opts)
   end
 
   test "clear/2 releases a subject", %{subject: subject} do
     opts = [limit: 1, window_seconds: 60]
 
-    assert :ok = RateLimiter.check_and_record(:auth_local, subject, opts)
-    assert {:error, _} = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert {:ok, _, _, _} = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert {:error, 1, _, 0} = RateLimiter.check_and_record(:auth_local, subject, opts)
     assert :ok = RateLimiter.clear(:auth_local, subject)
-    assert :ok = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert {:ok, _, _, _} = RateLimiter.check_and_record(:auth_local, subject, opts)
   end
 
   test "remaining/3 counts down from the limit", %{subject: subject} do
     opts = [limit: 3, window_seconds: 60]
 
     assert RateLimiter.remaining(:auth_local, subject, opts) == 3
-    assert :ok = RateLimiter.check_and_record(:auth_local, subject, opts)
+    assert {:ok, _, _, _} = RateLimiter.check_and_record(:auth_local, subject, opts)
     assert RateLimiter.remaining(:auth_local, subject, opts) == 2
   end
 

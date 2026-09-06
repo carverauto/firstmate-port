@@ -69,18 +69,22 @@ defmodule FirstmatePort.Security.RateLimiter do
   Counts one attempt against `{bucket, subject}` and reports whether it is
   allowed.
 
-  Returns `:ok`, or `{:error, retry_after_seconds}` when the window is full.
+  Returns `{:ok, limit, reset_at, remaining}`, or
+  `{:error, limit, reset_at, 0}` when the window is full. Reset is an epoch
+  second computed with the decision and remaining count from one snapshot.
   A denied attempt is not counted, so a client hammering a full bucket does
   not extend its own penalty indefinitely.
   """
-  @spec check_and_record(bucket(), subject(), opts()) :: :ok | {:error, pos_integer()}
+  @spec check_and_record(bucket(), subject(), opts()) ::
+          {:ok | :error, pos_integer(), integer(), non_neg_integer()}
   def check_and_record(bucket, subject, opts \\ []) do
     {limit, window} = resolve_bucket(bucket, opts)
-    GenServer.call(__MODULE__, {:check_and_record, bucket, subject, limit, window})
-  catch
-    # The limiter is a supervised singleton; if it is restarting, serve the
-    # request rather than 429-ing every caller during the restart window.
-    :exit, _reason -> :ok
+
+    try do
+      GenServer.call(__MODULE__, {:check_and_record, bucket, subject, limit, window})
+    catch
+      :exit, _reason -> {:ok, limit, System.system_time(:second) + window, 0}
+    end
   end
 
   @doc "Drops the recorded attempts for `{bucket, subject}` (e.g. after a successful login)."
@@ -99,19 +103,6 @@ defmodule FirstmatePort.Security.RateLimiter do
     max(limit - length(attempts({bucket, subject}, now - window)), 0)
   rescue
     ArgumentError -> 0
-  end
-
-  @doc "Returns the oldest in-window attempt's expiry as an epoch second, or now plus the window."
-  @spec reset_at(bucket(), subject(), opts()) :: integer()
-  def reset_at(bucket, subject, opts \\ []) do
-    {_limit, window} = resolve_bucket(bucket, opts)
-    now = System.system_time(:second)
-
-    try do
-      reset_from_attempts(attempts({bucket, subject}, now - window), window, now)
-    rescue
-      ArgumentError -> now + window
-    end
   end
 
   @doc "Returns `{limit, window_seconds}` for `bucket`, with `opts` overriding config."
@@ -147,12 +138,14 @@ defmodule FirstmatePort.Security.RateLimiter do
     key = {bucket, subject}
     recent = attempts(key, now - window)
 
-    if length(recent) >= limit do
-      reset = reset_from_attempts(recent, window, now)
-      {:reply, {:error, max(reset - now, 1)}, state}
+    count = length(recent)
+    reset = reset_from_attempts(recent, window, now)
+
+    if count >= limit do
+      {:reply, {:error, limit, reset, 0}, state}
     else
       :ets.insert(@table, {key, [now | recent]})
-      {:reply, :ok, state}
+      {:reply, {:ok, limit, reset, limit - count - 1}, state}
     end
   end
 
