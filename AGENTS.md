@@ -13,6 +13,7 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 ## Boundaries
 
 - `fm-steer` is the captain CLI. Device-code against this API. It must not import or dial NATS.
+- Go CLIs keep `cmd/` thin (dispatch + `os.Exit`) over `internal/` (see `internal/fmsteer`).
 - Attribute tenancy on shared Postgres and one NATS account. Streams are `<tenant>.steer` / `<tenant>.inbound`. Seed tenant `local` as an example. The API is the tenant wall and the only JetStream client.
 - Tenant credentials belong in portal UI/API and AshCloak-encrypted CNPG rows, never per-tenant Kubernetes secrets or plaintext HTTP/MCP responses. See `docs/credentials.md` for storage, Discord routing, and vault-key operations.
 - Do not add `notify.py`, `watch.py`, or the launchd plist. Those stay in firstmate-notify.

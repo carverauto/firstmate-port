@@ -1,4 +1,4 @@
-package main
+package fmsteer
 
 import (
 	"encoding/json"
@@ -12,10 +12,10 @@ import (
 func TestCredentialsMode0600(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
-	if err := writeCreds("http://localhost:4000", "tok", "local"); err != nil {
+	if err := WriteCreds("http://localhost:4000", "tok", "local"); err != nil {
 		t.Fatal(err)
 	}
-	st, err := os.Stat(credsPath())
+	st, err := os.Stat(CredsPath())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,10 +52,9 @@ func TestDeviceLoginStoresToken(t *testing.T) {
 		}
 	}))
 	defer srv.Close()
-	os.Args = []string{"fm-steer", "auth", "login", "--instance", srv.URL}
 	// Call the login helper directly with a short path:
-	authLogin([]string{"--instance", srv.URL})
-	c, err := readCreds()
+	AuthLogin([]string{"--instance", srv.URL})
+	c, err := ReadCreds()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,11 +83,56 @@ func TestInboxPutGoesToHTTP(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"seq": 1, "task": body["task"]})
 	}))
 	defer srv.Close()
-	if err := writeCreds(srv.URL, "jwt", "local"); err != nil {
+	if err := WriteCreds(srv.URL, "jwt", "local"); err != nil {
 		t.Fatal(err)
 	}
-	inboxPut([]string{"--task", "fm-port", "--body", "hello", "--instance", srv.URL})
+	InboxPut([]string{"--task", "fm-port", "--body", "hello", "--instance", srv.URL})
 	if gotTask != "fm-port" {
 		t.Fatalf("task %q", gotTask)
+	}
+}
+
+func TestInboxPutDefaultsTaskToFirstmate(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	var gotTask string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]string
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		gotTask = body["task"]
+		_ = json.NewEncoder(w).Encode(map[string]any{"seq": 1, "task": body["task"]})
+	}))
+	defer srv.Close()
+	if err := WriteCreds(srv.URL, "jwt", "local"); err != nil {
+		t.Fatal(err)
+	}
+	InboxPut([]string{"--body", "hello from second mate", "--instance", srv.URL})
+	if gotTask != DefaultTask {
+		t.Fatalf("task %q, want %q", gotTask, DefaultTask)
+	}
+}
+
+func TestDefaultInstanceIsLivePortal(t *testing.T) {
+	if DefaultInstance != "https://firstmate.carverauto.dev" {
+		t.Fatalf("default %q", DefaultInstance)
+	}
+	t.Setenv("FIRSTMATE_INSTANCE", "http://localhost:4000")
+	if got := Env("FIRSTMATE_INSTANCE", DefaultInstance); got != "http://localhost:4000" {
+		t.Fatalf("override %q", got)
+	}
+}
+
+func TestRunRejectsUnknownSubcommand(t *testing.T) {
+	if got := Run([]string{"bogus"}); got != 2 {
+		t.Fatalf("exit %d", got)
+	}
+	if got := Run(nil); got != 2 {
+		t.Fatalf("exit %d", got)
+	}
+	if got := Run([]string{"auth", "bogus"}); got != 2 {
+		t.Fatalf("exit %d", got)
+	}
+	if got := Run([]string{"inbox", "bogus"}); got != 2 {
+		t.Fatalf("exit %d", got)
 	}
 }
