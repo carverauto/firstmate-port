@@ -102,19 +102,36 @@ schema change. The ones the portal knows by name are in
 live (a `discord`/`public_key` that is not 64 hex characters is refused at the
 form, not at the next inbound interaction).
 
-Two slots are consumed by an integration today:
+`discord`/`public_key`, `embeddings`/`api_key`, and the two GitHub slots are consumed by integrations.
+The rest are storage only: saving a bot token does not wire outbound Discord
+calls, and portal sign-in remains configured from the deployment environment -
+it does not read `oidc`/`client_secret`.
 
-- `discord`/`public_key` verifies inbound interactions (below).
 - `embeddings`/`api_key` is the provider key for optional fleet-log semantic
   search. It is read server-side and passed per request, never written into
   application environment. See [fleet-search.md](fleet-search.md); the model it
   is used with is a tenant setting, not a secret, and is chosen on the same
   page.
 
-The rest are storage only: saving a GitHub token does not configure the existing
-`GITHUB_TOKEN`-based poller, and saving a bot token does not wire outbound Discord
-calls. Portal sign-in remains configured from the deployment environment; it
-does not read `oidc`/`client_secret`.
+### GitHub
+
+The Fleet log's Progress tab is filled by a poll that reads two slots:
+
+| Slot | What it is |
+| --- | --- |
+| `github`/`token` | The PAT it authenticates with |
+| `github`/`org` | The organisation it searches for open PRs and issues |
+
+Paste them at `/settings/credentials` and the poll picks them up on its next run
+- no redeploy, and no GitHub token in a cluster secret. A fine-grained PAT needs
+**Checks: Read** alongside read access to the repositories you want on the Fleet
+log, because the poll reports each PR's check status; a classic token needs
+`repo`.
+
+`GITHUB_TOKEN` and `GITHUB_ORG` still work and are the fallback for a tenant
+that has not filled the slots. A stored slot always wins over the environment,
+so pasting a token in the portal is enough to take over from a deployment that
+was configured the old way.
 
 ## Discord inbound
 

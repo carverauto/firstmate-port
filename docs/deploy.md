@@ -49,6 +49,17 @@ fm-steer inbox list
 For Fleet log posting commands and authentication, see the
 [fm-steer CLI guide](../README.md#fm-steer-cli).
 
+The messages show up at `/inbox` on the portal, where the captain can also send
+an order or ack one. See `docs/inbox.md` for the routing and the payload.
+
+Each `fm-steer auth login` is listed at `/settings/sessions` with the client
+that asked for it and when it was last used. Revoking one there stops that
+token on its next request, and the CLI holding it says so:
+
+```
+not signed in (token expired or revoked); run fm-steer auth login
+```
+
 Postgres and NATS JetStream (single node, one account) are in the compose file. Streams are named `<tenant>.steer` and `<tenant>.inbound`. The Kubernetes NATS shape is a 3-node cluster (headless service, port 6222, PVCs, durable streams).
 
 To run Mix against compose Postgres/NATS only:
