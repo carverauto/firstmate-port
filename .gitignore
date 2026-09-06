@@ -69,3 +69,6 @@ third_party/distdir/*
 
 # BazelCI workflow is site-specific; do not check it in.
 buildbuddy.yaml
+
+# Archify visual-check evidence: regenerate with `archify visual-check`, do not commit.
+docs/diagrams/*.visual-check.*

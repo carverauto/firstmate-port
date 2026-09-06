@@ -1,0 +1,154 @@
+<Layouts.public page_title={@page_title}>
+  <.updated updated_on={@updated_on} />
+
+  <p class="legal-lede">
+    {@service_name} is self-hosted: this instance is run by {@operator}, who
+    decides what happens to the data in it. This page describes what the
+    software collects, why, and how long it keeps it.
+  </p>
+
+  <h2>What the portal stores</h2>
+
+  <h3>Your account</h3>
+  <p>
+    An email address and a display name, taken from your OIDC identity provider
+    when you sign in, or from the email you type on a local instance. That is the
+    whole account record — there is no password to store, because sign-in is
+    delegated to your identity provider.
+  </p>
+
+  <h3>Your session</h3>
+  <p>
+    One cookie, signed and encrypted, holding a token that identifies you to the
+    server. It is marked <code>HttpOnly</code> and <code>SameSite=Lax</code>, and
+    on an HTTPS deployment it is marked <code>Secure</code> so it is never sent
+    over plain HTTP. Signing out deletes it. Your colour-theme choice is kept in
+    your browser's local storage and never reaches the server.
+  </p>
+
+  <h3>Security signals</h3>
+  <p>
+    To stop password spraying and abusive traffic, the server counts recent
+    requests per client address and recent failed sign-ins per account. Those
+    counters hold an address, a timestamp and an account identifier, live in
+    memory only, expire within minutes to an hour, and are lost entirely when the
+    service restarts. Denied attempts are written to the server log.
+  </p>
+
+  <h3>Your work</h3>
+  <p>
+    Diagrams and their share cards, pull request and issue records fetched from
+    GitHub when your operator has connected a token, work-queue messages,
+    no-mistakes run history, and the inbox messages the <code>fm-steer</code>
+    CLI puts and acknowledges. The portal keeps a version history of these
+    records so a crew can see what changed and when.
+  </p>
+
+  <h3>Integration credentials</h3>
+  <p>
+    Credentials a tenant stores — Discord keys, GitHub tokens, provider API keys
+    — are encrypted with an authenticated cipher before they are written to the
+    database, and are never returned in plaintext over HTTP or MCP. Secret values
+    are also filtered out of request and event logs.
+  </p>
+
+  <h3>Discord interactions</h3>
+  <p>
+    When a tenant connects Discord, each interaction Discord sends carries the
+    invoking user's Discord ID, the guild and channel it came from, and the
+    command and its options. The portal verifies the signature, works out which
+    tenant the request belongs to, and publishes the payload onto that tenant's
+    message stream for its crew to act on. It does not build a profile of Discord
+    users, and it does not read message history — Discord only sends the commands
+    aimed at the application.
+  </p>
+
+  <h2>Why</h2>
+  <p>
+    Account and work data are processed to provide the service you asked for.
+    Security signals are processed for the legitimate interest of keeping the
+    service available and other people's accounts safe. There is no other
+    purpose: no advertising, no profiling, no analytics product, and no sale or
+    rental of anything on this page to anyone.
+  </p>
+
+  <h2>Who else sees it</h2>
+  <p>
+    Data stays on infrastructure {@operator} controls — the application's
+    database and message broker. Beyond that, it reaches a third party only
+    where you connect one:
+  </p>
+  <ul>
+    <li>
+      your OIDC identity provider, which authenticates you and tells the portal your email and name;
+    </li>
+    <li>
+      GitHub, when your operator configures a token, so the portal can read the pull requests and issues you asked it to track;
+    </li>
+    <li>Discord, when a tenant connects it, for the interactions described above;</li>
+    <li>
+      the network provider in front of the public hostname, which terminates TLS
+      and sees request metadata as any CDN or load balancer does.
+    </li>
+  </ul>
+  <p>
+    Data is otherwise disclosed only where the law requires it.
+  </p>
+
+  <h2>Cookies</h2>
+  <p>
+    One strictly necessary session cookie, described above. No analytics
+    cookies, no advertising cookies, no third-party trackers, and no consent
+    banner, because there is nothing to consent to.
+  </p>
+
+  <h2>How long it is kept</h2>
+  <ul>
+    <li>Session cookie: until you sign out, or it expires.</li>
+    <li>
+      Rate-limit and lockout counters: minutes to an hour, in memory, and cleared on restart.
+    </li>
+    <li>Scheduler tick records: 30 days.</li>
+    <li>
+      Account, work and credential records: until you or your operator delete
+      them. Deleting a record leaves its change history unless your operator
+      removes that too.
+    </li>
+  </ul>
+
+  <h2>How it is protected</h2>
+  <p>
+    Public traffic is served over HTTPS with HSTS, a content security policy, and
+    the usual browser hardening headers. Sign-in is rate limited and locks an
+    account out after repeated failures. Stored credentials are encrypted.
+    Tenants are separated by the API, which is the only client of the message
+    broker. No system is perfect; report anything that looks wrong to the contact
+    below.
+  </p>
+
+  <h2>Your choices</h2>
+  <p>
+    You can ask {@operator} for a copy of the data held about you, to correct it,
+    or to delete your account and its records. Depending on where you live you may
+    also have the right to object to processing or to complain to a data
+    protection authority. Requests go to the contact below.
+  </p>
+
+  <h2>Children</h2>
+  <p>
+    The service is a tool for a working software crew. It is not directed at
+    children and accounts are not knowingly created for them.
+  </p>
+
+  <h2>Changes</h2>
+  <p>
+    This policy changes when the software does. The date at the top of this page
+    is the date the text last changed.
+  </p>
+
+  <h2>Contact</h2>
+  <.contact email={@contact_email} operator={@operator} />
+  <p>
+    See also the <.link href={~p"/terms"}>Terms of Service</.link>.
+  </p>
+</Layouts.public>

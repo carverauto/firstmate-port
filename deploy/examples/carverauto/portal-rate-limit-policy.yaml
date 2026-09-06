@@ -1,0 +1,67 @@
+# Per-source-address rate limit at the edge for the public portal hostname,
+# in the same shape the shared Gateway already uses for other public hosts
+# (see forgejo-rate-limit in the gitops repo). Local means in-Envoy: no
+# external ratelimit service and no Redis.
+#
+# This is the outer of two limits. The inner one lives in the app
+# (FirstmatePort.Security.RateLimiter) and is tighter and per-endpoint, but it
+# counts in one replica's memory and forgives everything on restart. This one
+# does not, and it stops floods before they reach Phoenix at all.
+#
+# 600 req/min/IP is deliberately loose: a LiveView page load pulls assets and
+# opens a websocket, and Cloudflare fronts the hostname, so a shared office
+# address can look busy while behaving normally. Tighten it after watching real
+# traffic rather than guessing lower now and paging yourself.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: firstmate-portal-rate-limit
+  namespace: firstmate
+  labels:
+    app.kubernetes.io/name: firstmate
+    app.kubernetes.io/component: edge-security
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: firstmate
+  rateLimit:
+    type: Local
+    local:
+      rules:
+        - clientSelectors:
+            - sourceCIDR:
+                value: 0.0.0.0/0
+                type: Distinct
+          limit:
+            requests: 600
+            unit: Minute
+---
+# The Discord interactions hostname gets its own budget. Discord retries an
+# interaction it does not get an answer to, and it fans out from many source
+# addresses, so a shared limit with the portal would let one noisy guild eat
+# the crew's own browsing.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: discord-firstmate-rate-limit
+  namespace: firstmate
+  labels:
+    app.kubernetes.io/name: firstmate
+    app.kubernetes.io/component: edge-security
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: discord-firstmate
+  rateLimit:
+    type: Local
+    local:
+      rules:
+        - clientSelectors:
+            - sourceCIDR:
+                value: 0.0.0.0/0
+                type: Distinct
+          limit:
+            requests: 300
+            unit: Minute

@@ -113,6 +113,26 @@ if config_env() == :prod do
 
   config :firstmate_port, public_url: public_url
 
+  # Behind a gateway the socket peer is the gateway, so without this every
+  # client shares one rate-limit bucket. Set CLIENT_IP_HEADER to the header the
+  # edge actually populates. See FirstmatePort.Security.ClientIP and
+  # docs/security.md for the deployment matrix.
+  config :firstmate_port, :client_ip,
+    header: System.get_env("CLIENT_IP_HEADER"),
+    trusted_hops: String.to_integer(System.get_env("CLIENT_IP_TRUSTED_HOPS") || "0")
+
+  # Flip to "enforce" once the browser console is clean under report-only.
+  config :firstmate_port, FirstmatePortWeb.Plugs.SecurityHeaders,
+    csp_mode: if(System.get_env("CSP_MODE") == "enforce", do: :enforce, else: :report_only),
+    csp_report_uri: System.get_env("CSP_REPORT_URI")
+
+  # Who operates this instance, for the public /terms and /privacy pages.
+  # Set LEGAL_CONTACT_EMAIL before pointing Discord's Developer Portal at them.
+  config :firstmate_port, :legal,
+    operator: System.get_env("LEGAL_OPERATOR"),
+    contact_email: System.get_env("LEGAL_CONTACT_EMAIL"),
+    governing_law: System.get_env("LEGAL_GOVERNING_LAW")
+
   config :firstmate_port, FirstmatePort.Auth.Guardian,
     issuer: "firstmate_port",
     secret_key: secret_key_base,

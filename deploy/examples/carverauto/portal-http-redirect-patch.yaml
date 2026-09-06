@@ -1,3 +1,5 @@
+# Plain HTTP on the portal hostname exists only to send browsers to HTTPS.
+# HSTS from the app then keeps them there without a second round trip.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -7,8 +9,8 @@ spec:
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway
-      name: lan-shared-gateway
-      namespace: lan-edge
+      name: serviceradar-shared-gateway
+      namespace: serviceradar-system
       sectionName: http-carverauto
   hostnames:
     - firstmate.carverauto.dev

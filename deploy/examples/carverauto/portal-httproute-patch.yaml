@@ -1,5 +1,13 @@
-# Portal is LAN-only: lan-edge/lan-shared-gateway, VIP 192.168.6.87.
-# Never attach the portal hostname to a public VIP.
+# The portal hostname is public. It was LAN-only (lan-edge/lan-shared-gateway,
+# VIP 192.168.6.87) until Discord needed reachable Terms of Service and Privacy
+# Policy URLs: the Developer Portal will not accept URLs it cannot fetch, and
+# neither will the people asked to agree to them. So the portal moved to the
+# same public Gateway that already serves discord-firstmate.carverauto.dev,
+# proxied through Cloudflare.
+#
+# Being public is why this overlay also carries
+# portal-rate-limit-policy.yaml; the in-app limiter counts one replica's own
+# traffic, and the edge limit is what survives a restart.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -7,14 +15,14 @@ metadata:
   namespace: firstmate
   annotations:
     external-dns.alpha.kubernetes.io/hostname: firstmate.carverauto.dev
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
     external-dns.alpha.kubernetes.io/ttl: "60"
 spec:
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway
-      name: lan-shared-gateway
-      namespace: lan-edge
+      name: serviceradar-shared-gateway
+      namespace: serviceradar-system
       sectionName: https-carverauto
   hostnames:
     - firstmate.carverauto.dev

@@ -29,7 +29,11 @@
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
     </script>
-    <script>
+    <%!-- Runs before first paint so a dark-theme reader never sees a light
+    flash. That means it cannot be deferred into app.js, so it carries the
+    per-request CSP nonce instead of forcing script-src to allow all inline
+    script. See FirstmatePortWeb.Plugs.SecurityHeaders. --%>
+    <script nonce={FirstmatePortWeb.Plugs.SecurityHeaders.nonce(assigns)}>
       (() => {
         const setTheme = (theme) => {
           if (theme === "system") {

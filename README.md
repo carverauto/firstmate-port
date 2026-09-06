@@ -26,10 +26,12 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`,
 - [docs/fm-steer.md](docs/fm-steer.md) `fm-steer` for stock firstmate captains: login, commands, and the standing prompt that makes firstmate mirror steers to the portal (no fork required)
 - [docs/credentials.md](docs/credentials.md) how a tenant stores Discord and other secrets
 - [docs/fleet-search.md](docs/fleet-search.md) searching the fleet log, and the optional embeddings
+- [docs/security.md](docs/security.md) running the portal on a public hostname: client-IP config, rate limits, lockout, CSP
 - [docs/deploy.md](docs/deploy.md) image publishing, compose, Kubernetes
 - [docs/build-tracking.md](docs/build-tracking.md) opt-in tracking and BuildBuddy secrets
 - [docs/bazel.md](docs/bazel.md) rules_elixir / BuildBuddy, `--output_base=/tmp/fm-fm-port/bazel`
 - [docs/build-events.md](docs/build-events.md) the append-only build/deploy log and its API
+- [docs/diagrams/](docs/diagrams/) Archify diagrams of the deployment, source specs beside the rendered HTML
 
 User docs are served by the portal itself, one copy only, from the marketing
 landing page at `/steer`:

@@ -40,6 +40,8 @@ See [README.md](../README.md) for the product introduction and common usage.
 - NATS in cluster shape is 3-replica FileStorage; compose may be single-node
 - Tenancy is attribute-based on shared Postgres; one NATS account; streams named `<tenant>.steer` and `<tenant>.inbound`
 - Tenant credential storage, Discord routing, and vault-key operations: see [docs/credentials.md](../docs/credentials.md).
+- The portal hostname is public, on the shared Envoy Gateway alongside the Discord interactions hostname. Public-edge posture is [docs/security.md](../docs/security.md).
+- `/terms` and `/privacy` are public because Discord's Developer Portal requires reachable URLs for both; operator identity on them is config, not compiled-in copy
 - Public Discord failures stay generic
 
 ## Important Constraints
@@ -47,6 +49,7 @@ See [README.md](../README.md) for the product introduction and common usage.
 - Do not schedule a Mac Bazel cache wipe in AshOban or Kubernetes
 - Do not relocate `~/.no-mistakes` into the cluster
 - Do not `kubectl create secret` per-tenant credentials, and never return a stored secret over HTTP or MCP
+- Do not add a public route without deciding its rate-limit bucket and CSP preset; do not put MCP or NATS on a public hostname
 - Local Bazel: `--output_base=/tmp/fm-fm-port/bazel`. `--config=remote` is fine; never `--config=ci` locally
 - ghcr.io is the registry; do not invent a second forge
 

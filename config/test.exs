@@ -16,6 +16,26 @@ config :firstmate_port, FirstmatePort.Auth.Guardian,
 
 config :ash, policies: [show_policy_breakdowns?: true], disable_async?: true
 
+# The rate limiter keys on the client address and every test connection comes
+# from 127.0.0.1, so the whole suite shares one bucket per name and would
+# eventually 429 itself. Raise every ceiling past anything the suite will do.
+# Tests that exercise limiting tighten one bucket for their own duration —
+# see test/firstmate_port_web/plugs/rate_limit_test.exs.
+#
+# Add a line here when adding a bucket to FirstmatePort.Security.RateLimiter.
+config :firstmate_port, FirstmatePort.Security.RateLimiter,
+  default_bucket: [limit: 100_000, window_seconds: 60],
+  buckets: %{
+    auth_local: [limit: 100_000, window_seconds: 60],
+    auth_oidc_callback: [limit: 100_000, window_seconds: 60],
+    cli_device_auth: [limit: 100_000, window_seconds: 60],
+    cli_token_poll: [limit: 100_000, window_seconds: 60],
+    api_write: [limit: 100_000, window_seconds: 60],
+    api_default: [limit: 100_000, window_seconds: 60],
+    mcp: [limit: 100_000, window_seconds: 60],
+    discord_interactions: [limit: 100_000, window_seconds: 60]
+  }
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used

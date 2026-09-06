@@ -1,0 +1,126 @@
+<Layouts.public page_title={@page_title}>
+  <.updated updated_on={@updated_on} />
+
+  <p class="legal-lede">
+    {@service_name} is a companion portal for a firstmate crew: it shows Archify
+    diagrams, pull requests, issues, work queues and no-mistakes runs in one
+    place, stores each tenant's integration credentials, and relays Discord
+    commands to the crew. These terms are the agreement between you and {@operator}, who runs this instance.
+  </p>
+
+  <h2>1. Using the service</h2>
+  <p>
+    Access is by invitation. Sign-in is restricted to accounts your operator has
+    allowed — through an OIDC identity provider, or an email allowlist on a local
+    instance — so there is no open registration and no anonymous use beyond these
+    public pages.
+  </p>
+  <p>
+    You are responsible for what happens under your account. Session cookies,
+    the JSON Web Token <code>fm-steer</code> stores after a device-code sign-in,
+    and any agent service token you are issued are all credentials: keep them to
+    yourself, and tell your operator promptly if one is exposed.
+  </p>
+
+  <h2>2. Acceptable use</h2>
+  <p>You agree not to:</p>
+  <ul>
+    <li>
+      probe, scan or attack the service, or try to reach another tenant's data —
+      tenancy is enforced by the API, and working around it is not research
+      unless your operator asked you for it in writing;
+    </li>
+    <li>
+      work around rate limits, sign-in lockouts or the allowlist, or automate
+      sign-in attempts;
+    </li>
+    <li>
+      upload content that is unlawful, that infringes someone else's rights, or
+      that you have no right to place on your operator's infrastructure;
+    </li>
+    <li>
+      use the Discord integration to send unsolicited messages, or to act in a
+      guild without that guild's permission.
+    </li>
+  </ul>
+
+  <h2>3. Your content</h2>
+  <p>
+    Diagrams, pull request and issue records, queue messages, run history and
+    everything else you or your agents submit stay yours. You grant {@operator} permission to store, process and display that content for the purpose of
+    running the service for you — including keeping change history, since the
+    portal versions records so a crew can see what changed and when.
+  </p>
+  <p>
+    Content you publish through a diagram share link is readable by anyone who
+    has the link, and by the link-preview crawlers of the chat services you paste
+    it into. Treat a share link as public.
+  </p>
+
+  <h2>4. Integration credentials</h2>
+  <p>
+    Tenants store their own credentials in the portal — Discord keys, GitHub
+    tokens, provider API keys. Those values are encrypted before they reach the
+    database and are never returned to you in plaintext over HTTP or MCP; once
+    stored, a secret can be replaced but not read back.
+  </p>
+  <p>
+    Scoping those credentials is your job. Issue the narrowest token that does
+    what you need, rotate it on your own schedule, and revoke it at its source if
+    you suspect exposure. Neither the portal nor {@operator} can revoke a third
+    party's token on your behalf.
+  </p>
+
+  <h2>5. Discord</h2>
+  <p>
+    Where a tenant connects Discord, the portal receives interaction payloads
+    that Discord sends to its interactions endpoint, verifies their signature,
+    and hands the command to that tenant's crew. Installing the application in a
+    guild requires the guild's authority, and everyone in that guild remains
+    subject to Discord's own terms and policies as well as these.
+  </p>
+  <p>
+    Commands issued in a guild are visible to the crew that serves it. Do not put
+    anything in a Discord command that you would not put in the portal.
+  </p>
+
+  <h2>6. Availability</h2>
+  <p>
+    The service is provided as-is, with no uptime commitment and no warranty of
+    any kind. It is operated for a working crew, not sold as a product, and it
+    can be restarted, upgraded or taken down without notice. Keep your own copy
+    of anything you cannot afford to lose.
+  </p>
+
+  <h2>7. Suspension and termination</h2>
+  <p>
+    An account may be suspended or removed by {@operator} for breaking these
+    terms, endangering the service or its other users, or where the law requires
+    it. You may stop using the service at any time and ask your operator to
+    delete your account; see the <.link href={~p"/privacy"}>Privacy Policy</.link>
+    for what that removes.
+  </p>
+
+  <h2>8. Liability</h2>
+  <p>
+    To the fullest extent the law allows, {@operator} is not liable for lost
+    profits, lost data, or indirect or consequential loss arising from your use
+    of the service. Nothing here limits liability that cannot lawfully be
+    limited.
+  </p>
+
+  <h2>9. Changes</h2>
+  <p>
+    These terms change when the service does. The date at the top of this page is
+    the date the text last changed; continuing to use the service after a change
+    means you accept the current version.
+  </p>
+
+  <h2 :if={@governing_law}>10. Governing law</h2>
+  <p :if={@governing_law}>
+    These terms are governed by the law of {@governing_law}.
+  </p>
+
+  <h2>Contact</h2>
+  <.contact email={@contact_email} operator={@operator} />
+</Layouts.public>

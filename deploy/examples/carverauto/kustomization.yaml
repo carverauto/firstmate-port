@@ -11,6 +11,7 @@ namespace: firstmate
 resources:
   - ../../../k8s
   - discord-httproute.yaml
+  - portal-rate-limit-policy.yaml
 images:
   - name: firstmate-port
     newName: ghcr.io/carverauto/firstmate-port

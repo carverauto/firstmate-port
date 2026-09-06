@@ -174,6 +174,21 @@ kubectl -n firstmate create secret docker-registry ghcr-io-cred \
   --docker-server=ghcr.io --docker-username=<github-user> --docker-password=<token>
 ```
 
+## Public hostnames
+
+The portal hostname is public, not LAN-only: Discord's Developer Portal will not
+accept an application whose Terms of Service and Privacy Policy URLs it cannot
+fetch, and those pages live on the portal. `/terms` and `/privacy` answer a
+signed-out GET; everything else still requires sign-in.
+
+Before exposing an instance, read [docs/security.md](security.md). Two settings
+there are not optional in Kubernetes:
+
+- `CLIENT_IP_HEADER`, or rate limiting keys on the Gateway's address and
+  throttles every user at once.
+- `LEGAL_CONTACT_EMAIL`, or the published privacy policy has no route back to a
+  human.
+
 Site-specific hostnames, issuer URLs, allowlists, and ghcr namespaces live in:
 
 - `.env` / `docker-compose.override.yml` (from the `.example` files)
@@ -184,7 +199,7 @@ They are not compiled-in defaults.
 
 ## Kubernetes
 
-`k8s/` is a generic firstmate namespace: CNPG, 3-replica NATS JetStream, portal Deployment, HTTPRoute to `firstmate.example.com`. Overlay real hostnames and registry tags in your GitOps repo.
+`k8s/` is a generic firstmate namespace: CNPG, 3-replica NATS JetStream, portal Deployment, HTTPRoute to `firstmate.example.com`. Overlay real hostnames and registry tags in your GitOps repo. `deploy/examples/carverauto/` shows a public deployment, including the Envoy `BackendTrafficPolicy` that rate limits the hostname at the edge.
 
 ```sh
 kubectl apply -k k8s

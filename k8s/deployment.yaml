@@ -57,6 +57,14 @@ spec:
               value: "true"
             - name: NATS_HOST
               value: firstmate-nats
+            # Behind a Gateway the socket peer is the Gateway, so every request
+            # would otherwise share one rate-limit bucket. Reading the rightmost
+            # x-forwarded-for entry gives the address the Gateway itself
+            # observed, which a client cannot forge. If another proxy (a CDN)
+            # sits in front, raise CLIENT_IP_TRUSTED_HOPS or switch to the
+            # header that proxy sets — see docs/security.md.
+            - name: CLIENT_IP_HEADER
+              value: x-forwarded-for
             - name: NATS_TOKEN
               valueFrom:
                 secretKeyRef:
