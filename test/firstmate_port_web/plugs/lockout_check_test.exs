@@ -143,4 +143,3 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheckTest do
     end
   end
 end
-

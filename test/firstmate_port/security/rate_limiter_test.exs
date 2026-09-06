@@ -111,4 +111,3 @@ defmodule FirstmatePort.Security.RateLimiterTest do
     end
   end
 end
-

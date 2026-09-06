@@ -194,4 +194,3 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeadersTest do
     end
   end
 end
-

@@ -95,4 +95,3 @@ defmodule FirstmatePortWeb.LegalControllerTest do
     end
   end
 end
-

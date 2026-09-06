@@ -153,4 +153,3 @@ defmodule FirstmatePortWeb.Plugs.RateLimitTest do
     end
   end
 end
-
