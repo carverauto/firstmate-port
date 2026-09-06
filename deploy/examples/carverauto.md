@@ -1,6 +1,6 @@
 # Example overlay: carverauto
 
-These values are an example of a private deployment. They are not compiled into
+These values are an example of a public deployment. They are not compiled into
 the portal. Copy them into GitOps overlays, `.env`, or `docker-compose.override.yml`.
 
 | Setting | Example |

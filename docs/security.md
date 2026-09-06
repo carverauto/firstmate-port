@@ -55,7 +55,7 @@ section of `/terms` for that disclosure.
 | `LEGAL_CONTACT_EMAIL` | before Discord | unset | Contact on `/terms` and `/privacy`. |
 | `LEGAL_OPERATOR` | no | generic wording | Who runs this instance. |
 | `LEGAL_GOVERNING_LAW` | no | clause omitted | Governing law for the terms. |
-| `CSP_MODE` | no | `report_only` | `enforce` turns the policy on. |
+| `CSP_MODE` | no | `report_only` | Controls browser and embed resource directives; see [Response headers](#response-headers) for the always-enforced baseline. |
 | `CSP_REPORT_URI` | no | unset | Where browsers post violation reports. |
 | `SESSION_SIGNING_SALT` | no | stable default | Read at `mix release` time. Rotating signs everyone out. |
 | `SESSION_ENCRYPTION_SALT` | no | stable default | Same. |
