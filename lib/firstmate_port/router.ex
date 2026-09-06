@@ -280,7 +280,6 @@ defmodule FirstmatePort.Router do
         "implement",
         "fix",
         "hotfix",
-        "quickfix",
         "bug",
         "refactor",
         "function",
@@ -501,10 +500,10 @@ defmodule FirstmatePort.Router do
   # Bare tokens that a longer word swallows: "review" inside "preview",
   # "ops" inside "loops", "spend" inside "suspend", "fix" inside "prefix",
   # "charge" inside "surcharge". These match only at a word start, so the
-  # prefixed spellings that ARE the verb ("hotfix", "quickfix") are listed
-  # in their own tables. "deploy" and "scale" stay substrings so prefixed
-  # ops verbs ("redeploy", "autoscale") keep their kind.
-  @anchored ~w(review ops spend fix charge hotfix quickfix)
+  # prefixed spelling that IS the verb ("hotfix") is listed in its own
+  # table. "deploy" and "scale" stay substrings so prefixed ops verbs
+  # ("redeploy", "autoscale") keep their kind.
+  @anchored ~w(review ops spend fix charge hotfix)
 
   defp match_any?(text, patterns) do
     Enum.any?(patterns, fn

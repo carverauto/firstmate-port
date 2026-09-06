@@ -71,9 +71,7 @@ defmodule FirstmatePort.RouterTest do
   end
 
   test "a prefixed code verb keeps the code lane" do
-    for text <- ["hotfix the crash in the router", "quickfix the parser"] do
-      assert Router.classify(text).kind == :code, "#{text} lost its code kind"
-    end
+    assert Router.classify("hotfix the crash in the router").kind == :code
 
     got = Router.route("hotfix the crash in the router")
 
