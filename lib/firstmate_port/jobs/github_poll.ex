@@ -16,24 +16,40 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   The search API keeps the open `GithubItem` board current. Fleet-log
   enrichment queries tracked crew URLs directly in bounded pages. Neither
   pass grows `progress_items`.
+
+  The token and organisation come from the tenant's own credential slots -
+  `github/token` and `github/org`, which the captain fills in on the portal's
+  credentials page - so pulling PRs needs no redeploy and no cluster secret. The
+  `GITHUB_TOKEN` and `GITHUB_ORG` environment variables remain as a fallback for
+  a tenant that has not filled the slots yet.
   """
 
   require Logger
 
   alias FirstmatePort.Portal.{ProgressItem, ProgressLog, ProgressStatus}
+  alias FirstmatePort.Credentials
+  alias FirstmatePort.Tenancy
 
   @spec run(term()) :: :ok
   def run(actor) do
-    token = trim_credential(System.get_env("GITHUB_TOKEN"))
-    org = String.trim(System.get_env("GITHUB_ORG") || "")
+    actor = actor || agent_actor()
+    tenant = Tenancy.slug(actor)
+    token = configured(tenant, "token", "GITHUB_TOKEN")
+    org = configured(tenant, "org", "GITHUB_ORG")
 
     cond do
-      is_nil(token) or token == "" ->
-        Logger.info("GitHub poll skipped: GITHUB_TOKEN unset")
+      token == "" ->
+        Logger.info(
+          "GitHub poll skipped for #{tenant}: no github/token credential, GITHUB_TOKEN unset"
+        )
+
         :ok
 
       org == "" ->
-        Logger.info("GitHub poll skipped: GITHUB_ORG unset")
+        Logger.info(
+          "GitHub poll skipped for #{tenant}: no github/org credential, GITHUB_ORG unset"
+        )
+
         :ok
 
       true ->
@@ -52,6 +68,20 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   def trim_credential(nil), do: nil
   def trim_credential(""), do: ""
   def trim_credential(value) when is_binary(value), do: String.trim(value)
+
+  @doc """
+  The value for one GitHub setting: the tenant's stored credential, else the
+  environment variable, else `""`.
+
+  Reading a stored value decrypts it, so this is server-side only and takes a
+  tenant slug the caller has already established.
+  """
+  def configured(tenant, key, env_var) do
+    case Credentials.secret(tenant, "github", key) do
+      {:ok, value} -> value
+      :error -> env_var |> System.get_env() |> to_string() |> trim_credential()
+    end
+  end
 
   defp poll_search(org, token, actor, kind, extra) do
     url =
