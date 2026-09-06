@@ -40,7 +40,9 @@ the instance is not on localhost).
 
 ## 2. Build the binary
 
-There are no prebuilt downloads; build from this repo (Go 1.25):
+For installation and release downloads, see the
+[README's CLI section](../README.md#fm-steer-cli). To build from this checkout
+(Go 1.25+):
 
 ```sh
 go build -o ~/.local/bin/fm-steer ./cmd/fm-steer
@@ -80,7 +82,7 @@ Approval is a human step in a browser. Do not ask an agent to do it for you.
 
 | Command | Flags | Result |
 | --- | --- | --- |
-| `inbox put` | `--task <id>` (required), `--body <text>` (stdin when omitted) | Prints the stored item as JSON, including its `ack` token |
+| `inbox put` | `--task <id>` (defaults to `firstmate`), `--body <text>` (stdin when omitted) | Prints the stored item as JSON, including its `ack` token |
 | `inbox next` | `--task <id>` (optional) | Prints the oldest pending item as JSON; exit 1 and no output when the inbox is empty |
 | `inbox ack` | `--ack <token>` (required) | Marks that item handled; prints `acked` and exits 0 even when the portal rejected the token (`{"error":"not_found"}`), so confirm with `inbox list` |
 | `inbox list` | `--task <id>` (optional) | Prints `{"data":[...]}` — everything pending or delivered-but-unacked |
@@ -188,7 +190,7 @@ inbox stays the record of what was steered.
 | --- | --- |
 | `not logged in; run fm-steer auth login` | No credentials file, or it has no token |
 | `{"error":"unauthorized"}` | Token expired (12h) or the instance was rebuilt — log in again |
-| `{"error":"invalid"}` from `put` | Empty `--task` or empty body |
+| `{"error":"invalid"}` from `put` | Empty body |
 | `device code expired` | The approval page was not confirmed within 10 minutes |
 | `inbox next` exits 1 silently | Nothing pending; this is the normal empty case |
 | Connection refused | Wrong `--instance` / `FIRSTMATE_INSTANCE`, or the portal is not up |
