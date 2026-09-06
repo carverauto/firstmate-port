@@ -1,12 +1,16 @@
 defmodule FirstmatePort.Credentials.Discord do
   @moduledoc """
-  Resolves a Discord interaction to the tenant that owns the app which signed it.
+  Verifies a Discord interaction against one tenant's stored public key.
 
-  Discord sends no tenant context. Verification considers every stored
-  `discord`/`public_key` and succeeds only when exactly one tenant matches.
-  Shared keys are allowed in storage but ambiguous signatures are unauthorized.
-  Keys are read on every request, so portal rotation and deletion revoke them
-  immediately. Environment keys are not accepted.
+  The tenant is decided before verification, by the hostname Discord posted to
+  (see `FirstmatePort.Tenancy.DiscordHost`), so a request is only ever checked
+  against the key of the tenant it was addressed to. No other tenant's key is
+  read, tried, or reported on, which is what keeps one tenant's interactions
+  from being verified - or published - by another.
+
+  Keys come from the tenant credential store and are read on every request, so
+  storing, rotating, or deleting a key in the portal takes effect immediately.
+  Environment keys are not accepted.
   """
 
   require Logger
@@ -17,69 +21,52 @@ defmodule FirstmatePort.Credentials.Discord do
   @public_key_bytes 32
 
   @doc """
-  Verifies a Discord signature and returns the tenant it belongs to.
+  Whether `signature` is `tenant`'s Ed25519 signature over `timestamp <> body`.
 
-  `{:ok, tenant_slug}` when exactly one tenant's key verifies `timestamp <> body`,
-  `:error` otherwise.
+  True only when the tenant has a usable stored key and that key verifies the
+  raw request body exactly as received. A tenant with no key, or an unusable
+  one, verifies nothing.
   """
-  def verify(signature, timestamp, body)
+  def verify?(tenant, signature, timestamp, body)
       when is_binary(signature) and is_binary(timestamp) and is_binary(body) do
     with {:ok, raw} <- decode_hex(signature),
-         @signature_bytes <- byte_size(raw) do
-      signed = timestamp <> body
-
-      verification_keys()
-      |> Enum.filter(fn {_tenant, public_key} ->
-        :crypto.verify(:eddsa, :none, signed, raw, [public_key, :ed25519])
-      end)
-      |> Enum.map(fn {tenant, _public_key} -> tenant end)
-      |> Enum.uniq()
-      |> case do
-        [tenant] -> {:ok, tenant}
-        _ -> :error
-      end
+         @signature_bytes <- byte_size(raw),
+         {:ok, public_key} <- public_key(tenant) do
+      :crypto.verify(:eddsa, :none, timestamp <> body, raw, [public_key, :ed25519])
     else
+      _ -> false
+    end
+  end
+
+  def verify?(_tenant, _signature, _timestamp, _body), do: false
+
+  @doc """
+  The tenant's stored Discord public key as raw bytes.
+
+  `:error` when the tenant has not filled the slot or the stored value is not a
+  32-byte hex key. A malformed key is logged by tenant and slot, never by value.
+  """
+  def public_key(tenant) do
+    case FirstmatePort.Credentials.secret(tenant, @provider, @key) do
+      {:ok, hex} -> decode_public_key(tenant, hex)
       _ -> :error
     end
   end
 
-  def verify(_signature, _timestamp, _body), do: :error
+  @doc "Whether `tenant` has stored a usable Discord public key."
+  def configured?(tenant), do: match?({:ok, _}, public_key(tenant))
 
-  @doc """
-  Every usable tenant-stored `{tenant_slug, public_key}` pair.
-
-  A malformed stored key is skipped and logged by slot, never by value, so one
-  bad paste cannot take the endpoint down for other tenants.
-  """
-  def verification_keys do
-    stored()
-  end
-
-  @doc "Whether any tenant has stored a Discord public key yet."
-  def configured?, do: verification_keys() != []
-
-  defp stored do
-    @provider
-    |> FirstmatePort.Credentials.slot_across_tenants(@key)
-    |> Enum.flat_map(fn {tenant, hex} ->
-      case public_key(hex) do
-        {:ok, key} ->
-          [{tenant, key}]
-
-        :error ->
-          Logger.warning(
-            "tenant #{tenant} has an unusable #{@provider}/#{@key} credential; skipping it"
-          )
-
-          []
-      end
-    end)
-  end
-
-  defp public_key(hex) do
+  defp decode_public_key(tenant, hex) do
     case decode_hex(hex) do
-      {:ok, raw} when byte_size(raw) == @public_key_bytes -> {:ok, raw}
-      _ -> :error
+      {:ok, raw} when byte_size(raw) == @public_key_bytes ->
+        {:ok, raw}
+
+      _ ->
+        Logger.warning(
+          "tenant #{tenant} has an unusable #{@provider}/#{@key} credential; ignoring it"
+        )
+
+        :error
     end
   end
 

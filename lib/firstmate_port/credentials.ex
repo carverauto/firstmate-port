@@ -10,13 +10,15 @@ defmodule FirstmatePort.Credentials do
 
   ## Reading a secret back
 
-  `secret/3` and `slot_across_tenants/2` are the only paths that decrypt, and
-  they exist for the app itself - the Discord inbound endpoint asking "which
-  tenant signed this". They bypass authorization on purpose, so call them from
+  `secret/3` is the only path that decrypts, and it exists for the app itself -
+  the Discord inbound endpoint reading the key of the tenant whose hostname the
+  interaction arrived on. It bypasses authorization on purpose, so call it from
   server-side code with a tenant you already established, never with a
-  user-supplied slug. They are also the only callers that set the context
+  user-supplied slug. It is also the only caller that sets the context
   `FirstmatePort.Credentials.DecryptGuard` requires, so any other query that
-  reaches for the plaintext gets an error rather than a secret.
+  reaches for the plaintext gets an error rather than a secret. There is no
+  cross-tenant read: nothing in the app can decrypt a slot without naming the
+  single tenant it belongs to.
 
   There is deliberately no `AshAi` tool block here: an MCP client must not be
   able to enumerate a tenant's secrets.
@@ -78,33 +80,6 @@ defmodule FirstmatePort.Credentials do
     |> case do
       {:ok, %Credential{value: value}} when is_binary(value) -> {:ok, value}
       _ -> :error
-    end
-  end
-
-  @doc """
-  Every tenant's plaintext for one slot, as `{tenant_slug, value}` pairs.
-
-  Inbound requests from a provider that knows nothing about our tenants - a
-  Discord interaction, say - are matched against these to work out who they
-  belong to. Every stored row is considered so routing has no tenant cutoff.
-  """
-  def slot_across_tenants(provider, key) do
-    Credential
-    |> Ash.Query.for_read(:every_tenant_slot, %{provider: provider, key: key},
-      authorize?: false,
-      tenant: nil
-    )
-    |> Ash.Query.set_context(DecryptGuard.context())
-    |> Ash.Query.load([:value])
-    |> Ash.read()
-    |> case do
-      {:ok, rows} ->
-        for %Credential{tenant_slug: slug, value: value} <- rows,
-            is_binary(value),
-            do: {slug, value}
-
-      {:error, _} ->
-        []
     end
   end
 end

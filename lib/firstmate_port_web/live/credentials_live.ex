@@ -24,10 +24,13 @@ defmodule FirstmatePortWeb.CredentialsLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    tenant = Tenancy.slug(socket.assigns.current_user)
+
     {:ok,
      socket
      |> assign(:page_title, "credentials")
-     |> assign(:tenant, Tenancy.slug(socket.assigns.current_user))
+     |> assign(:tenant, tenant)
+     |> assign(:interactions_url, interactions_url(tenant))
      |> assign(:slot, default_slot())
      |> assign(:custom, @custom)
      # Bumped after every write so the browser replaces the form that was typed
@@ -174,6 +177,14 @@ defmodule FirstmatePortWeb.CredentialsLive do
     end
   end
 
+  # Nil on a single-tenant deployment, which has no per-tenant hostname to name.
+  defp interactions_url(tenant) do
+    case FirstmatePort.Tenancy.DiscordHost.hostname(tenant) do
+      nil -> nil
+      hostname -> "https://#{hostname}/interactions"
+    end
+  end
+
   defp shown(%{hint: ""} = credential), do: "#{credential.value_bytes} bytes"
   defp shown(credential), do: "ends #{credential.hint} - #{credential.value_bytes} bytes"
 
@@ -186,6 +197,10 @@ defmodule FirstmatePortWeb.CredentialsLive do
         <p class="meta">
           Tenant <span class="kind">{@tenant}</span>. Encrypted before it reaches Postgres, and
           never shown again.
+        </p>
+        <p :if={@interactions_url} class="meta">
+          Discord interactions URL for this tenant: <span class="kind">{@interactions_url}</span>. Paste it into the Discord developer
+          portal; only a key stored here verifies requests to it.
         </p>
       </header>
 

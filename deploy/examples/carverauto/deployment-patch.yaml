@@ -22,22 +22,3 @@ spec:
               value: firstmate.carverauto.dev
             - name: PUBLIC_URL
               value: https://firstmate.carverauto.dev
-            - name: NATS_REPLICAS
-              value: "3"
-            - name: GITHUB_ORG
-              value: carverauto
-            # Cloudflare proxies this hostname and sets cf-connecting-ip to the
-            # real client. Reading x-forwarded-for instead would mean trusting a
-            # list a client can prepend entries to. Only correct because nothing
-            # reaches the Gateway except through Cloudflare.
-            - name: TRUST_FORWARDED_PROTO
-              value: "true"
-            - name: CLIENT_IP_HEADER
-              value: cf-connecting-ip
-            # Shown on the public /terms and /privacy pages that Discord's
-            # Developer Portal links to. Point LEGAL_CONTACT_EMAIL at a mailbox
-            # someone actually reads before submitting those URLs to Discord.
-            - name: LEGAL_OPERATOR
-              value: Carver Automotive
-            - name: LEGAL_CONTACT_EMAIL
-              value: privacy@carverauto.dev

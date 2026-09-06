@@ -9,7 +9,10 @@ to `firstmate.example.com`. Overlay the real hostname in GitOps.
 Public Discord interactions (if enabled) use a separate hostname on a separate
 Gateway, matched path-only on `/interactions`. Keep the portal hostname off any
 public VIP, and never expose the portal UI, `/mcp`, or NATS on the Discord
-hostname.
+hostname. Give the Discord hostnames no HTTP-to-HTTPS redirect route: behind a
+proxy that fetches the origin over port 80 that redirect becomes a loop, and
+Discord sees a dead endpoint. `docs/credentials.md` has the proxy TLS
+requirement and how to verify the hostname from outside.
 
 Images come from ghcr.io (`ghcr.io/<owner>/firstmate-port`, tag `sha-<commit>`).
 If the source repo is private, the namespace also needs a `ghcr-io-cred`

@@ -2,6 +2,15 @@
 # Path-only /interactions: the portal UI, /mcp, and NATS are never reachable
 # from this hostname. Phoenix verifies the Ed25519 signature itself; there is
 # no Discord sidecar.
+#
+# There is deliberately no HTTP->HTTPS redirect route for this hostname. It is
+# Cloudflare-proxied, so an origin-side redirect is what a proxy that talks to
+# the origin over port 80 (SSL/TLS mode "Flexible") turns into an endless
+# redirect: the 301 travels back to the client, the client asks Cloudflare
+# again, and Discord's endpoint validation only ever sees a loop. Cloudflare
+# must reach this origin over TLS - SSL/TLS mode Full (strict), or a
+# Configuration Rule setting `ssl` to `strict` for this hostname alone. See
+# docs/credentials.md, "Publishing the interactions hostname".
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -30,28 +39,3 @@ spec:
       backendRefs:
         - name: firstmate-port
           port: 4000
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: discord-firstmate-http-redirect
-  namespace: firstmate
-spec:
-  parentRefs:
-    - group: gateway.networking.k8s.io
-      kind: Gateway
-      name: serviceradar-shared-gateway
-      namespace: serviceradar-system
-      sectionName: http-carverauto
-  hostnames:
-    - discord-firstmate.carverauto.dev
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
-      filters:
-        - type: RequestRedirect
-          requestRedirect:
-            scheme: https
-            statusCode: 301

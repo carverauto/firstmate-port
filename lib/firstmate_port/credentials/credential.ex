@@ -76,21 +76,6 @@ defmodule FirstmatePort.Credentials.Credential do
       filter expr(provider == ^arg(:provider) and key == ^arg(:key))
     end
 
-    read :every_tenant_slot do
-      description """
-      Every tenant's credential for one slot, ignoring the tenant filter.
-
-      Only the app itself runs this, with `authorize?: false`, to answer "which
-      tenant does this inbound request belong to". Authorized callers still fall
-      under the read policy, which filters to their own tenant.
-      """
-
-      argument :provider, :string, allow_nil?: false
-      argument :key, :string, allow_nil?: false
-      filter expr(provider == ^arg(:provider) and key == ^arg(:key))
-      prepare build(sort: [inserted_at: :asc])
-    end
-
     create :create do
       primary? true
       # AshCloak rewrites :value out of `accept` into an encrypted argument.
@@ -136,10 +121,10 @@ defmodule FirstmatePort.Credentials.Credential do
   multitenancy do
     strategy :attribute
     attribute :tenant_slug
-    # Needed by :every_tenant_slot, which the app runs unauthorized to route
-    # inbound requests that carry no tenant. Every authorized read is still
-    # filtered to the actor's tenant by the read policy above.
-    global? true
+    # Not global: every read of a credential names the tenant it is for. Inbound
+    # Discord interactions establish their tenant from the hostname before they
+    # touch this resource, so nothing needs to read across tenants any more.
+    global? false
   end
 
   attributes do

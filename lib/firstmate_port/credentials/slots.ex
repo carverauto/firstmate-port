@@ -18,7 +18,7 @@ defmodule FirstmatePort.Credentials.Slots do
       label: "Discord interactions public key",
       format: :hex64,
       about:
-        "Ed25519 public key from the Discord developer portal. The portal verifies POST /interactions with it, and the signature is what selects the tenant."
+        "Ed25519 public key from the Discord developer portal. The portal verifies POST /interactions with it, on the interactions hostname belonging to this tenant."
     },
     %{
       provider: "discord",
