@@ -221,10 +221,7 @@ defmodule FirstmatePort.Portal.ProgressProjection do
       tokens_tracked: length(tokens),
       tokens_total: if(tokens == [], do: nil, else: Enum.sum(tokens)),
       interrupted_counts: count_by(projections, & &1.interrupted, [:yes, :no, :unknown]),
-      interrupted_tracked: Enum.count(projections, &(&1.interrupted != :unknown)),
-      completed: Enum.count(projections, &(not is_nil(&1.completed_at))),
-      worker_total: projections |> Enum.flat_map(& &1.workers) |> Enum.uniq() |> length(),
-      review_total: Enum.count(projections, &(&1.review_count > 0))
+      interrupted_tracked: Enum.count(projections, &(&1.interrupted != :unknown))
     }
   end
 
@@ -238,9 +235,8 @@ defmodule FirstmatePort.Portal.ProgressProjection do
   def tenant_stats(opts) do
     with {:ok, items} <- ProgressItem.list_for_stats(opts),
          {:ok, projections} <- load(items, opts),
-         {:ok, total} <- Ash.count(ProgressItem, opts),
-         {:ok, workers} <- ProgressSummary.worker_total(Enum.map(items, & &1.id), opts) do
-      {:ok, Map.put(stats(projections), :worker_total, workers), total > length(items)}
+         {:ok, total} <- Ash.count(ProgressItem, opts) do
+      {:ok, stats(projections), total > length(items)}
     end
   end
 

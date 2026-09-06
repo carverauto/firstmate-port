@@ -246,18 +246,22 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
       case status do
         :merged -> parse_time(get_in(raw, ["pull_request", "merged_at"]))
         :complete -> parse_time(raw["closed_at"])
-        _ -> nil
+        :in_progress -> parse_time(raw["updated_at"])
       end
 
     extra = %{detail: "github poll", occurred_at: occurred_at}
 
-    case ProgressLog.record_observed_status(item, status, extra, opts) do
-      {:ok, _outcome, _} ->
-        :ok
+    if status == :in_progress and is_nil(occurred_at) do
+      :ok
+    else
+      case ProgressLog.record_observed_status(item, status, extra, opts) do
+        {:ok, _outcome, _} ->
+          :ok
 
-      {:error, reason} ->
-        Logger.warning("GitHub poll could not append status for #{item.id}: #{inspect(reason)}")
-        :ok
+        {:error, reason} ->
+          Logger.warning("GitHub poll could not append status for #{item.id}: #{inspect(reason)}")
+          :ok
+      end
     end
   end
 

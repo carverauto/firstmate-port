@@ -33,18 +33,6 @@ defmodule FirstmatePort.Portal.ProgressSummary do
     end
   end
 
-  def worker_total(ids, opts) do
-    sql = """
-    SELECT count(DISTINCT worker) FROM progress_events e
-    WHERE tenant_slug = $1 AND item_id = ANY($2::text[])
-      AND type IN ('assignment', 'contribution') AND worker <> ''
-      AND EXISTS (SELECT 1 FROM progress_events a WHERE a.item_id = e.item_id
-                  AND a.tenant_slug = e.tenant_slug AND a.type = 'assignment')
-    """
-
-    with {:ok, %{rows: [[count]]}} <- query(sql, ids, opts), do: {:ok, count}
-  end
-
   defp query(sql, ids, opts) do
     if Keyword.get(opts, :actor) do
       Repo.query(sql, [Keyword.fetch!(opts, :tenant), ids])

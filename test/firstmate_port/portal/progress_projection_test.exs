@@ -252,7 +252,6 @@ defmodule FirstmatePort.Portal.ProgressProjectionTest do
     assert last.event_count == 122
     assert {:ok, stats, false} = ProgressProjection.tenant_stats(ctx.opts)
     assert stats.tokens_total == 120
-    assert stats.review_total == 1
   end
 
   describe "load/2" do
