@@ -3,6 +3,7 @@ defmodule FirstmatePortWeb.CliAuthController do
   use FirstmatePortWeb, :controller
 
   alias FirstmatePort.Accounts.User
+  alias FirstmatePort.Auth.CliSession
   alias FirstmatePort.Auth.DeviceCode
   alias FirstmatePort.Auth.Guardian
   alias FirstmatePortWeb.Plugs.RateLimit
@@ -16,6 +17,8 @@ defmodule FirstmatePortWeb.CliAuthController do
   plug RateLimit,
        [bucket: :cli_token_poll, response_mode: :json, json_error: "slow_down"]
        when action == :token
+
+  @ttl_seconds 12 * 3600
 
   def device(conn, _params) do
     case DeviceCode.issue(%{}, authorize?: false) do
@@ -69,16 +72,29 @@ defmodule FirstmatePortWeb.CliAuthController do
       {:ok, user} ->
         claims = %{"typ" => "cli", "tenant" => code.tenant_slug || user.tenant_slug}
 
-        case Guardian.encode_and_sign(user, claims) do
-          {:ok, token, _} ->
+        case Guardian.encode_and_sign(user, claims, ttl: {@ttl_seconds, :second}) do
+          {:ok, token, issued} ->
             case DeviceCode.consume(code, %{}, authorize?: false) do
               {:ok, _} ->
-                json(conn, %{
-                  access_token: token,
-                  token_type: "Bearer",
-                  expires_in: 12 * 3600,
-                  tenant: user.tenant_slug
-                })
+                # Recorded before the token is handed over, so a session the
+                # captain can see and revoke exists for every live CLI. A token
+                # with no session is refused by `Guardian.verify_claims/2`, so
+                # failing here has to fail the grant rather than leak an
+                # unrevokable token.
+                case record_session(conn, user, code, issued) do
+                  {:ok, _session} ->
+                    json(conn, %{
+                      access_token: token,
+                      token_type: "Bearer",
+                      expires_in: @ttl_seconds,
+                      tenant: user.tenant_slug
+                    })
+
+                  {:error, reason} ->
+                    conn
+                    |> put_status(:internal_server_error)
+                    |> json(%{error: inspect(reason)})
+                end
 
               {:error, reason} ->
                 conn |> put_status(:bad_request) |> json(%{error: inspect(reason)})
@@ -92,4 +108,23 @@ defmodule FirstmatePortWeb.CliAuthController do
         conn |> put_status(:bad_request) |> json(%{error: "invalid_grant"})
     end
   end
+
+  defp record_session(conn, user, code, claims) do
+    CliSession.open(
+      %{
+        jti: claims["jti"],
+        user_id: user.id,
+        tenant_slug: code.tenant_slug || user.tenant_slug,
+        instance: Application.get_env(:firstmate_port, :public_url, ""),
+        user_agent: conn |> get_req_header("user-agent") |> List.first() |> to_string(),
+        expires_at: expires_at(claims)
+      },
+      authorize?: false
+    )
+  end
+
+  defp expires_at(%{"exp" => exp}) when is_integer(exp), do: DateTime.from_unix!(exp)
+
+  defp expires_at(_),
+    do: DateTime.add(DateTime.utc_now(), @ttl_seconds, :second)
 end

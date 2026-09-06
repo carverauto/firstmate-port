@@ -17,6 +17,11 @@ const DefaultInstance = "http://localhost:4000"
 // firstmate, not a crew item.
 const DefaultTask = "firstmate"
 
+// UserAgent identifies this CLI on every request. The portal stores it against
+// the session it issues, so the captain can tell one machine's login from
+// another's on the Sessions page and revoke the right one.
+const UserAgent = "fm-steer/1"
+
 // Run dispatches the fm-steer subcommands and returns the process exit
 // code. main.go passes it straight to os.Exit.
 func Run(args []string) int {

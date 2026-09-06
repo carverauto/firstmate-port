@@ -4,6 +4,25 @@ defmodule FirstmatePortWeb.CliAuthControllerTest do
   alias FirstmatePort.Accounts.User
   alias FirstmatePort.Auth.DeviceCode
 
+  # A CLI token is only good while its session row is, so tests take one the way
+  # fm-steer does - through the grant - rather than signing one themselves.
+  defp cli_token(user) do
+    {:ok, code} = DeviceCode.issue(%{}, authorize?: false)
+
+    {:ok, _} =
+      DeviceCode.approve(code, %{user_id: user.id, tenant_slug: user.tenant_slug},
+        authorize?: false
+      )
+
+    build_conn()
+    |> post(~p"/api/cli/auth/token", %{
+      "grant_type" => "urn:ietf:params:oauth:grant-type:device_code",
+      "device_code" => code.device_code
+    })
+    |> json_response(200)
+    |> Map.fetch!("access_token")
+  end
+
   test "device-code issue then pending poll", %{conn: conn} do
     conn = post(conn, ~p"/api/cli/auth/device", %{})
     body = json_response(conn, 200)
@@ -61,7 +80,7 @@ defmodule FirstmatePortWeb.CliAuthControllerTest do
         authorize?: false
       )
 
-    {:ok, token, _} = FirstmatePort.Auth.Guardian.encode_and_sign(a, %{"typ" => "cli"})
+    token = cli_token(a)
 
     conn =
       conn
@@ -82,8 +101,8 @@ defmodule FirstmatePortWeb.CliAuthControllerTest do
         authorize?: false
       )
 
-    {:ok, token_a, _} = FirstmatePort.Auth.Guardian.encode_and_sign(a, %{"typ" => "cli"})
-    {:ok, token_b, _} = FirstmatePort.Auth.Guardian.encode_and_sign(b, %{"typ" => "cli"})
+    token_a = cli_token(a)
+    token_b = cli_token(b)
 
     conn =
       conn
