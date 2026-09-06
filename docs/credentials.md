@@ -53,6 +53,9 @@ existing database, preserve its current key or follow the rotation procedure.
 2. Pick a slot - or *Something else* to name your own provider and key.
 3. Paste the secret and save.
 
+The same page carries **Discord application**, which is not a secret and is
+stored in the clear; see "Discord inbound" below.
+
 The page never shows a stored secret again. It shows the slot, the last four
 characters (only for values of at least 12 characters), and the byte size, which
 helps distinguish tokens and spot a truncated paste. A secret that went in wrong
@@ -135,29 +138,127 @@ that has not filled the slots. A stored slot always wins over the environment,
 so pasting a token in the portal is enough to take over from a deployment that
 was configured the old way.
 
+The Discord application id is public routing data, not a credential slot. It
+lives on the tenant and is set from the same screen.
+
 ## Discord inbound
 
 Discord posts interactions to `POST /interactions` on this Phoenix app - there is
-no sidecar and no separate service. Discord sends no tenant context, so the
-**signature must match exactly one tenant**: the request is verified against every
-tenant's stored `discord`/`public_key`. Only a unique matching tenant receives
-the payload on its `<tenant>.discord.inbound` subject. Zero matches or multiple
-matching tenants return 401 without publishing. Tenants can store the same app
-key, but interactions remain unauthorized until the ambiguity is removed.
+no sidecar and no separate service. One URL serves every tenant: an operator sets
+a single **Interactions Endpoint URL** in Discord and never has to create a
+Discord application, a hostname, or a certificate per tenant.
 
-All stored keys are considered, with no tenant cutoff. Keys are read fresh on
-each interaction, so storing, rotating, or deleting a key takes effect
-immediately, with no cache to invalidate and no restart.
+Discord names the application it is calling for in the payload, so
+**`application_id` carries the tenant**. A tenant claims its application on
+`/settings/credentials`, and interactions for that application are verified with
+that tenant's stored `discord`/`public_key` and no one else's.
 
-To point a Discord app at a tenant:
+| Payload `application_id` | Tenant |
+| --- | --- |
+| claimed by a tenant | that tenant |
+| anything else | the default tenant |
 
-1. Store that app's public key in the tenant's `discord`/`public_key` slot.
-2. Set the app's interactions endpoint to `https://<discord host>/interactions`.
-3. Discord's own PING verification will now pass against the stored key.
+Reading the claim out of a payload that has not been verified yet is safe
+because the claim is a selector, not a credential: it decides *which* key the
+signature is checked against, never *whether* a signature is needed. Naming
+another tenant's application only means the request is measured against that
+tenant's public key, which nothing but that tenant's own Discord application can
+satisfy. A claim is unique across tenants, so one application can never be
+routed to two of them.
+
+"Anything else" is the whole of the fallback, and it is deliberately total: no
+shape of payload resolves to no tenant, because resolving to no tenant would be
+a path that reached a decision without a signature. Falling back to the default
+tenant is not a weaker check, only a different key - the only interaction it can
+authenticate is one signed by the default tenant's own application. It is also
+what makes a fresh install work with nothing stored but a public key.
+
+A missing or unusable selected key and a failed signature return the same bare
+`401 unauthorized`, without identifying the selected tenant. Two tenants may
+hold the same Discord app key without either speaking for the other - the claim,
+not the key, decides.
+
+Keys are read fresh on each interaction, so storing, rotating, or deleting one
+takes effect immediately, with no cache to invalidate and no restart. A
+verified interaction is published on that tenant's `<tenant>.discord.inbound`
+subject.
+
+Beyond the signature, an interaction must also arrive with a timestamp within
+300 seconds of now, and a body no larger than 64
+KB. The body cap is applied while the request is being read, so an oversized
+payload is never buffered or verified; it gets a 413.
 
 Environment `DISCORD_PUBLIC_KEY` values are not accepted. Enter the key through
 the portal UI or API, including on a fresh install. Portal login and cluster
 startup do not require a Discord credential.
+
+### Setting the interactions URL
+
+Once per deployment, in the
+[Discord developer portal](https://discord.com/developers/applications):
+
+1. Store the application's public key in the tenant's `discord`/`public_key`
+   slot on `/settings/credentials`. It is on the application's **General
+   Information** page, as **Public Key**.
+2. Optionally paste the application id from the same page into **Discord
+   application** on that screen. Do it when more than one tenant answers
+   interactions here. A claim requires
+   a human belonging to that tenant. An application already claimed by another
+   tenant cannot be claimed. Once the default tenant stores its public key,
+   other tenants cannot make new claims through their own accounts, protecting
+   the default tenant's unclaimed-application fallback.
+3. Set **Interactions Endpoint URL** to the URL the portal shows on
+   `/settings/credentials` - `https://<interactions hostname>/interactions`.
+   Discord also requires a **Terms of Service URL** and a **Privacy Policy URL**;
+   point them at the deployment's own public terms and privacy pages.
+4. Saving sends a signed PING from Discord. It answers PONG once the key is
+   stored, and Discord refuses to save the URL until it does.
+
+Order matters: step 1 before step 3. Discord validates the URL as part of saving
+it, and an endpoint with no key stored answers 401 to the validating PING -
+which Discord reports as an endpoint that could not be verified.
+
+The key never leaves the portal: it is not a Kubernetes secret, not an
+environment variable, and never appears in a chat message or an HTTP response.
+
+### Publishing the interactions hostname
+
+The interactions hostname exposes exactly one path. For the portal’s separate
+public-access policy, see [Security](security.md#public-access).
+`deploy/examples/carverauto/discord-httproute.yaml` is a working example: an `Exact` `/interactions` match on the public gateway,
+and nothing else. The portal UI, `/mcp`, `/api`, and NATS are not routed there,
+and `FirstmatePortWeb.Plugs.DiscordHostGuard` answers 404 for any other path on
+it even if a route is later widened.
+
+Set the hostname in `DISCORD_INTERACTIONS_HOST`. That tells the app
+which name is exposed; it does not route anything. Leave it
+unset in development, where the portal and the endpoint share one origin.
+
+If the hostname is behind Cloudflare, Cloudflare must reach the origin over TLS:
+set SSL/TLS to **Full (strict)**, or add a Configuration Rule setting `ssl` to
+`strict` for the interactions hostname alone when the zone default has to stay
+as it is. Two failures follow from getting this wrong, and both look like an
+endpoint that is simply "not live":
+
+- **Flexible** makes Cloudflare fetch the origin over plain HTTP. Any
+  origin-side HTTP-to-HTTPS redirect then becomes an endless loop - the 301
+  travels back to the browser, the browser asks Cloudflare again - and Discord
+  only ever sees a redirect, never a PONG. This is why the example manifest has
+  no HTTP redirect route for the Discord hostname.
+- Plain HTTP between Cloudflare and the origin also puts the interaction token
+  in the payload on the wire in the clear. The Ed25519 signature protects
+  authenticity, not confidentiality.
+
+Verify from outside the cluster before pointing Discord at it. An unsigned POST
+must answer `401` promptly:
+
+```sh
+curl -i -X POST -H 'content-type: application/json' -d '{"type":1}' \
+  https://discord.example.com/interactions
+```
+
+A timeout means the request never reached the app; a `301` means the redirect
+loop above; portal HTML means the hostname is routing more than `/interactions`.
 
 ## How the secret is protected
 
@@ -166,8 +267,8 @@ startup do not require a Discord credential.
 - **On the way out.** `value` is a private field, so no JSON API, MCP tool, or
   serializer can reach it, and `FirstmatePort.Credentials.DecryptGuard` refuses to
   decrypt for any query that did not ask for plaintext by name. Only
-  `FirstmatePort.Credentials.secret/3` and `slot_across_tenants/2` do, and they
-  are server-side. No HTTP response returns a secret.
+  `FirstmatePort.Credentials.secret/3` does, and it is server-side and always
+  names the single tenant it is reading for. No HTTP response returns a secret.
 - **Between tenants.** Rows are attribute-scoped by `tenant_slug`, and the read
   policy filters to the actor's own tenant even if a query is handed someone
   else's slug.

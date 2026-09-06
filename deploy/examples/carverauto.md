@@ -9,7 +9,7 @@ the portal. Copy them into GitOps overlays, `.env`, or `docker-compose.override.
 | LAN VIP (previous gateway) | `192.168.6.87` |
 | OIDC issuer (Authentik) | `https://auth.carverauto.dev/application/o/firstmate/` |
 | Image | `ghcr.io/carverauto/firstmate-port` |
-| Discord interactions | `discord-firstmate.carverauto.dev` |
+| Discord interactions | `discord-firstmate.carverauto.dev` (`DISCORD_INTERACTIONS_HOST`) |
 | Local sign-in | `LOCAL_AUTH=true`; provision credentials with the command below (see [Sign-in](../../docs/deploy.md#sign-in)) |
 | BuildBuddy | `carverauto.buildbuddy.io` |
 
@@ -21,7 +21,7 @@ Gateways in this cluster:
 | Route | Gateway | Section | Hostname |
 | --- | --- | --- | --- |
 | Portal | `serviceradar-system/serviceradar-shared-gateway` | `https-carverauto` / `http-carverauto` | `firstmate.carverauto.dev`, whole app |
-| Discord interactions | same Gateway | `https-carverauto` / `http-carverauto` | `discord-firstmate.carverauto.dev`, path-only `/interactions` |
+| Discord interactions | same Gateway | `https-carverauto` | `discord-firstmate.carverauto.dev`, path-only `/interactions` |
 
 The portal was LAN-only (`lan-edge/lan-shared-gateway`, VIP `192.168.6.87`) until
 Discord needed reachable Terms of Service and Privacy Policy URLs. Both hostnames
@@ -58,3 +58,7 @@ document, so swapping in Keycloak, Dex, Google, Okta, or Entra means changing
 `OIDC_ISSUER` and the client credentials, nothing else.
 [`carverauto/bootstrap-authentik-oidc.sh`](carverauto/bootstrap-authentik-oidc.sh)
 provisions the client for this particular provider.
+
+The Discord route has no HTTP-to-HTTPS redirect: a proxy fetching the origin
+over HTTP would otherwise loop. Configure Cloudflare to fetch this hostname
+with strict TLS. See [Discord inbound](../../docs/credentials.md#discord-inbound).

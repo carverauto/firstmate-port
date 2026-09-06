@@ -85,11 +85,14 @@ config :firstmate_port,
   # Local sign-in is the default way in: a fresh portal must be signable-into
   # without an identity provider.
   local_auth: true,
-  # Seam, not a feature. Public images are OSS and compile with this off; the
-  # SaaS lane owns sign-up, tenant provisioning, and billing in its own repo.
-  # Tenancy is already attribute-based, so nothing here needs rewriting later.
+  # Reserved compatibility switch; public images compile with this off.
   enable_saas: false,
-  default_tenant_slug: "local"
+  default_tenant_slug: "local",
+  # The hostname this deployment publishes its interactions URL on (see
+  # DISCORD_INTERACTIONS_HOST in .env.example). Empty means the portal and the
+  # endpoint share one origin, which is the localhost default; the tenant an
+  # interaction belongs to comes from the payload either way.
+  discord_interactions_host: nil
 
 # Deliberately slow. Test config lowers it; nothing else should.
 config :firstmate_port, FirstmatePort.Accounts.Password, iterations: 210_000

@@ -1,11 +1,25 @@
 defmodule FirstmatePortWeb.CredentialsJourneyTest do
-  use FirstmatePortWeb.ConnCase, async: true
+  use FirstmatePortWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
 
   alias FirstmatePort.Accounts.{Tenant, User}
   alias FirstmatePort.Auth.Guardian
   alias FirstmatePort.Repo
+
+  @interactions_host "discord.example.com"
+  @application_id "333333333333333333"
+
+  setup do
+    previous = Application.get_env(:firstmate_port, :discord_interactions_host)
+    Application.put_env(:firstmate_port, :discord_interactions_host, @interactions_host)
+
+    on_exit(fn ->
+      Application.put_env(:firstmate_port, :discord_interactions_host, previous)
+    end)
+
+    :ok
+  end
 
   test "portal storage enables Discord and API rotation and deletion revoke its keys", %{
     conn: conn
@@ -29,9 +43,16 @@ defmodule FirstmatePortWeb.CredentialsJourneyTest do
     capture("credentials-empty.html", empty)
     assert ping(private).status == 401
 
+    claimed =
+      view
+      |> form("#discord-application-0", %{"application_id" => @application_id})
+      |> render_submit()
+
+    assert claimed =~ @application_id
+
     stored =
       view
-      |> form("#credential-form-0", %{"value" => key, "description" => "Discord application"})
+      |> form("#credential-form-1", %{"value" => key, "description" => "Discord application"})
       |> render_submit()
 
     refute stored =~ key
@@ -74,8 +95,10 @@ defmodule FirstmatePortWeb.CredentialsJourneyTest do
 
     capture("credentials-journey.txt", """
     Authenticated tenant: journey
+    Discord interactions URL (one for the deployment): https://#{@interactions_host}/interactions
     Portal /settings/credentials: empty state instructs storing discord/public_key; environment keys are not accepted.
     POST /interactions before portal save: 401
+    Portal Discord application claim: #{@application_id} -> tenant journey
     Portal Save discord/public_key: stored; full value absent from rendered page.
     PostgreSQL encrypted_value: #{byte_size(ciphertext)} bytes; does not contain submitted plaintext.
     POST /interactions signed with saved key: #{pong.status} #{pong.resp_body}
@@ -89,15 +112,20 @@ defmodule FirstmatePortWeb.CredentialsJourneyTest do
     """)
   end
 
+  # Posts as Discord would: to the deployment's one interactions hostname, naming
+  # the application in the payload and signing a timestamp Discord could
+  # plausibly have just sent.
   defp ping(private) do
-    body = ~s({"type":1})
-    timestamp = "1710000000"
+    body = ~s({"type":1,"application_id":"#{@application_id}"})
+    timestamp = Integer.to_string(System.system_time(:second))
 
     signature =
       :crypto.sign(:eddsa, :none, timestamp <> body, [private, :ed25519])
       |> Base.encode16(case: :lower)
 
-    build_conn()
+    conn = build_conn()
+
+    %{conn | host: @interactions_host}
     |> put_req_header("content-type", "application/json")
     |> put_req_header("x-signature-ed25519", signature)
     |> put_req_header("x-signature-timestamp", timestamp)

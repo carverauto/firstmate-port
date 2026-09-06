@@ -32,6 +32,9 @@ defmodule FirstmatePortWeb.Endpoint do
     secure: Application.compile_env(:firstmate_port, [:session, :secure], false)
   ]
 
+  # Confine the interactions hostname before sockets and static files.
+  plug(FirstmatePortWeb.Plugs.DiscordHostGuard)
+
   socket("/live", Phoenix.LiveView.Socket,
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]

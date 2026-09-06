@@ -22,6 +22,13 @@ spec:
               value: firstmate.carverauto.dev
             - name: PUBLIC_URL
               value: https://firstmate.carverauto.dev
+            # The public hostname this deployment answers interactions on. One
+            # URL for every tenant - the payload names the Discord application
+            # and the tenant that claimed it is the one whose key verifies it.
+            # Listing it here confines it to POST /interactions. Discord public
+            # keys are never environment values - see docs/credentials.md.
+            - name: DISCORD_INTERACTIONS_HOST
+              value: discord-firstmate.carverauto.dev
             - name: NATS_REPLICAS
               value: "3"
             - name: GITHUB_ORG

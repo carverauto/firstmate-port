@@ -1,0 +1,305 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Discord interactions: the public path",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1360,
+      540
+    ],
+    "views": [
+      {
+        "id": "live-path",
+        "label": "Edge to inbound stream",
+        "focus": [
+          "discord",
+          "cloudflare",
+          "gateway",
+          "guard",
+          "controller",
+          "nats"
+        ],
+        "note": "Signed interaction in at the edge, tenant subject out on JetStream."
+      },
+      {
+        "id": "tenant-seam",
+        "label": "Which tenant signed this",
+        "focus": [
+          "controller",
+          "tenants",
+          "creds"
+        ],
+        "note": "The payload's application_id names the tenant; only that tenant's key is ever read."
+      },
+      {
+        "id": "refused",
+        "label": "What this hostname refuses",
+        "focus": [
+          "gateway",
+          "guard",
+          "rawbody"
+        ],
+        "note": "Path scoping at the gateway, again in the app, plus the body cap."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "discord",
+      "type": "external",
+      "label": "Discord",
+      "sublabel": "interactions webhook",
+      "pos": [
+        30,
+        50
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "cloudflare",
+      "type": "cloud",
+      "label": "Cloudflare",
+      "sublabel": "proxied, SSL Full (strict)",
+      "tag": "no origin redirect",
+      "pos": [
+        295,
+        50
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "gateway",
+      "type": "cloud",
+      "label": "Envoy Gateway",
+      "sublabel": "HTTPRoute Exact /interactions",
+      "pos": [
+        560,
+        50
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "guard",
+      "type": "security",
+      "label": "DiscordHostGuard",
+      "sublabel": "portal, /mcp, /api all 404 here",
+      "pos": [
+        825,
+        50
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "rawbody",
+      "type": "security",
+      "label": "CacheBodyReader",
+      "sublabel": "raw bytes, 64 KB cap",
+      "pos": [
+        1090,
+        50
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "creds",
+      "type": "database",
+      "label": "CNPG tenant_credentials",
+      "sublabel": "AshCloak discord/public_key",
+      "pos": [
+        825,
+        240
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "controller",
+      "type": "backend",
+      "label": "DiscordInteractionsController",
+      "sublabel": "application_id, then Ed25519",
+      "pos": [
+        1090,
+        240
+      ],
+      "size": [
+        220,
+        84
+      ]
+    },
+    {
+      "id": "nats",
+      "type": "messagebus",
+      "label": "NATS JetStream",
+      "sublabel": "<tenant>.discord.inbound",
+      "pos": [
+        1090,
+        430
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "tenants",
+      "type": "database",
+      "label": "CNPG tenants",
+      "sublabel": "discord_application_id claim",
+      "pos": [
+        560,
+        240
+      ],
+      "size": [
+        220,
+        84
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Cluster: namespace firstmate",
+      "wraps": [
+        "gateway",
+        "guard",
+        "rawbody",
+        "creds",
+        "tenants",
+        "controller",
+        "nats"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Interactions hostname: path-only",
+      "wraps": [
+        "guard",
+        "rawbody",
+        "controller"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "discord-to-cloudflare",
+      "from": "discord",
+      "to": "cloudflare",
+      "label": "signed POST",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": 62
+    },
+    {
+      "id": "cloudflare-to-gateway",
+      "from": "cloudflare",
+      "to": "gateway",
+      "label": "TLS to origin :443",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": 62
+    },
+    {
+      "id": "gateway-to-guard",
+      "from": "gateway",
+      "to": "guard",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "guard-to-rawbody",
+      "from": "guard",
+      "to": "rawbody",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "rawbody-to-controller",
+      "from": "rawbody",
+      "to": "controller",
+      "label": "exact bytes",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "controller-to-nats",
+      "from": "controller",
+      "to": "nats",
+      "label": "publish",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "creds-to-controller",
+      "from": "creds",
+      "to": "controller",
+      "label": "that tenant's key only",
+      "variant": "security",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -34
+    },
+    {
+      "id": "tenants-to-controller",
+      "from": "tenants",
+      "to": "creds",
+      "label": "claim picks the tenant",
+      "variant": "security",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -34
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "What made it live",
+      "items": [
+        "Cloudflare fetches this hostname over TLS, not port 80",
+        "No HTTP-to-HTTPS redirect route here to loop on"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Tenant seam",
+      "items": [
+        "One URL; the payload's application_id names the tenant",
+        "Unclaimed applications always fall to the default tenant",
+        "Missing key or failed signature returns a bare 401"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Refused here",
+      "items": [
+        "Anything but POST /interactions: 404",
+        "Over 64 KB: 413, before the signature is considered"
+      ]
+    }
+  ]
+}

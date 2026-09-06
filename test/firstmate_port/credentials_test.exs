@@ -221,27 +221,25 @@ defmodule FirstmatePort.CredentialsTest do
       assert Exception.message(error) =~ "without asking to decrypt it"
     end
 
-    test "shared app keys are stored but cannot select a tenant", %{local: local, other: other} do
+    test "a secret is only ever read for the tenant that owns it", %{local: local, other: other} do
       {public, private} = :crypto.generate_key(:eddsa, :ed25519)
       key = Base.encode16(public)
 
-      for user <- [local, other] do
-        {:ok, _} =
-          Credential.create(
-            %{provider: "discord", key: "public_key", value: key},
-            Tenancy.opts(user)
-          )
-      end
+      {:ok, _} =
+        Credential.create(
+          %{provider: "discord", key: "public_key", value: key},
+          Tenancy.opts(local)
+        )
 
-      pairs = Credentials.slot_across_tenants("discord", "public_key")
-
-      assert Enum.sort(pairs) == [{"local", key}, {"other", key}]
+      assert {:ok, ^key} = Credentials.secret(local, "discord", "public_key")
+      assert :error = Credentials.secret(other, "discord", "public_key")
 
       signature =
         :crypto.sign(:eddsa, :none, "1{}", [private, :ed25519])
         |> Base.encode16()
 
-      assert :error = Credentials.Discord.verify(signature, "1", "{}")
+      assert Credentials.Discord.verify?("local", signature, "1", "{}")
+      refute Credentials.Discord.verify?("other", signature, "1", "{}")
     end
 
     test "an empty slot reads as :error", %{local: local} do
