@@ -15,7 +15,8 @@ defmodule FirstmatePortWeb.Mcp do
       :list_open_prs,
       :list_open_issues,
       :upsert_github_item,
-      :assign_github_item
+      :assign_github_item,
+      :search_fleet
     ]
   end
 
@@ -25,6 +26,8 @@ defmodule FirstmatePortWeb.Mcp do
     farm01/demo rolls, and no-mistakes run events. Do not assemble GitHub URLs.
     List diagrams without html/png/svg payloads. no-mistakes findings stay on the LAN
     portal; Discord fan-out is generic (no snippets, no customer names).
+    search_fleet searches everything already recorded here - PRs, issues, progress,
+    rolls, no-mistakes runs, diagram titles - so prefer it over listing each kind.
     """
   end
 end

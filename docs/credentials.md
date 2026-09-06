@@ -99,8 +99,16 @@ schema change. The ones the portal knows by name are in
 live (a `discord`/`public_key` that is not 64 hex characters is refused at the
 form, not at the next inbound interaction).
 
-Currently, only `discord`/`public_key` is consumed by an integration. Other
-slots are storage only: saving a GitHub token does not configure the existing
+Two slots are consumed by an integration today:
+
+- `discord`/`public_key` verifies inbound interactions (below).
+- `embeddings`/`api_key` is the provider key for optional fleet-log semantic
+  search. It is read server-side and passed per request, never written into
+  application environment. See [fleet-search.md](fleet-search.md); the model it
+  is used with is a tenant setting, not a secret, and is chosen on the same
+  page.
+
+The rest are storage only: saving a GitHub token does not configure the existing
 `GITHUB_TOKEN`-based poller, and saving a bot token does not wire outbound Discord
 calls. Portal sign-in remains configured from the deployment environment; it
 does not read `oidc`/`client_secret`.

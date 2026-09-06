@@ -65,6 +65,7 @@ defmodule FirstmatePortWeb.Router do
     get "/progress", IngestController, :list_progress
     get "/rolls", IngestController, :list_rolls
     get "/no-mistakes", IngestController, :list_no_mistakes
+    get "/fleet/search", FleetController, :search
   end
 
   scope "/api/cli", FirstmatePortWeb do
@@ -101,6 +102,7 @@ defmodule FirstmatePortWeb.Router do
     post "/progress", IngestController, :create_progress
     post "/rolls", IngestController, :create_roll
     post "/no-mistakes", IngestController, :create_no_mistakes
+    post "/fleet/sync", FleetController, :sync
   end
 
   scope "/", FirstmatePortWeb do
@@ -127,6 +129,7 @@ defmodule FirstmatePortWeb.Router do
 
     live "/login/device", DeviceLive
     live "/", PortalLive
+    live "/search", SearchLive
     live "/queues", QueuesLive
     live "/prs", BoardLive
     live "/issues", BoardLive

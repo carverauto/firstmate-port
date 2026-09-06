@@ -153,6 +153,7 @@ defmodule FirstmatePortWeb.Layouts do
         </.link>
         <nav class="nav" aria-label="Primary">
           <.link navigate={~p"/"}>Log</.link>
+          <.link navigate={~p"/search"}>Search</.link>
           <.link navigate={~p"/prs"}>PRs</.link>
           <.link navigate={~p"/issues"}>Issues</.link>
           <.link navigate={~p"/no-mistakes"}>no-mistakes</.link>

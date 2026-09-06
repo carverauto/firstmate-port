@@ -13,7 +13,7 @@ config :ash_oban, oban_name: Oban
 config :firstmate_port, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,
-  queues: [default: 10, github: 2],
+  queues: [default: 10, github: 2, fleet: 1],
   lifeline: [rescue_after: {2, :hours}],
   pruner: [max_age: {1, :day}],
   repo: FirstmatePort.Repo,
@@ -74,6 +74,7 @@ config :firstmate_port,
     FirstmatePort.Credentials,
     FirstmatePort.Portal,
     FirstmatePort.Events,
+    FirstmatePort.Fleet,
     FirstmatePort.Jobs
   ],
   public_url: "http://localhost:4000",
@@ -89,6 +90,12 @@ config :firstmate_port,
   # Tenancy is already attribute-based, so nothing here needs rewriting later.
   enable_saas: false,
   default_tenant_slug: "local"
+
+# Fleet-log search runs on Postgres text search with no configuration at all.
+# Embeddings are the opt-in half: a model here (FLEET_EMBEDDINGS_MODEL in
+# config/runtime.exs) plus an `embeddings`/`api_key` credential slot filled by
+# the tenant. Nil means a fresh checkout sends nothing to any provider.
+config :firstmate_port, FirstmatePort.Fleet.Embeddings, model: nil
 
 # Deliberately slow. Test config lowers it; nothing else should.
 config :firstmate_port, FirstmatePort.Accounts.Password, iterations: 210_000

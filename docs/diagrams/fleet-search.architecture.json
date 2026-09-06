@@ -1,0 +1,267 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "firstmate-port fleet search",
+    "output": "fleet-search.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1120,
+      610
+    ],
+    "views": [
+      {
+        "id": "text-search",
+        "label": "Text search",
+        "focus": [
+          "log",
+          "sync",
+          "documents",
+          "search",
+          "crew"
+        ],
+        "note": "The default product. Postgres full-text search over a projection of the log, with no key and no extension."
+      },
+      {
+        "id": "optional-embeddings",
+        "label": "Optional embeddings",
+        "focus": [
+          "documents",
+          "embedder",
+          "embeddings",
+          "provider"
+        ],
+        "note": "Off until an operator names a model and the tenant fills its key. The projection keeps working when a provider does not."
+      },
+      {
+        "id": "what-leaves-the-cluster",
+        "label": "What leaves the cluster",
+        "focus": [
+          "search",
+          "embeddings",
+          "provider"
+        ],
+        "note": "Only with embeddings on: the indexed text, and each query. The key is decrypted server-side and passed per request."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "log",
+      "type": "database",
+      "label": "Fleet log tables",
+      "sublabel": "PRs · issues · progress · rolls · runs",
+      "pos": [
+        40,
+        180
+      ],
+      "size": [
+        190,
+        84
+      ]
+    },
+    {
+      "id": "sync",
+      "type": "backend",
+      "label": "Fleet.Sync",
+      "sublabel": "every 10 minutes",
+      "tag": "idempotent",
+      "pos": [
+        320,
+        186
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "documents",
+      "type": "database",
+      "label": "fleet_documents",
+      "sublabel": "same CNPG database · JSON + tsvector index",
+      "tag": "attribute tenancy",
+      "pos": [
+        580,
+        180
+      ],
+      "size": [
+        200,
+        84
+      ]
+    },
+    {
+      "id": "search",
+      "type": "backend",
+      "label": "Fleet.Search",
+      "sublabel": "reciprocal rank fusion",
+      "pos": [
+        870,
+        186
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "crew",
+      "type": "external",
+      "label": "Crew and agents",
+      "sublabel": "/search · /api/fleet/search · MCP",
+      "pos": [
+        870,
+        40
+      ],
+      "size": [
+        170,
+        84
+      ]
+    },
+    {
+      "id": "embedder",
+      "type": "backend",
+      "label": "Fleet.Embedder",
+      "sublabel": "every 5 minutes, one batch",
+      "tag": "allowed to fail",
+      "pos": [
+        580,
+        340
+      ],
+      "size": [
+        200,
+        64
+      ]
+    },
+    {
+      "id": "embeddings",
+      "type": "security",
+      "label": "Fleet.Embeddings",
+      "sublabel": "tenant key from the credential store",
+      "tag": "AshCloak · never in git",
+      "pos": [
+        870,
+        340
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "provider",
+      "type": "external",
+      "label": "Embedding provider",
+      "sublabel": "OpenAI · Gemini · Mistral",
+      "pos": [
+        870,
+        480
+      ],
+      "size": [
+        170,
+        84
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "log-to-sync",
+      "from": "log",
+      "to": "sync",
+      "label": "projected as JSON",
+      "variant": "emphasis",
+      "labelDy": -34
+    },
+    {
+      "id": "sync-to-documents",
+      "from": "sync",
+      "to": "documents",
+      "label": "upsert by hash",
+      "variant": "emphasis",
+      "labelDy": -34
+    },
+    {
+      "id": "documents-to-search",
+      "from": "documents",
+      "to": "search",
+      "label": "text and vector matches",
+      "variant": "emphasis",
+      "labelDy": -34
+    },
+    {
+      "id": "search-to-crew",
+      "from": "search",
+      "to": "crew",
+      "label": "ranked results",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "embedder-writes-vectors",
+      "from": "embedder",
+      "to": "documents",
+      "label": "unit-normalised vectors",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "embedder-batch",
+      "from": "embedder",
+      "to": "embeddings",
+      "label": "stale documents",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -30
+    },
+    {
+      "id": "search-embeds-query",
+      "from": "search",
+      "to": "embeddings",
+      "label": "the query",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 20
+    },
+    {
+      "id": "embeddings-to-provider",
+      "from": "embeddings",
+      "to": "provider",
+      "label": "indexed text over HTTPS",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 34
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Always on",
+      "items": [
+        "Postgres full-text search over the projected text",
+        "GIN expression index, ts_rank_cd ranking",
+        "No new extension and no second database"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Optional",
+      "items": [
+        "An operator names a provider:model spec",
+        "The tenant fills embeddings/api_key in the portal",
+        "Off by default: nothing leaves the cluster"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Ranking",
+      "items": [
+        "Reciprocal rank fusion compares positions, not scores",
+        "Vectors are unit length, so a dot product is cosine",
+        "Search reports which passes answered"
+      ]
+    }
+  ]
+}

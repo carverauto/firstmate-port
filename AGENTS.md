@@ -6,7 +6,7 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 
 - Local stack: `docker compose up --build` (see `docs/deploy.md`)
 - Mix: `mix setup` then `mix phx.server` against compose Postgres
-- Tests: `unbuffer mix test` when `unbuffer` is available
+- Tests: `unbuffer mix test` when `unbuffer` is available. `test/test_helper.exs` loads ReqLLM's model catalogue before the suite starts; without it the first lazy load pauses the VM mid-run and unrelated tests fail on database checkouts.
 - Bazel: `./tools/bazel` (forces `--output_base=/tmp/fm-fm-port/bazel`). `--config=remote` is fine; never `--config=ci` locally. See `docs/bazel.md`
 - Prefix every `npm` with `sfw`
 
@@ -16,6 +16,7 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 - Go CLIs keep `cmd/` thin (dispatch + `os.Exit`) over `internal/` (see `internal/fmsteer`).
 - Attribute tenancy on shared Postgres and one NATS account. Streams are `<tenant>.steer` / `<tenant>.inbound`. Seed tenant `local` as an example. The API is the tenant wall and the only JetStream client.
 - Tenant credentials belong in portal UI/API and AshCloak-encrypted CNPG rows, never per-tenant Kubernetes secrets or plaintext HTTP/MCP responses. See `docs/credentials.md` for storage, Discord routing, and vault-key operations.
+- Fleet search is one projected table in the same CNPG database, not a second store: Postgres full-text search always, embeddings only when an operator sets a model and the tenant fills `embeddings`/`api_key`. Do not add a search engine, a vector extension, or a BM25 extension. See `docs/fleet-search.md`.
 - Do not add `notify.py`, `watch.py`, or the launchd plist. Those stay in firstmate-notify.
 - Site hostnames, OIDC issuer URLs, registry namespaces, and email allowlists belong in env samples / compose overrides / `deploy/examples`. Defaults run on localhost.
 - Auth is two modes on one image, both environment-driven: local sign-in (`LOCAL_AUTH`, older name `DEV_AUTH`) is a bootstrap admin account and needs no IdP; OIDC is optional. See `docs/deploy.md` "Sign-in".
