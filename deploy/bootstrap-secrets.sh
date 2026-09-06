@@ -64,9 +64,20 @@ else
 fi
 
 # The first-run sign-in. Created here so the operator can read it back with
-# kubectl instead of hunting for it in pod logs.
+# kubectl instead of hunting for it in pod logs. The Deployment requires both
+# keys, so a secret that predates the email key gets it backfilled -- the
+# password is never regenerated here, and an existing email is never changed.
 if kubectl -n "$NS" get secret firstmate-admin >/dev/null 2>&1; then
-  echo "reusing firstmate-admin"
+  if kubectl -n "$NS" get secret firstmate-admin -o jsonpath='{.data.email}' | base64 -d | grep -q .; then
+    echo "reusing firstmate-admin"
+  else
+    ADMIN_EMAIL="${ADMIN_EMAIL:-admin@localhost}"
+    EMAIL_B64="$(printf '%s' "$ADMIN_EMAIL" | openssl base64 -A)"
+    kubectl -n "$NS" patch secret firstmate-admin \
+      --type=json \
+      -p="[{\"op\":\"add\",\"path\":\"/data/email\",\"value\":\"$EMAIL_B64\"}]"
+    echo "backfilled firstmate-admin email (password untouched)"
+  fi
 else
   ADMIN_EMAIL="${ADMIN_EMAIL:-admin@localhost}"
   kubectl -n "$NS" create secret generic firstmate-admin \
