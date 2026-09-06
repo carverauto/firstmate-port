@@ -206,9 +206,10 @@ defmodule FirstmatePort.Router do
   defp level_rank(:medium), do: 1
   defp level_rank(:high), do: 2
 
+  # Nothing hard about the task means the lane can run at its floor: a
+  # question that lands in claude only because it needs citations should
+  # not pay for the top model. Escalation is unchanged.
   defp effort_for(lane, axes) do
-    base = Enum.find_index(@efforts, &(&1 == lane.base_effort)) || 1
-
     bump =
       cond do
         axes.blast_radius == :high -> 2
@@ -216,7 +217,14 @@ defmodule FirstmatePort.Router do
         true -> 0
       end
 
+    floor = if all_low?(axes), do: lane.min_effort, else: lane.base_effort
+    base = Enum.find_index(@efforts, &(&1 == floor)) || 1
+
     Enum.at(@efforts, min(base + bump, length(@efforts) - 1))
+  end
+
+  defp all_low?(axes) do
+    axes.ambiguity == :low and axes.blast_radius == :low and axes.risk == :low
   end
 
   defp checkpoint_for(%{blast_radius: :high}), do: "human-review"

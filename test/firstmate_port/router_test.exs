@@ -2,6 +2,7 @@ defmodule FirstmatePort.RouterTest do
   use ExUnit.Case, async: true
 
   alias FirstmatePort.Router
+  alias FirstmatePort.Router.Matrix
 
   test "classify detects a standard code task" do
     axes = Router.classify("fix the failing test in the portal ingest controller")
@@ -232,6 +233,59 @@ defmodule FirstmatePort.RouterTest do
       refute got.model == "harness-default"
       assert got.model_display != got.model or got.model == got.model_display
     end
+  end
+
+  test "a cheap task in the claude lane runs the cheap claude model" do
+    got = Router.route("summarize the compliance rules and cite the sources required")
+
+    assert got.harness == "claude"
+    assert got.effort == "low"
+    assert got.model == "claude-haiku-4-5-20251001"
+    assert got.model_display == "Claude Haiku 4.5"
+
+    harder =
+      Router.route("summarize the compliance rules and cite the sources required",
+        axes: %{ambiguity: :medium}
+      )
+
+    assert harder.harness == "claude"
+    assert harder.effort == "medium"
+    assert harder.model == "claude-sonnet-5"
+
+    escalated =
+      Router.route("summarize the compliance rules and cite the sources required",
+        axes: %{risk: :high}
+      )
+
+    assert escalated.effort == "high"
+    assert escalated.model == "claude-opus-5"
+  end
+
+  test "no model the matrix declares is unreachable, and no route needs an undeclared one" do
+    levels = [:low, :medium, :high]
+
+    reached =
+      for kind <- Router.kinds(),
+          ambiguity <- levels,
+          blast <- levels,
+          risk <- levels,
+          cites <- [true, false],
+          web <- [true, false],
+          into: MapSet.new() do
+        Router.route("a task",
+          axes: %{
+            kind: kind,
+            ambiguity: ambiguity,
+            blast_radius: blast,
+            risk: risk,
+            citations_required?: cites,
+            live_web_required?: web
+          }
+        ).model
+      end
+
+    assert MapSet.equal?(reached, MapSet.new(Matrix.declared_models())),
+           "declared but unreachable: #{inspect(MapSet.difference(MapSet.new(Matrix.declared_models()), reached))}"
   end
 
   test "an eval case that names no model cannot pass" do

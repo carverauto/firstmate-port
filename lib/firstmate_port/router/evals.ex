@@ -176,6 +176,13 @@ defmodule FirstmatePort.Router.Evals do
       expect_model: "grok-4-fast"
     },
     %{
+      name: "cited chat runs cheap",
+      description: "summarize the compliance rules and cite the sources required",
+      expect_harness: "claude",
+      expect_effort: "low",
+      expect_model: "claude-haiku-4-5-20251001"
+    },
+    %{
       name: "ambiguous investigation",
       description:
         "figure out why the fleet rolls are flaky on farm01; the cause is unknown, " <>
