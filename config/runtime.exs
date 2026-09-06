@@ -121,6 +121,10 @@ if config_env() == :prod do
     header: System.get_env("CLIENT_IP_HEADER"),
     trusted_hops: String.to_integer(System.get_env("CLIENT_IP_TRUSTED_HOPS") || "0")
 
+  config :firstmate_port,
+         :trust_forwarded_proto,
+         System.get_env("TRUST_FORWARDED_PROTO") == "true"
+
   # Flip to "enforce" once the browser console is clean under report-only.
   config :firstmate_port, FirstmatePortWeb.Plugs.SecurityHeaders,
     csp_mode: if(System.get_env("CSP_MODE") == "enforce", do: :enforce, else: :report_only),
@@ -244,3 +248,4 @@ if config_env() == :prod do
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
 end
+

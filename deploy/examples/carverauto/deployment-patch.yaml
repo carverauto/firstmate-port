@@ -30,6 +30,8 @@ spec:
             # real client. Reading x-forwarded-for instead would mean trusting a
             # list a client can prepend entries to. Only correct because nothing
             # reaches the Gateway except through Cloudflare.
+            - name: TRUST_FORWARDED_PROTO
+              value: "true"
             - name: CLIENT_IP_HEADER
               value: cf-connecting-ip
             # Shown on the public /terms and /privacy pages that Discord's

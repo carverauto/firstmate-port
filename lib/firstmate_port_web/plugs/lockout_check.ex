@@ -3,7 +3,7 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheck do
   Refuses a sign-in attempt while the account it names is locked out.
 
   Reads the account identifier from a request param (the email a sign-in form
-  posts) or from a conn assign, and asks
+  posts), and asks
   `FirstmatePort.Security.Lockouts.active_lockout/1`. A locked account gets
   `423 Locked` with a JSON body, or a `303` back to sign-in with a flash for
   browsers. Anything else — no identifier in the request, no active lockout —
@@ -12,14 +12,10 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheck do
 
   ## Options
 
-    * `:actor_id_param` — param to read the account identifier from, e.g.
-      `"email"`.
-    * `:actor_id_assign` — conn assign to read it from instead, e.g.
-      `:current_user` (the `:email` field is used).
-    * `:response_mode` — `:auto` (default), `:json` or `:html`.
+    * `:actor_id_param` — required param to read the account identifier from,
+      e.g. `"email"`.
+    * `:response_mode` — required, `:json` or `:html`.
     * `:html_redirect_to` — path for the 303. Defaults to `"/login"`.
-
-  One of `:actor_id_param` / `:actor_id_assign` is required.
 
   Place it after `Plug.Parsers` so params are available, and after
   `:fetch_live_flash` on HTML pipelines.
@@ -36,22 +32,20 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheck do
   @impl true
   def init(opts) do
     param = Keyword.get(opts, :actor_id_param)
-    assign = Keyword.get(opts, :actor_id_assign)
 
-    if is_nil(param) and is_nil(assign) do
-      raise ArgumentError, "LockoutCheck requires :actor_id_param or :actor_id_assign"
+    if is_nil(param) do
+      raise ArgumentError, "LockoutCheck requires :actor_id_param"
     end
 
-    response_mode = Keyword.get(opts, :response_mode, :auto)
+    response_mode = Keyword.get(opts, :response_mode)
 
-    if response_mode not in [:auto, :json, :html] do
+    if response_mode not in [:json, :html] do
       raise ArgumentError,
-            "LockoutCheck :response_mode must be :auto, :json or :html (got #{inspect(response_mode)})"
+            "LockoutCheck :response_mode is required and must be :json or :html (got #{inspect(response_mode)})"
     end
 
     %{
       param: param,
-      assign: assign,
       response_mode: response_mode,
       html_redirect_to: Keyword.get(opts, :html_redirect_to, "/login")
     }
@@ -75,7 +69,7 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheck do
   end
 
   defp deny(conn, retry_after, config) do
-    case response_mode(conn, config.response_mode) do
+    case config.response_mode do
       :json ->
         conn
         |> put_resp_content_type("application/json")
@@ -95,16 +89,6 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheck do
     end
   end
 
-  defp response_mode(_conn, :json), do: :json
-  defp response_mode(_conn, :html), do: :html
-
-  defp response_mode(conn, :auto) do
-    case get_req_header(conn, "accept") do
-      [accept | _] -> if String.contains?(accept, "text/html"), do: :html, else: :json
-      [] -> :json
-    end
-  end
-
   defp maybe_put_flash(conn, message) do
     if Map.has_key?(conn.assigns, :flash) do
       Phoenix.Controller.put_flash(conn, :error, message)
@@ -113,26 +97,11 @@ defmodule FirstmatePortWeb.Plugs.LockoutCheck do
     end
   end
 
-  defp actor_id(conn, %{param: param, assign: assign}) do
-    from_param(conn, param) || from_assign(conn, assign)
-  end
-
-  defp from_param(_conn, nil), do: nil
-
-  defp from_param(conn, param) do
+  defp actor_id(conn, %{param: param}) do
     case conn.params do
       %{^param => value} when is_binary(value) -> Lockouts.actor_key(value)
       _ -> nil
     end
   end
-
-  defp from_assign(_conn, nil), do: nil
-
-  defp from_assign(conn, assign) do
-    case Map.get(conn.assigns, assign) do
-      %{email: email} -> Lockouts.actor_key(email)
-      value when is_binary(value) -> Lockouts.actor_key(value)
-      _ -> nil
-    end
-  end
 end
+

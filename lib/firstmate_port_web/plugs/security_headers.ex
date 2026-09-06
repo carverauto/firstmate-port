@@ -14,7 +14,7 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeaders do
 
   ## Options
 
-    * `:csp` — which policy to serve:
+    * `:csp` — required policy to serve:
       * `:browser` — the portal UI. Same-origin everything, nonced inline
         script, websockets for LiveView.
       * `:embed` — stored Archify diagram HTML served at `/d/:id`. Those
@@ -23,8 +23,6 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeaders do
         plugins, form posts and cross-origin loads.
       * `:api` — JSON endpoints. Denies everything; a JSON response has no
         business loading a subresource.
-      * `nil` (default) — set no CSP of its own, only rewrite one already on
-        the response according to `:csp_mode`.
     * `:csp_mode` — `:report_only` (default) or `:enforce`. Report-only applies
       to the resource directives, the ones that can break a page. The framing
       and form-action baseline is enforced in both modes: browsers ignore
@@ -80,9 +78,9 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeaders do
   def init(opts) do
     csp = Keyword.get(opts, :csp)
 
-    if csp not in [nil, :browser, :embed, :api] do
+    if csp not in [:browser, :embed, :api] do
       raise ArgumentError,
-            "SecurityHeaders :csp must be nil, :browser, :embed or :api (got #{inspect(csp)})"
+            "SecurityHeaders :csp is required and must be :browser, :embed or :api (got #{inspect(csp)})"
     end
 
     opts
@@ -106,8 +104,6 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeaders do
   @spec nonce(map()) :: String.t() | nil
   def nonce(%{csp_nonce: nonce}), do: nonce
   def nonce(_assigns), do: nil
-
-  defp put_nonce(conn, nil), do: conn
 
   defp put_nonce(conn, _csp) do
     assign(conn, :csp_nonce, Base.encode64(:crypto.strong_rand_bytes(16)))
@@ -145,46 +141,34 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeaders do
   end
 
   defp put_csp(conn, opts) do
-    case policies(conn, Keyword.get(opts, :csp)) do
-      nil ->
+    {baseline, full} = policies(conn, Keyword.fetch!(opts, :csp))
+    report_uri = Keyword.get(opts, :csp_report_uri)
+    mode = if baseline == full, do: :enforce, else: Keyword.get(opts, :csp_mode, :report_only)
+
+    case mode do
+      :enforce ->
         conn
+        |> delete_resp_header("content-security-policy-report-only")
+        |> put_resp_header("content-security-policy", append_report_uri(full, report_uri))
 
-      {baseline, full} ->
-        report_uri = Keyword.get(opts, :csp_report_uri)
-        mode = if baseline == full, do: :enforce, else: Keyword.get(opts, :csp_mode, :report_only)
-
-        case mode do
-          :enforce ->
-            conn
-            |> delete_resp_header("content-security-policy-report-only")
-            |> put_resp_header("content-security-policy", append_report_uri(full, report_uri))
-
-          _report_only ->
-            # The baseline stays *enforced* even in report-only mode. Phoenix's
-            # own `put_secure_browser_headers` ships `frame-ancestors 'self'`,
-            # and simply demoting the whole policy to report-only would leave
-            # the app less framing-proof than before this plug existed. Browsers
-            # also ignore `frame-ancestors` in a report-only policy, so it is
-            # only worth anything enforced. What lands in report-only is the
-            # part that can actually break a page: the resource directives.
-            conn
-            |> put_resp_header("content-security-policy", baseline)
-            |> put_resp_header(
-              "content-security-policy-report-only",
-              append_report_uri(full, report_uri)
-            )
-        end
+      _report_only ->
+        # The baseline stays *enforced* even in report-only mode. Phoenix's
+        # own `put_secure_browser_headers` ships `frame-ancestors 'self'`,
+        # and simply demoting the whole policy to report-only would leave
+        # the app less framing-proof than before this plug existed. Browsers
+        # also ignore `frame-ancestors` in a report-only policy, so it is
+        # only worth anything enforced. What lands in report-only is the
+        # part that can actually break a page: the resource directives.
+        conn
+        |> put_resp_header("content-security-policy", baseline)
+        |> put_resp_header(
+          "content-security-policy-report-only",
+          append_report_uri(full, report_uri)
+        )
     end
   end
 
   # `{always enforced, full policy}`.
-  defp policies(conn, nil) do
-    case get_resp_header(conn, "content-security-policy") do
-      [policy | _] -> {@baseline, policy}
-      [] -> nil
-    end
-  end
-
   defp policies(conn, :browser), do: {@baseline, browser_policy(conn.assigns[:csp_nonce])}
   defp policies(_conn, :embed), do: {@embed_baseline, @embed_policy}
   # A JSON response has no subresources to break, so there is nothing to soak.
@@ -225,3 +209,4 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeaders do
   defp append_if(parts, true, value), do: parts ++ [value]
   defp append_if(parts, _false, _value), do: parts
 end
+

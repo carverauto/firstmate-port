@@ -11,9 +11,9 @@
 
   <h3>Your account</h3>
   <p>
-    An email address and a display name, taken from your OIDC identity provider
-    when you sign in, or from the email you type on a local instance. That is the
-    whole account record — there is no password to store, because sign-in is
+    An email address and a display name, supplied by your OIDC identity provider
+    or configured for the local bootstrap account. The local bootstrap account
+    also stores a password hash, which is verified at sign-in. OIDC sign-in is
     delegated to your identity provider.
   </p>
 
@@ -31,8 +31,12 @@
     To stop password spraying and abusive traffic, the server counts recent
     requests per client address and recent failed sign-ins per account. Those
     counters hold an address, a timestamp and an account identifier, live in
-    memory only, expire within minutes to an hour, and are lost entirely when the
-    service restarts. Denied attempts are written to the server log.
+    memory only, and are lost entirely when the service restarts. Rate-limit
+    timestamps and inactive client addresses are retained for up to 24 hours
+    plus the five-minute cleanup interval. Failed sign-ins are pruned to the
+    configured counting window (15 minutes by default), with cleanup every five
+    minutes; active lockouts last for the configured duration (15 minutes by
+    default). Denied attempts are written to the server log.
   </p>
 
   <h3>Your work</h3>
@@ -106,7 +110,14 @@
   <ul>
     <li>Session cookie: until you sign out, or it expires.</li>
     <li>
-      Rate-limit and lockout counters: minutes to an hour, in memory, and cleared on restart.
+      Rate-limit counters: up to 24 hours plus the five-minute cleanup interval,
+      in memory and cleared on restart.
+    </li>
+    <li>
+      Failed sign-in counters: the configured counting window (15 minutes by
+      default) plus up to five minutes for cleanup. Active lockouts remain for
+      their configured duration (15 minutes by default). Both are in memory,
+      cleared on successful sign-in or restart.
     </li>
     <li>Scheduler tick records: 30 days.</li>
     <li>

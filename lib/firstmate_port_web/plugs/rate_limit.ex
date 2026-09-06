@@ -17,9 +17,7 @@ defmodule FirstmatePortWeb.Plugs.RateLimit do
     * `:subject` — `:ip` (default) or `:ip_and_actor`, which keys on
       `{ip, current_user.id}` so one signed-in actor cannot spend another's
       budget from behind a shared address.
-    * `:response_mode` — `:auto` (default, sniffs `accept`), `:json`, or
-      `:html`. Pin JSON-only pipelines to `:json` so a browser-shaped
-      `Accept` header cannot turn an API 429 into a redirect.
+    * `:response_mode` — required, `:json` or `:html`.
     * `:json_error` — the `error` value in the 429 body. Defaults to
       `"rate_limited"`; the RFC 8628 token endpoint passes `"slow_down"`
       so `fm-steer` backs off instead of failing.
@@ -43,11 +41,11 @@ defmodule FirstmatePortWeb.Plugs.RateLimit do
 
   @impl true
   def init(opts) do
-    response_mode = Keyword.get(opts, :response_mode, :auto)
+    response_mode = Keyword.get(opts, :response_mode)
 
-    if response_mode not in [:auto, :json, :html] do
+    if response_mode not in [:json, :html] do
       raise ArgumentError,
-            "RateLimit :response_mode must be :auto, :json or :html (got #{inspect(response_mode)})"
+            "RateLimit :response_mode is required and must be :json or :html (got #{inspect(response_mode)})"
     end
 
     subject = Keyword.get(opts, :subject, :ip)
@@ -89,7 +87,7 @@ defmodule FirstmatePortWeb.Plugs.RateLimit do
   end
 
   defp deny(conn, retry_after, config) do
-    case response_mode(conn, config.response_mode) do
+    case config.response_mode do
       :json ->
         conn
         |> put_resp_content_type("application/json")
@@ -105,19 +103,6 @@ defmodule FirstmatePortWeb.Plugs.RateLimit do
     end
   end
 
-  defp response_mode(_conn, :json), do: :json
-  defp response_mode(_conn, :html), do: :html
-
-  defp response_mode(conn, :auto) do
-    case get_req_header(conn, "accept") do
-      [accept | _] -> if String.contains?(accept, "text/html"), do: :html, else: :json
-      [] -> :json
-    end
-  end
-
-  # Flash lives in conn.assigns from Phoenix 1.8 on, and only exists on
-  # pipelines that ran fetch_live_flash. Skip it rather than crash a JSON-shaped
-  # conn that resolved to :html.
   defp maybe_put_flash(conn, message) do
     if Map.has_key?(conn.assigns, :flash) do
       Phoenix.Controller.put_flash(conn, :error, message)
@@ -164,3 +149,4 @@ defmodule FirstmatePortWeb.Plugs.RateLimit do
   defp pluralize(1), do: "second"
   defp pluralize(_seconds), do: "seconds"
 end
+

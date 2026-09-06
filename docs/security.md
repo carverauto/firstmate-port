@@ -36,6 +36,7 @@ draws the split, including which plugs each hostname's traffic passes through.
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
 | `CLIENT_IP_HEADER` | behind a proxy | unset | Header carrying the client address. Unset means use the socket peer. |
+| `TRUST_FORWARDED_PROTO` | behind a TLS-terminating gateway | `false` | Set `true` only when the gateway overwrites `x-forwarded-proto` and is the only path to the app. Resolves HTTPS at the endpoint for HSTS. |
 | `CLIENT_IP_TRUSTED_HOPS` | no | `0` | Proxies to skip when reading `x-forwarded-for`, counting from the right. |
 | `LEGAL_CONTACT_EMAIL` | before Discord | unset | Contact on `/terms` and `/privacy`. |
 | `LEGAL_OPERATOR` | no | generic wording | Who runs this instance. |
@@ -74,7 +75,12 @@ send that header itself.
 
 Each step below stands alone and can be reverted alone.
 
-1. **Deploy with CSP in report-only.** That is the default. The one inline
+1. **Configure the gateway trust boundary and deploy with CSP in report-only.**
+   Set `TRUST_FORWARDED_PROTO=true` behind the TLS-terminating gateway (already
+   set in the Kubernetes manifests); leave it off for localhost and Compose.
+   Verify HTTPS responses carry HSTS. CSP resource directives start report-only;
+   framing and form-action restrictions remain enforced, and API CSP is always
+   enforced. The one inline
    script in the app — the pre-paint theme switch in the root layout — already
    carries a per-request nonce, so a clean console here is the expected
    outcome, not a hope.
@@ -111,6 +117,11 @@ once. Say so in advance; subsequent deploys are seamless.
 | `:diagram` (`/d/:id`) | allows inline script and style, because a stored Archify artifact *is* an inline-script document; still forbids framing, plugins, form posts and off-origin loads |
 | `:api`, `:cli_auth`, `:mcp`, `:discord_http` | `default-src 'none'` |
 
+Every pipeline must select an explicit `:browser`, `:embed` or `:api` preset.
+Browser and embed resource directives follow `CSP_MODE`; their framing,
+object, base-uri and form-action baseline stays enforced in either mode.
+The API preset is always enforced.
+
 The `:diagram` exception is the interesting one. Stored diagram HTML is
 attacker-influenced content served from the app's own origin, so the strict
 policy would be the safer choice — and would also stop every diagram from
@@ -135,7 +146,8 @@ by the replica count — the edge policy is what holds the line then.
 
 Denied requests get `429` with `retry-after` and
 `{"error": "rate_limited", "retry_after": N}`, or a `303` back to `/login` with
-a flash for browsers. Every response carries `x-ratelimit-limit`,
+a flash for browsers. Each mounted plug explicitly selects JSON or HTML; the
+request Accept header does not select the response. Every response carries `x-ratelimit-limit`,
 `x-ratelimit-remaining` and `x-ratelimit-reset`.
 
 One endpoint answers differently on purpose: `POST /api/cli/auth/token` returns
@@ -158,8 +170,9 @@ that spends one attempt per address against one account.
 `FirstmatePort.Security.Lockouts` keys on the account instead: 10 failures
 inside 15 minutes locks that account for 15 minutes, wherever they came from.
 
-Both sign-in paths feed it. The local form counts a rejected email; the OIDC
-callback counts an identity the provider vouched for but the allowlist refused,
+Both sign-in paths feed it. The local form counts failed email-and-password
+attempts; successful sign-in clears that account’s failures. The OIDC
+callback counts an identity the provider vouched for but the optional allowlist refused,
 which is a real account being turned away rather than a typo.
 
 An expired lockout resets the account's failure count. Without that, the

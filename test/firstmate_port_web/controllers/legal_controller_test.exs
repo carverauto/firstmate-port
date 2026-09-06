@@ -28,6 +28,8 @@ defmodule FirstmatePortWeb.LegalControllerTest do
     test "the terms cover the things the portal actually does", %{conn: conn} do
       body = conn |> get(~p"/terms") |> html_response(200)
 
+      assert body =~ "password-based local"
+      assert body =~ "optional extra restriction"
       assert body =~ "Acceptable use"
       assert body =~ "Integration credentials"
       assert body =~ "Discord"
@@ -37,6 +39,10 @@ defmodule FirstmatePortWeb.LegalControllerTest do
     test "the privacy policy names what is collected and for how long", %{conn: conn} do
       body = conn |> get(~p"/privacy") |> html_response(200)
 
+      assert body =~ "password hash"
+      assert body =~ "24 hours"
+      assert body =~ "five-minute cleanup interval"
+      assert body =~ "configured counting window"
       assert body =~ "Your account"
       assert body =~ "Security signals"
       assert body =~ "Discord interactions"
@@ -89,3 +95,4 @@ defmodule FirstmatePortWeb.LegalControllerTest do
     end
   end
 end
+

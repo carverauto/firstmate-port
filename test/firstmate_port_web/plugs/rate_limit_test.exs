@@ -3,6 +3,9 @@ defmodule FirstmatePortWeb.Plugs.RateLimitTest do
 
   import FirstmatePort.Test.AppConfig
 
+  alias FirstmatePort.Accounts.Password
+  alias FirstmatePort.Accounts.User
+  alias FirstmatePort.Security.Lockouts
   alias FirstmatePort.Security.RateLimiter
 
   # The suite runs with every bucket raised out of the way (config/test.exs);
@@ -15,13 +18,21 @@ defmodule FirstmatePortWeb.Plugs.RateLimitTest do
     RateLimiter.clear(bucket, "127.0.0.1")
   end
 
+  test "requires an explicit response mode" do
+    for mode <- [nil, :auto, :invalid] do
+      assert_raise ArgumentError, ~r/:response_mode is required and must be :json or :html/, fn ->
+        FirstmatePortWeb.Plugs.RateLimit.init(bucket: :auth_local, response_mode: mode)
+      end
+    end
+  end
+
   describe "JSON endpoints" do
     test "answer 429 with retry-after once the bucket is spent" do
       tighten(:cli_device_auth, 1)
 
-      assert build_conn() |> post(~p"/api/cli/auth/device") |> json_response(200)
+      assert build_conn() |> post(~p"/api/cli/auth/localice") |> json_response(200)
 
-      conn = post(build_conn(), ~p"/api/cli/auth/device")
+      conn = post(build_conn(), ~p"/api/cli/auth/localice")
       assert %{"error" => "rate_limited", "retry_after" => retry_after} = json_response(conn, 429)
       assert retry_after > 0
       assert [value] = get_resp_header(conn, "retry-after")
@@ -48,21 +59,21 @@ defmodule FirstmatePortWeb.Plugs.RateLimitTest do
     test "are on allowed responses and count down" do
       tighten(:cli_device_auth, 5)
 
-      conn = post(build_conn(), ~p"/api/cli/auth/device")
+      conn = post(build_conn(), ~p"/api/cli/auth/localice")
       assert ["5"] = get_resp_header(conn, "x-ratelimit-limit")
       assert ["4"] = get_resp_header(conn, "x-ratelimit-remaining")
       assert [reset] = get_resp_header(conn, "x-ratelimit-reset")
       assert String.to_integer(reset) > System.system_time(:second)
 
-      conn = post(build_conn(), ~p"/api/cli/auth/device")
+      conn = post(build_conn(), ~p"/api/cli/auth/localice")
       assert ["3"] = get_resp_header(conn, "x-ratelimit-remaining")
     end
 
     test "report nothing remaining on a denial" do
       tighten(:cli_device_auth, 1)
 
-      post(build_conn(), ~p"/api/cli/auth/device")
-      conn = post(build_conn(), ~p"/api/cli/auth/device")
+      post(build_conn(), ~p"/api/cli/auth/localice")
+      conn = post(build_conn(), ~p"/api/cli/auth/localice")
 
       assert ["0"] = get_resp_header(conn, "x-ratelimit-remaining")
     end
@@ -70,17 +81,30 @@ defmodule FirstmatePortWeb.Plugs.RateLimitTest do
 
   describe "browser sign-in" do
     setup do
-      put_env(:dev_auth, true)
+      put_env(:local_auth, true)
       :ok
     end
 
     test "redirects to the sign-in page with a flash rather than a bare 429" do
       tighten(:auth_local, 1)
 
-      params = %{"email" => "someone@localhost"}
-      post(build_conn(), ~p"/auth/dev", params)
+      email = "rate-limited-#{System.unique_integer([:positive])}@localhost"
 
-      conn = post(build_conn(), ~p"/auth/dev", params)
+      {:ok, _user} =
+        User.bootstrap_admin(
+          %{email: email, name: "Admin", hashed_password: Password.hash("known-password")},
+          authorize?: false
+        )
+
+      on_exit(fn -> Lockouts.clear(email) end)
+      params = %{"email" => email, "password" => "wrong-password"}
+      first = post(build_conn(), ~p"/auth/local", params)
+      assert redirected_to(first) == "/login"
+
+      assert Phoenix.Flash.get(first.assigns.flash, :error) ==
+               "That email and password did not match an account."
+
+      conn = post(build_conn(), ~p"/auth/local", params)
       assert redirected_to(conn, 303) == "/login"
       assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Too many attempts"
     end
@@ -108,3 +132,4 @@ defmodule FirstmatePortWeb.Plugs.RateLimitTest do
     end
   end
 end
+

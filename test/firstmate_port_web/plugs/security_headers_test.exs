@@ -123,6 +123,29 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeadersTest do
   describe "HSTS" do
     # HSTS over plain HTTP is meaningless and browsers ignore it, so the plug
     # only sends it on HTTPS. Tests speak HTTP, hence the scheme override.
+    test "trusts the proxy scheme only when explicitly enabled" do
+      for enabled <- [false, true] do
+        put_env(:trust_forwarded_proto, enabled)
+
+        conn =
+          build_conn()
+          |> put_req_header("x-forwarded-proto", "https")
+          |> get(~p"/login")
+
+        assert html_response(conn, 200)
+
+        if enabled do
+          assert conn.scheme == :https
+
+          assert ["max-age=63072000; includeSubDomains"] =
+                   get_resp_header(conn, "strict-transport-security")
+        else
+          assert conn.scheme == :http
+          assert get_resp_header(conn, "strict-transport-security") == []
+        end
+      end
+    end
+
     test "is omitted on plain HTTP", %{conn: conn} do
       conn = get(conn, ~p"/login")
       assert get_resp_header(conn, "strict-transport-security") == []
@@ -154,9 +177,13 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeadersTest do
   end
 
   describe "init/1" do
-    test "rejects an unknown CSP preset" do
-      assert_raise ArgumentError, ~r/:csp must be/, fn ->
-        SecurityHeaders.init(csp: :nonsense)
+    test "requires an explicit supported CSP preset" do
+      for opts <- [[], [csp: nil], [csp: :nonsense]] do
+        assert_raise ArgumentError,
+                     ~r/:csp is required and must be :browser, :embed or :api/,
+                     fn ->
+                       SecurityHeaders.init(opts)
+                     end
       end
     end
   end
@@ -167,3 +194,4 @@ defmodule FirstmatePortWeb.Plugs.SecurityHeadersTest do
     end
   end
 end
+
