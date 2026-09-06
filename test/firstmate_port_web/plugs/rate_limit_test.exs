@@ -12,10 +12,10 @@ defmodule FirstmatePortWeb.Plugs.RateLimitTest do
   # these tests tighten one bucket back down for their own duration. Everything
   # here shares 127.0.0.1 as the client address, which is exactly the subject
   # the plug keys on.
-  defp tighten(bucket, limit) do
+  defp tighten(bucket, limit, subject \\ "127.0.0.1") do
     put_env(RateLimiter, buckets: %{bucket => [limit: limit, window_seconds: 60]})
-    on_exit(fn -> RateLimiter.clear(bucket, "127.0.0.1") end)
-    RateLimiter.clear(bucket, "127.0.0.1")
+    on_exit(fn -> RateLimiter.clear(bucket, subject) end)
+    RateLimiter.clear(bucket, subject)
   end
 
   test "requires an explicit response mode" do
@@ -52,6 +52,67 @@ defmodule FirstmatePortWeb.Plugs.RateLimitTest do
 
       conn = post(build_conn(), ~p"/api/cli/auth/token", body)
       assert %{"error" => "slow_down"} = json_response(conn, 429)
+    end
+  end
+
+  describe "authenticated usage API" do
+    test "limits usage writes by actor and sends API security headers" do
+      token = "usage-rate-limit-#{System.unique_integer([:positive])}"
+
+      {:ok, agent} =
+        User.bootstrap_agent(
+          %{
+            email: "#{token}@localhost",
+            name: "Usage agent",
+            hashed_api_key: User.hash_token(token)
+          },
+          authorize?: false
+        )
+
+      subject = {"127.0.0.1", agent.id}
+      tighten(:api_write, 1, subject)
+      params = %{"provider" => "anthropic", "label" => "rate-limit", "used" => 1.0}
+
+      request = fn ->
+        build_conn()
+        |> put_req_header("authorization", "Bearer " <> token)
+        |> post(~p"/api/usage", params)
+      end
+
+      conn = request.()
+      assert %{"used" => 1.0} = json_response(conn, 200)
+      assert ["1"] = get_resp_header(conn, "x-ratelimit-limit")
+      assert ["0"] = get_resp_header(conn, "x-ratelimit-remaining")
+      assert [reset] = get_resp_header(conn, "x-ratelimit-reset")
+      assert String.to_integer(reset) >= System.system_time(:second)
+      assert [policy] = get_resp_header(conn, "content-security-policy")
+      assert policy =~ "default-src 'none'"
+      assert get_resp_header(conn, "content-security-policy-report-only") == []
+      assert RateLimiter.remaining(:api_write, subject) == 0
+
+      conn = request.()
+      assert %{"error" => "rate_limited", "retry_after" => retry_after} = json_response(conn, 429)
+      assert retry_after > 0
+      assert [value] = get_resp_header(conn, "retry-after")
+      assert String.to_integer(value) == retry_after
+      assert [^policy] = get_resp_header(conn, "content-security-policy")
+    end
+
+    test "counts anonymous requests before rejecting them and protects the rejection" do
+      tighten(:api_write, 1, {"127.0.0.1", :anonymous})
+
+      conn = post(build_conn(), ~p"/api/usage", %{})
+      assert %{"error" => "unauthorized"} = json_response(conn, 401)
+      assert ["0"] = get_resp_header(conn, "x-ratelimit-remaining")
+      assert [policy] = get_resp_header(conn, "content-security-policy")
+      assert policy =~ "default-src 'none'"
+
+      for {method, path} <- [{:get, ~p"/api/usage"}, {:post, ~p"/api/route"}] do
+        conn = dispatch(build_conn(), @endpoint, method, path, %{})
+        assert %{"error" => "rate_limited"} = json_response(conn, 429)
+        assert [_retry_after] = get_resp_header(conn, "retry-after")
+        assert [^policy] = get_resp_header(conn, "content-security-policy")
+      end
     end
   end
 

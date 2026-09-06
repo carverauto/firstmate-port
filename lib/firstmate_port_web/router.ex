@@ -79,8 +79,10 @@ defmodule FirstmatePortWeb.Router do
   end
 
   pipeline :authed do
+    plug SecurityHeaders, csp: :api
     plug :accepts, ["json"]
     plug FirstmatePortWeb.Plugs.LoadActor
+    plug RateLimit, bucket: :api_write, subject: :ip_and_actor, response_mode: :json
     plug FirstmatePortWeb.Plugs.RequireActor
   end
 
