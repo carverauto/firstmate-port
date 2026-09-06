@@ -209,7 +209,6 @@ a:hover {
   gap: 0.75rem;
 }
 
-.who,
 .quiet,
 .meta,
 .hint,
@@ -403,6 +402,71 @@ pre {
 
 .theme-toggle button:hover {
   color: var(--ink);
+}
+
+.account-menu {
+  position: relative;
+}
+
+.account-menu summary {
+  display: inline-flex;
+  border-radius: 50%;
+  cursor: pointer;
+  list-style: none;
+}
+
+.account-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.account-menu summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.account-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  display: block;
+  background: var(--bg);
+}
+
+.account-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 30;
+  min-width: 15rem;
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+
+.account-email {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-section-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.account-signout {
+  justify-self: start;
 }
 
 .auth-shell {

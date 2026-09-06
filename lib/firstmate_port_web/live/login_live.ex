@@ -89,7 +89,7 @@ defmodule FirstmatePortWeb.LoginLive do
 
         <%= if @oidc == :disabled and not @local? do %>
           <p class="empty-copy" role="status">
-            Sign-in is not configured. Set LOCAL_AUTH=true for the local account, or set OIDC_ISSUER, OIDC_CLIENT_ID and OIDC_CLIENT_SECRET for an identity provider.
+            Sign-in is not configured. Enable the local account, or connect an identity provider.
           </p>
         <% end %>
       </section>

@@ -100,6 +100,46 @@ defmodule FirstmatePortWeb.Layouts do
     """
   end
 
+  @doc """
+  Gravatar URL for an account email, with an identicon fallback when the
+  address has no Gravatar image.
+  """
+  def avatar_url(email) do
+    hash =
+      email
+      |> to_string()
+      |> String.trim()
+      |> String.downcase()
+      |> then(&:crypto.hash(:md5, &1))
+      |> Base.encode16(case: :lower)
+
+    "https://www.gravatar.com/avatar/#{hash}?s=64&d=identicon"
+  end
+
+  attr :current_user, :any, required: true
+
+  def account_menu(assigns) do
+    ~H"""
+    <details class="account-menu">
+      <summary aria-label={"Account: #{@current_user.email}"} title={@current_user.email}>
+        <img
+          src={avatar_url(@current_user.email)}
+          alt=""
+          width="30"
+          height="30"
+          class="account-avatar"
+        />
+      </summary>
+      <div class="account-panel">
+        <p class="account-email">{@current_user.email}</p>
+        <p class="account-section-label">Color theme</p>
+        <.theme_toggle />
+        <.link href={~p"/auth/logout"} class="btn btn-quiet account-signout">Sign out</.link>
+      </div>
+    </details>
+    """
+  end
+
   attr :flash, :map, required: true
   attr :current_user, :any, default: nil
   slot :inner_block, required: true
@@ -108,7 +148,9 @@ defmodule FirstmatePortWeb.Layouts do
     ~H"""
     <div class="shell">
       <header class="topbar">
-        <.link navigate={~p"/"} class="brand"><.wheel_mark /><span class="brand-text">firstmate port</span></.link>
+        <.link navigate={~p"/"} class="brand">
+          <.wheel_mark /><span class="brand-text">firstmate port</span>
+        </.link>
         <nav class="nav" aria-label="Primary">
           <.link navigate={~p"/"}>Log</.link>
           <.link navigate={~p"/prs"}>PRs</.link>
@@ -118,9 +160,8 @@ defmodule FirstmatePortWeb.Layouts do
           <.link navigate={~p"/settings/credentials"}>Credentials</.link>
         </nav>
         <div class="topbar-end">
-          <.theme_toggle />
-          <span :if={@current_user} class="who">{@current_user.email}</span>
-          <.link :if={@current_user} href={~p"/auth/logout"} class="quiet">Sign out</.link>
+          <.account_menu :if={@current_user} current_user={@current_user} />
+          <.theme_toggle :if={is_nil(@current_user)} />
         </div>
       </header>
       <main class="main">
@@ -138,7 +179,9 @@ defmodule FirstmatePortWeb.Layouts do
     ~H"""
     <div class="auth-shell">
       <header class="auth-top">
-        <.link href={~p"/login"} class="brand"><.wheel_mark /><span class="brand-text">firstmate port</span></.link>
+        <.link href={~p"/login"} class="brand">
+          <.wheel_mark /><span class="brand-text">firstmate port</span>
+        </.link>
         <.theme_toggle />
       </header>
       <.flash_group flash={@flash} />

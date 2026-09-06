@@ -79,7 +79,7 @@ defmodule FirstmatePortWeb.PortalLive do
       </section>
 
       <section :if={@filter in ["all", "rolls"]} class="plate">
-        <h2>Image builds / cluster deploys</h2>
+        <h2>Builds and deploys</h2>
         <p :if={@rolls == []} class="empty-state">No image builds or cluster deploys recorded.</p>
         <ol class="rows">
           <li :for={r <- @rolls}>

@@ -155,4 +155,18 @@ defmodule FirstmatePortWeb.CredentialsLiveTest do
   test "signed-out visitors are sent to login" do
     assert {:error, {:redirect, %{to: "/login"}}} = live(build_conn(), ~p"/settings/credentials")
   end
+
+  test "signed-in topbar holds theme, identity, and sign out in an avatar menu", %{
+    conn: conn,
+    local: local
+  } do
+    {:ok, _view, html} = live(conn, ~p"/settings/credentials")
+
+    assert html =~ "account-menu"
+    assert html =~ "gravatar.com/avatar/"
+    assert html =~ to_string(local.email)
+    assert html =~ "Sign out"
+    assert html =~ "Color theme"
+    refute html =~ ~s(<span class="who">)
+  end
 end
