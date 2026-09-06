@@ -8,7 +8,9 @@ defmodule FirstmatePortWeb.FleetSearchJourneyTest do
   alias FirstmatePort.Fleet.{Document, Embedder, Embeddings}
   alias FirstmatePort.Tenancy
 
-  test "captain searches synchronized logs, opts into embeddings, and excludes failures", %{conn: conn} do
+  test "captain searches synchronized logs, opts into embeddings, and excludes failures", %{
+    conn: conn
+  } do
     tenant("search-journey")
     captain = human("search-journey")
     {robot, token} = agent_with_token("search-journey")
@@ -27,11 +29,17 @@ defmodule FirstmatePortWeb.FleetSearchJourneyTest do
     capture("search-lexical.html", lexical_html)
 
     {:ok, settings, _} = live(signed_in, "/settings/credentials")
+
     settings
     |> form("form[phx-submit=set_embedding_model]", %{"model" => "openai:text-embedding-3-small"})
     |> render_submit()
+
     assert render(settings) =~ "Save an embeddings/api_key credential"
-    settings |> element("form[phx-change=select_slot]") |> render_change(%{"slot" => "embeddings/api_key"})
+
+    settings
+    |> element("form[phx-change=select_slot]")
+    |> render_change(%{"slot" => "embeddings/api_key"})
+
     settings |> form("#credential-form-0", %{"value" => "sk-journey-fixture"}) |> render_submit()
     settings_html = render(settings)
     assert settings_html =~ "On, using openai:text-embedding-3-small"
@@ -39,14 +47,18 @@ defmodule FirstmatePortWeb.FleetSearchJourneyTest do
     capture("search-credentials.html", settings_html)
 
     previous = Application.get_env(:firstmate_port, Embeddings)
+
     on_exit(fn ->
-      if previous, do: Application.put_env(:firstmate_port, Embeddings, previous),
+      if previous,
+        do: Application.put_env(:firstmate_port, Embeddings, previous),
         else: Application.delete_env(:firstmate_port, Embeddings)
     end)
+
     client = fn _model, texts, opts ->
       assert opts[:api_key] == "sk-journey-fixture"
       {:ok, Enum.map(texts, fn _ -> [1.0, 0.0] end)}
     end
+
     Application.put_env(:firstmate_port, Embeddings, client: client)
     assert {:ok, %{embedded: 2}} = Embedder.run("search-journey")
     assert {:ok, documents} = Document.list(Tenancy.opts(captain))

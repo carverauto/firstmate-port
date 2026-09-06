@@ -162,8 +162,10 @@ defmodule FirstmatePort.Fleet.ProjectionTest do
 
     assert text =~ "rebuilt: web-ng core"
   end
+
   test "changes outside the search window change the sync digest" do
     long = String.duplicate("x", 2_000)
+
     run = %NoMistakesRun{
       id: "nm-long",
       branch: long,
@@ -185,5 +187,4 @@ defmodule FirstmatePort.Fleet.ProjectionTest do
 
     assert before == Projection.from(run)
   end
-
 end

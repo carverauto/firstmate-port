@@ -38,11 +38,11 @@ defmodule FirstmatePort.Fleet.JobsTest do
 
     assert {:ok, [%Document{title: "other tenant work"}]} = Document.list(Tenancy.opts(other))
   end
+
   defp scheduled(action) do
     Tick
     |> Ash.ActionInput.new()
     |> Ash.ActionInput.for_action(action, %{}, authorize?: false)
     |> Ash.run_action!()
   end
-
 end
