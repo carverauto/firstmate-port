@@ -82,6 +82,22 @@ defmodule FirstmatePortWeb.ArchifySignedInTest do
     assert conn.resp_body =~ "upload_diagram"
   end
 
+  test "agents discover the progress event tool through MCP", %{conn: conn} do
+    secret = "mcp-test-#{System.unique_integer([:positive])}"
+    {:ok, _} = User.bootstrap_agent(
+      %{email: "#{secret}@localhost", name: "Agent", hashed_api_key: User.hash_token(secret)},
+      authorize?: false
+    )
+
+    response = conn
+      |> put_req_header("authorization", "Bearer " <> secret)
+      |> put_req_header("accept", "application/json, text/event-stream")
+      |> post("/mcp", %{"jsonrpc" => "2.0", "id" => 1, "method" => "tools/list", "params" => %{}})
+      |> json_response(200)
+
+    assert Enum.any?(response["result"]["tools"], &(&1["name"] == "post_progress_event"))
+  end
+
   test "uploading still needs a credential", %{conn: conn} do
     assert conn
            |> put_req_header("accept", "application/json")

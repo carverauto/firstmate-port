@@ -31,8 +31,9 @@ state unchanged; empty strings clear status, assignee, or interruption, and an
 empty list clears extra workers. Only tenant-scoped agents can record progress.
 
 All progress reads, including the portal, API, MCP, and GitHub poll, project
-initial state plus events in ascending event ID order. The last supplied value
-for each field wins. Historical rows have no update or delete action. GitHub
+initial state plus events in ascending database sequence (`seq`) order.
+Event UUIDs identify records in the shared event log; the sequence orders patches.
+The last supplied value for each field wins. Historical rows have no update or delete action. GitHub
 polling appends title/kind changes and preserves crew-owned fields. Scheduled
 polls visit every tenant using that tenant's credential slots and agent actor.
 
