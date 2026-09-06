@@ -27,7 +27,9 @@ defmodule FirstmatePortWeb.SessionCookieTest do
 
     cookie = signed_in.resp_cookies["_firstmate_port_key"].value
     opts = Plug.Session.COOKIE.init(Application.fetch_env!(:firstmate_port, :session))
-    assert {:term, %{"guardian_token" => ^token}} = Plug.Session.COOKIE.get(signed_in, cookie, opts)
+
+    assert {:term, %{"guardian_token" => ^token}} =
+             Plug.Session.COOKIE.get(signed_in, cookie, opts)
 
     sign_only = Map.put(opts, :encryption_salt, nil)
     assert {nil, %{}} = Plug.Session.COOKIE.get(signed_in, cookie, sign_only)
