@@ -151,6 +151,7 @@ defmodule FirstmatePortWeb.Router do
   scope "/api", FirstmatePortWeb.Api do
     pipe_through :cli
 
+    get "/queues", QueueController, :index
     get "/credentials", CredentialsController, :index
     get "/credentials/slots", CredentialsController, :slots
     post "/credentials", CredentialsController, :create
@@ -179,6 +180,7 @@ defmodule FirstmatePortWeb.Router do
   scope "/api", FirstmatePortWeb.Api do
     pipe_through :cli
 
+    post "/queues", QueueController, :create
     post "/diagrams", IngestController, :create_diagram
   end
 

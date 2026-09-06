@@ -32,6 +32,7 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`,
 - [docs/credentials.md](docs/credentials.md) how a tenant stores Discord and other secrets
 - [docs/fleet-search.md](docs/fleet-search.md) searching the fleet log, and the optional embeddings
 - [docs/security.md](docs/security.md) running the portal on a public hostname: client-IP config, rate limits, lockout, CSP
+- [docs/queues.md](docs/queues.md) the live queue look-in and how workers report to it
 - [docs/deploy.md](docs/deploy.md) image publishing, compose, Kubernetes
 - [docs/build-tracking.md](docs/build-tracking.md) opt-in tracking and BuildBuddy secrets
 - [docs/bazel.md](docs/bazel.md) rules_elixir / BuildBuddy, `--output_base=/tmp/fm-fm-port/bazel`
@@ -75,6 +76,13 @@ fm-steer no-mistakes post --run-id run-123 --branch fm/example --step review
 Use `fm-steer <kind> post --help` for the available fields. For crew-work
 tracking, dashboard navigation, and `fm-steer progress post`, see the
 [Progress guide](docs/progress.md).
+Queue tracking (`queue post|list`, e.g.
+`fm-steer queue post --task fm-port-queue-track --worker crew-4 --agent-id agent-7b1 --model claude-opus-5 --effort high --status working`)
+reports what firstmate handed to a crewmate. Reports are sparse and merge, so
+the token totals can follow later. Posting needs the same agent token; `queue
+list` and `/queues` only need a signed-in account. See
+[docs/queues.md](docs/queues.md).
+
 
 ### Build and deployment tracking
 
@@ -112,7 +120,7 @@ amd64/arm64) plus `SHA256SUMS` on the GitHub Release.
 ## Layout
 
 - `lib/` Phoenix/Ash portal
-- `cmd/fm-steer` HTTP inbox + Fleet log ingest CLI (device-code; does not dial NATS)
+- `cmd/fm-steer` HTTP inbox + Fleet log ingest + queue tracking CLI (device-code; does not dial NATS)
 - `skills/` installable agent skills that drive the CLI
 - `k8s/` portal + 3-node NATS + CNPG (Discord interactions are served by Phoenix at `/interactions`; no sidecars)
 - `docker-compose.yml` portal + Postgres + single-node JetStream

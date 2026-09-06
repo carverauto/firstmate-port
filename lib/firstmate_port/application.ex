@@ -31,6 +31,9 @@ defmodule FirstmatePort.Application do
       # Best-effort work that must never hold up the request that triggered it,
       # such as the inbox's JetStream fan-out.
       {Task.Supervisor, name: FirstmatePort.TaskSupervisor},
+      # Before the NATS supervisor: its listener folds queue facts into the
+      # tracker as soon as it subscribes.
+      FirstmatePort.Queues.Tracker,
       FirstmatePort.NATS.Supervisor,
       FirstmatePort.Auth.OIDC.Supervisor,
       FirstmatePortWeb.Endpoint

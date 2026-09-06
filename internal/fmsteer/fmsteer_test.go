@@ -344,5 +344,81 @@ func TestRevokedTokenSaysToSignInAgain(t *testing.T) {
 	// The device-code poll is unauthenticated by design and must keep working.
 	if _, err := PostJSONStatus(srv.URL, "", map[string]string{}, nil); err != nil {
 		t.Fatalf("unauthenticated poll errored: %v", err)
+func TestQueuePostSendsSparsePayload(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	t.Setenv(AgentTokenEnv, "agent-tok")
+	var got map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != QueuePath {
+			t.Errorf("path %s", r.URL.Path)
+		}
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		_ = json.NewEncoder(w).Encode(map[string]any{"task": "t1"})
+	}))
+	defer srv.Close()
+	queuePost([]string{
+		"--task", "t1", "--worker", "crew-4", "--agent-id", "agent-7b1",
+		"--status", "working", "--model", "claude-opus-5", "--effort", "high",
+		"--tokens-in", "9000", "--tokens-out", "0", "--instance", srv.URL,
+	})
+	for k, want := range map[string]string{
+		"task": "t1", "worker": "crew-4", "agent_id": "agent-7b1",
+		"status": "working", "model": "claude-opus-5", "effort": "high",
+	} {
+		if got[k] != want {
+			t.Fatalf("%s = %v, want %s", k, got[k], want)
+		}
+	}
+	if got["tokens_in"] != float64(9000) {
+		t.Fatalf("tokens_in = %v", got["tokens_in"])
+	}
+	// Zero is a real report; only an omitted counter is left out.
+	if got["tokens_out"] != float64(0) {
+		t.Fatalf("tokens_out = %v", got["tokens_out"])
+	}
+	for _, k := range []string{"summary", "started_at", "stopped_at"} {
+		if _, ok := got[k]; ok {
+			t.Fatalf("%s should be omitted, got %v", k, got[k])
+		}
+	}
+}
+
+func TestQueueListReadsTheLookIn(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	t.Setenv(AgentTokenEnv, "agent-tok")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != QueuePath {
+			t.Errorf("%s %s", r.Method, r.URL.Path)
+		}
+		if got := r.Header.Get("authorization"); got != "Bearer agent-tok" {
+			t.Errorf("authorization %q", got)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"task": "t1"}}})
+	}))
+	defer srv.Close()
+	queueList([]string{"--instance", srv.URL})
+}
+
+func TestQueuePostOmitsCountersNeverGiven(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	t.Setenv(AgentTokenEnv, "agent-tok")
+	var got map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		_ = json.NewEncoder(w).Encode(map[string]any{"task": "t1"})
+	}))
+	defer srv.Close()
+	queuePost([]string{"--task", "t1", "--instance", srv.URL})
+	if got["task"] != "t1" {
+		t.Fatalf("task = %v", got["task"])
+	}
+	// A sparse report must stay sparse: the portal merges, it does not replace.
+	for _, k := range []string{"tokens_in", "tokens_out", "worker", "status", "model", "effort"} {
+		if _, ok := got[k]; ok {
+			t.Fatalf("%s should be omitted, got %v", k, got[k])
+		}
 	}
 }

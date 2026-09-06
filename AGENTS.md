@@ -23,6 +23,9 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 - Attribute tenancy on shared Postgres and one NATS account. Streams are `<tenant>.steer` / `<tenant>.inbound`. Seed tenant `local` as an example. The API is the tenant wall and the only JetStream client.
 - Tenant credentials belong in portal UI/API and AshCloak-encrypted CNPG rows, never per-tenant Kubernetes secrets or plaintext HTTP/MCP responses. See `docs/credentials.md` for storage, GitHub and Discord routing, and vault-key operations. An integration reads its slot first and the matching environment variable only as a fallback, so a portal paste always beats a redeploy.
 - The fleet log is append-only: an agent that "edits" progress POSTs a new event and never `UPDATE`s a historical row, and the UI is a projection over those events. Contract and scope in `docs/fleet-log.md`.
+- Queues (`/queues`) is a live look-in at in-flight crew work, not a store of record: entries live in
+  `FirstmatePort.Queues.Tracker` memory and age out. Queue facts ride `<tenant>.steer.queue` inside the
+  existing steer stream - no third stream. See `docs/queues.md`.
 - Fleet search is one projected table in the same CNPG database, not a second store: Postgres full-text search always, embeddings only when an operator sets a model and the tenant fills `embeddings`/`api_key`. Do not add a search engine, a vector extension, or a BM25 extension. See `docs/fleet-search.md`.
 - Build/deploy tracking is one append-only log for every system: `kind` names it (`docker`, `k8s`, `bazel`, ...). Add a kind, never a resource or endpoint per system, and never UPDATE an earlier event - a UI row is a projection (`FirstmatePort.BuildEvents`). See `docs/build-events.md`.
 - `skills/` holds installable agent skills that drive `fm-steer`. Keep them OSS-portable: no site hostnames, registries, or cluster names.
