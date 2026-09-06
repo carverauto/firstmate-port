@@ -4,7 +4,7 @@ defmodule FirstmatePort.Fleet.SyncTest do
   import FirstmatePort.FleetFixtures
 
   alias FirstmatePort.Fleet.{Document, Sync}
-  alias FirstmatePort.Portal.ProgressItem
+  alias FirstmatePort.Portal.ProgressEvent
   alias FirstmatePort.Tenancy
 
   setup do
@@ -39,7 +39,11 @@ defmodule FirstmatePort.Fleet.SyncTest do
     item = progress_item(actor, %{title: "Before"})
     assert {:ok, %{written: 1}} = Sync.run("local")
 
-    {:ok, _} = ProgressItem.touch(item, %{kind: :note, title: "After"}, Tenancy.opts(actor))
+    {:ok, _} =
+      ProgressEvent.record(
+        %{item_id: item.id, kind: :note, title: "After"},
+        Tenancy.opts(actor)
+      )
 
     assert {:ok, %{scanned: 1, written: 1}} = Sync.run("local")
 
