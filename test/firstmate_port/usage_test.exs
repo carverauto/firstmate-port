@@ -40,6 +40,16 @@ defmodule FirstmatePort.UsageTest do
     assert Usage.runway_days(account(%{used: 30.0}), snaps) == 14.0
   end
 
+  test "a zero or negative allowance is set, so it is exhausted not unknown" do
+    assert Usage.status(account(%{allowance: 0.0, used: 25.0})) == :exhausted
+    assert Usage.remaining(account(%{allowance: 0.0, used: 25.0})) == -25.0
+
+    assert Usage.status(account(%{allowance: 0.0, used: 0.0})) == :exhausted
+    assert Usage.status(account(%{allowance: -10.0, used: 0.0})) == :exhausted
+
+    assert Usage.status(account(%{allowance: nil})) == :unknown
+  end
+
   test "runway scores the current window, not history across a reset" do
     now = DateTime.utc_now()
 
@@ -99,8 +109,7 @@ defmodule FirstmatePort.UsageTest do
           unit: :usd,
           window: :monthly,
           source: :manual,
-          reset_at: nil,
-          last_synced_at: nil
+          reset_at: nil
         })
       )
 

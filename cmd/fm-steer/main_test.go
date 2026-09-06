@@ -152,24 +152,6 @@ func TestUsageListsAccountsFromPortal(t *testing.T) {
 	}
 }
 
-func TestUsageSyncPostsToPortal(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
-	var gotPaths []string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPaths = append(gotPaths, r.URL.Path)
-		_ = json.NewEncoder(w).Encode(map[string]any{"tenant": "local", "data": []any{}})
-	}))
-	defer srv.Close()
-	if err := writeCreds(srv.URL, "jwt", "local"); err != nil {
-		t.Fatal(err)
-	}
-	usageRun([]string{"--instance", srv.URL, "--sync"})
-	if len(gotPaths) != 2 || gotPaths[0] != "/api/usage/sync" || gotPaths[1] != "/api/usage" {
-		t.Fatalf("--sync must refresh then list the ledger, got %v", gotPaths)
-	}
-}
-
 func TestGetJSONFailsOnUnauthorized(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -241,8 +223,7 @@ func TestUsageJSONPassesLedgerThrough(t *testing.T) {
 			"data": []map[string]any{
 				{"id": "acct-1", "provider": "openrouter", "label": "captain",
 					"allowance": 100.0, "used": 25.0, "remaining": 75.0, "status": "ok",
-					"pct_used": 0.25, "spend_priority": 10, "reset_at": "2026-10-01T00:00:00Z",
-					"last_synced_at": "2026-09-05T00:00:00Z"},
+					"pct_used": 0.25, "spend_priority": 10, "reset_at": "2026-10-01T00:00:00Z"},
 			},
 		})
 	}))
@@ -262,7 +243,7 @@ func TestUsageJSONPassesLedgerThrough(t *testing.T) {
 	if len(got.Data) != 1 {
 		t.Fatalf("data %v", got.Data)
 	}
-	for _, key := range []string{"id", "spend_priority", "pct_used", "reset_at", "last_synced_at"} {
+	for _, key := range []string{"id", "spend_priority", "pct_used", "reset_at"} {
 		if _, ok := got.Data[0][key]; !ok {
 			t.Errorf("--json dropped %q from the portal ledger", key)
 		}

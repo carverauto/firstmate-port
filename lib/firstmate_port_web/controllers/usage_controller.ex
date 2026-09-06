@@ -7,7 +7,6 @@ defmodule FirstmatePortWeb.UsageController do
 
   alias FirstmatePort.Portal.{UsageAccount, UsageSnapshot}
   alias FirstmatePort.{Tenancy, Usage}
-  alias FirstmatePort.Usage.Sync
 
   def index(conn, _params) do
     actor = conn.assigns.current_user
@@ -39,24 +38,6 @@ defmodule FirstmatePortWeb.UsageController do
 
       {:error, error} ->
         conn |> put_status(:unprocessable_entity) |> json(%{error: inspect(error)})
-    end
-  end
-
-  def sync(conn, _params) do
-    actor = conn.assigns.current_user
-
-    case Sync.sync_all(actor) do
-      {:ok, results} ->
-        json(conn, %{
-          tenant: Tenancy.slug(actor),
-          data:
-            Enum.map(results, fn %{account: account, synced?: synced?, note: note} ->
-              %{account: Usage.summarize(account), synced: synced?, note: note}
-            end)
-        })
-
-      {:error, error} ->
-        conn |> put_status(:forbidden) |> json(%{error: inspect(error)})
     end
   end
 

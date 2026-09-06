@@ -2,13 +2,12 @@ defmodule FirstmatePortWeb.UsageLive do
   @moduledoc """
   Per-account token usage and remaining allowance. Same numbers as
   `GET /api/usage` and `fm-steer usage`: allowance, used, remaining,
-  status, provider window, spend priority, and runway from snapshots.
+  status, provider window, spend priority, and runway from posted readings.
   """
   use FirstmatePortWeb, :live_view
 
   alias FirstmatePort.Portal.{UsageAccount, UsageSnapshot}
   alias FirstmatePort.{Tenancy, Usage}
-  alias FirstmatePort.Usage.Sync
 
   on_mount {FirstmatePortWeb.LiveUser, :require_user}
 
@@ -35,21 +34,6 @@ defmodule FirstmatePortWeb.UsageLive do
 
       {:error, error} ->
         {:noreply, put_flash(socket, :error, "could not save: #{short(error)}")}
-    end
-  end
-
-  def handle_event("sync", _params, socket) do
-    case Sync.sync_all(socket.assigns.current_user) do
-      {:ok, results} ->
-        synced = Enum.count(results, & &1.synced?)
-
-        {:noreply,
-         socket
-         |> load_accounts()
-         |> put_flash(:info, "sync refreshed #{synced} of #{length(results)} accounts")}
-
-      {:error, error} ->
-        {:noreply, put_flash(socket, :error, "sync failed: #{short(error)}")}
     end
   end
 
@@ -120,7 +104,6 @@ defmodule FirstmatePortWeb.UsageLive do
           Token and billing counters per provider account. Same ledger as <code>fm-steer usage</code>
           and <code>GET /api/usage</code>.
         </p>
-        <button phx-click="sync" class="btn btn-quiet">Sync providers</button>
       </header>
 
       <section class="plate">
@@ -185,8 +168,8 @@ defmodule FirstmatePortWeb.UsageLive do
           <button type="submit" class="btn btn-primary">Save account</button>
         </.form>
         <p class="meta">
-          Lower spend priority burns first. Provider keys stay server-side env vars;
-          only OpenRouter syncs live today — the rest are manual or agent-posted.
+          Lower spend priority burns first. Every save that sets Used also records a
+          snapshot, which is what gives runway a burn rate.
         </p>
       </section>
     </Layouts.app>

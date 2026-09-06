@@ -94,7 +94,6 @@ defmodule FirstmatePortWeb.Router do
 
     get "/usage", UsageController, :index
     post "/usage", UsageController, :create
-    post "/usage/sync", UsageController, :sync
     post "/route", RouteController, :create
   end
 

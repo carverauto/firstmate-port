@@ -2,9 +2,10 @@ defmodule FirstmatePort.Portal.UsageAccount do
   @moduledoc """
   Per-account token/billing counters. One row per provider account per
   tenant: allowance and window are configured, `used` is posted by agents
-  or synced from live provider APIs through configured tokens
-  (`FirstmatePort.Usage.Sync`). Remaining, status, and runway are computed
-  in `FirstmatePort.Usage`, never stored.
+  and humans. Every post that carries `used` also appends a
+  `FirstmatePort.Portal.UsageSnapshot`, which is what gives runway a burn
+  rate. Remaining, status, and runway are computed in
+  `FirstmatePort.Usage`, never stored.
   """
 
   import Ash.Expr
@@ -24,7 +25,6 @@ defmodule FirstmatePort.Portal.UsageAccount do
     define :get, action: :by_id, args: [:id]
     define :list, action: :read
     define :record, action: :record
-    define :refresh, action: :refresh
   end
 
   actions do
@@ -51,25 +51,17 @@ defmodule FirstmatePort.Portal.UsageAccount do
         :reset_at,
         :spend_priority,
         :source,
-        :external_id,
         :notes
       ]
-    end
 
-    update :refresh do
-      require_atomic? false
-      accept [:used, :allowance, :source, :reset_at, :notes]
-
-      change fn changeset, _ctx ->
-        Ash.Changeset.change_attribute(changeset, :last_synced_at, DateTime.utc_now())
-      end
+      change FirstmatePort.Changes.AppendUsageSnapshot
     end
   end
 
   policies do
     # Tenant-local bookkeeping: humans add accounts in the portal UI,
-    # agents post and sync usage. The tenant attribute is the wall.
-    policy action_type([:read, :create, :update]) do
+    # agents post usage. The tenant attribute is the wall.
+    policy action_type([:read, :create]) do
       authorize_if actor_present()
     end
   end
@@ -119,7 +111,6 @@ defmodule FirstmatePort.Portal.UsageAccount do
     end
 
     attribute :reset_at, :utc_datetime, public?: true
-    attribute :last_synced_at, :utc_datetime, public?: true
 
     attribute :spend_priority, :integer do
       default 100
@@ -128,14 +119,9 @@ defmodule FirstmatePort.Portal.UsageAccount do
     end
 
     attribute :source, :atom do
-      constraints one_of: [:manual, :openrouter]
+      constraints one_of: [:manual]
       default :manual
       allow_nil? false
-      public? true
-    end
-
-    attribute :external_id, :string do
-      default ""
       public? true
     end
 

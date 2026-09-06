@@ -2,11 +2,12 @@ defmodule FirstmatePortWeb.UsageControllerTest do
   use FirstmatePortWeb.ConnCase, async: true
 
   alias FirstmatePort.Accounts.User
+  alias FirstmatePort.Portal.UsageSnapshot
 
   setup do
     token = "fmh_test_" <> Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
 
-    {:ok, _agent} =
+    {:ok, agent} =
       User.bootstrap_agent(
         %{
           email: "usage-agent@localhost",
@@ -29,7 +30,7 @@ defmodule FirstmatePortWeb.UsageControllerTest do
         authorize?: false
       )
 
-    {:ok, token: token, other_token: other_token}
+    {:ok, token: token, other_token: other_token, agent: agent}
   end
 
   defp auth(conn, token) do
@@ -146,15 +147,52 @@ defmodule FirstmatePortWeb.UsageControllerTest do
     assert body["reset_at"] == nil
   end
 
-  test "sync without provider keys reports manual-only", %{conn: conn, token: token} do
+  test "posted readings build the history runway needs", %{
+    conn: conn,
+    token: token,
+    agent: agent
+  } do
     auth(conn, token)
-    |> post(~p"/api/usage", %{"provider" => "anthropic", "label" => "direct"})
+    |> post(~p"/api/usage", %{
+      "provider" => "anthropic",
+      "label" => "direct",
+      "allowance" => 100.0,
+      "used" => 10.0
+    })
 
-    conn = auth(build_conn(), token) |> post(~p"/api/usage/sync", %{})
-    body = json_response(conn, 200)
-    assert body["tenant"] == "local"
-    assert [%{"synced" => false, "note" => note}] = body["data"]
-    assert note =~ "manually"
+    auth(build_conn(), token)
+    |> post(~p"/api/usage", %{"provider" => "anthropic", "label" => "direct", "used" => 40.0})
+
+    [row] =
+      auth(build_conn(), token) |> get(~p"/api/usage") |> json_response(200) |> Map.get("data")
+
+    {:ok, snaps} = UsageSnapshot.for_account(row["id"], FirstmatePort.Tenancy.opts(agent))
+
+    assert snaps |> Enum.map(& &1.used) |> Enum.sort() == [10.0, 40.0]
+  end
+
+  test "a post that only configures the account records no reading", %{
+    conn: conn,
+    token: token,
+    agent: agent
+  } do
+    auth(conn, token)
+    |> post(~p"/api/usage", %{
+      "provider" => "anthropic",
+      "label" => "config-only",
+      "allowance" => 100.0,
+      "spend_priority" => 5
+    })
+
+    [row] =
+      auth(build_conn(), token)
+      |> get(~p"/api/usage")
+      |> json_response(200)
+      |> Map.get("data")
+      |> Enum.filter(&(&1["label"] == "config-only"))
+
+    {:ok, snaps} = UsageSnapshot.for_account(row["id"], FirstmatePort.Tenancy.opts(agent))
+    assert snaps == []
   end
 
   test "unauthenticated usage is rejected", %{conn: conn} do

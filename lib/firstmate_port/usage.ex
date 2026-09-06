@@ -3,10 +3,9 @@ defmodule FirstmatePort.Usage do
   Token-usage and billing math for provider accounts.
 
   Every number here is derived from facts the product can already see:
-  allowance and window configured per account, `used` posted by agents or
-  synced through configured provider API tokens (see
-  `FirstmatePort.Usage.Sync`). Nothing is invented: when the allowance is
-  unknown, remaining and runway stay `nil` and say so.
+  allowance and window configured per account, and `used` posted by agents
+  and humans. Nothing is invented: when the allowance is unknown,
+  remaining and runway stay `nil` and say so.
   """
 
   @low_threshold 0.75
@@ -25,10 +24,10 @@ defmodule FirstmatePort.Usage do
   or `:exhausted`.
   """
   def status(%{allowance: nil}), do: :unknown
+  def status(%{allowance: a}) when a <= 0, do: :exhausted
 
   def status(account) do
     case pct_used(account) do
-      nil -> :unknown
       p when p >= 1.0 -> :exhausted
       p when p >= @low_threshold -> :low
       _ -> :ok
@@ -99,8 +98,7 @@ defmodule FirstmatePort.Usage do
       runway_days: runway_days(account, snapshots),
       spend_priority: account.spend_priority,
       reset_at: account.reset_at,
-      source: account.source,
-      last_synced_at: account.last_synced_at
+      source: account.source
     }
   end
 

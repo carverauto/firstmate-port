@@ -2,9 +2,9 @@ defmodule FirstmatePort.Portal.UsageSnapshot do
   @moduledoc """
   Periodic `used` samples per usage account. The burn rate across the
   current billing window drives the runway estimate in
-  `FirstmatePort.Usage`. Written by sync (`FirstmatePort.Usage.Sync`) and
-  by agents posting manual readings. `by_account` returns the most recent
-  samples only: runway never needs history from a spent window.
+  `FirstmatePort.Usage`. One is appended for every posted reading that
+  carries `used`. `by_account` returns the most recent samples only:
+  runway never needs history from a spent window.
   """
 
   import Ash.Expr
@@ -70,7 +70,7 @@ defmodule FirstmatePort.Portal.UsageSnapshot do
     end
 
     attribute :source, :atom do
-      constraints one_of: [:manual, :openrouter]
+      constraints one_of: [:manual]
       default :manual
       allow_nil? false
       public? true

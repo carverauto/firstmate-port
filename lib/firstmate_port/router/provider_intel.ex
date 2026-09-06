@@ -9,7 +9,7 @@ defmodule FirstmatePort.Router.ProviderIntel do
   Both sources are opt-in per request (`POST /api/route` with
   `"intel": true`) and need no API key to read. Keys only raise limits:
 
-  - `OPENROUTER_API_KEY` — also enables usage sync in `FirstmatePort.Usage.Sync`.
+  - `OPENROUTER_API_KEY` — optional; raises OpenRouter's rate limit.
   - `AA_API_KEY` — Artificial Analysis benchmarks (paid API).
 
   With no keys and no network, `fetch/0` returns `%{models: [],

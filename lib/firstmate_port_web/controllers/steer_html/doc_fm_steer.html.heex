@@ -29,9 +29,8 @@ echo "deploy the portal to production" | fm-steer route</pre>
   <h2>Usage</h2>
   <p>Per-account token usage and remaining allowance from the portal ledger.</p>
   <pre>fm-steer usage
-fm-steer usage --sync
 fm-steer usage --json</pre>
-  <p><code>--sync</code> refreshes syncable accounts first, then prints the refreshed ledger. Providers without a configured key report why they were skipped. With <code>--json</code> the refresh notes are omitted and only the ledger is printed.</p>
+  <p><code>--json</code> prints the portal's ledger response unchanged, for scripts that need every field.</p>
 
   <h2>Tenancy</h2>
   <p>Credentials carry the tenant from login. Every request is scoped to that tenant by the API.</p>

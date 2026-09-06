@@ -27,7 +27,6 @@ defmodule FirstmatePortWeb.UsageLiveTest do
 
     assert html =~ "openrouter / captain"
     assert html =~ "remaining 75.00"
-    assert html =~ "Sync providers"
   end
 
   test "usage page offers an empty state", %{conn: conn} do

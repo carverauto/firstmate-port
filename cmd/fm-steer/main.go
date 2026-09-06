@@ -36,7 +36,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: fm-steer auth login|status|logout | inbox put|next|ack|list | route \"<task>\" | usage [--sync]\n")
+	fmt.Fprintf(os.Stderr, "usage: fm-steer auth login|status|logout | inbox put|next|ack|list | route \"<task>\" | usage\n")
 	os.Exit(2)
 }
 
@@ -318,31 +318,14 @@ type routeResponse struct {
 }
 
 // usageRun shows per-account token usage and remaining allowance from the
-// portal ledger. With --sync it first refreshes syncable accounts through
-// the portal (provider keys stay server-side). No quota math lives here.
+// portal ledger. No quota math lives here.
 func usageRun(args []string) {
 	fs := flag.NewFlagSet("usage", flag.ExitOnError)
 	instance := fs.String("instance", env("FIRSTMATE_INSTANCE", ""), "API base URL")
-	sync := fs.Bool("sync", false, "refresh syncable accounts before listing")
 	asJSON := fs.Bool("json", false, "print the full usage response as JSON")
 	_ = fs.Parse(args)
 
 	c := mustCreds(*instance)
-	if *sync {
-		var res usageSyncResponse
-		if err := postJSON(c.Instance+"/api/usage/sync", c.Token, map[string]any{}, &res); err != nil {
-			log.Fatal(err)
-		}
-		if !*asJSON {
-			for _, r := range res.Data {
-				mark := "ok"
-				if !r.Synced {
-					mark = "skip"
-				}
-				fmt.Printf("%s %s/%s: %s\n", mark, r.Account.Provider, r.Account.Label, r.Note)
-			}
-		}
-	}
 	if *asJSON {
 		var ledger json.RawMessage
 		if err := getJSON(c.Instance+"/api/usage", c.Token, &ledger); err != nil {
@@ -379,15 +362,6 @@ type usageAccount struct {
 type usageResponse struct {
 	Tenant string         `json:"tenant"`
 	Data   []usageAccount `json:"data"`
-}
-
-type usageSyncResponse struct {
-	Tenant string `json:"tenant"`
-	Data   []struct {
-		Account usageAccount `json:"account"`
-		Synced  bool         `json:"synced"`
-		Note    string       `json:"note"`
-	} `json:"data"`
 }
 
 func numOrDash(f *float64) string {
