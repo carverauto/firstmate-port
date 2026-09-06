@@ -14,9 +14,7 @@ defmodule FirstmatePortWeb.InboxLive do
   alias FirstmatePort.Inbox
   alias FirstmatePort.Tenancy
 
-  on_mount {FirstmatePortWeb.LiveUser, :require_user}
-
-  @keep 200
+  on_mount({FirstmatePortWeb.LiveUser, :require_user})
 
   @impl true
   def mount(_params, _session, socket) do
@@ -35,12 +33,13 @@ defmodule FirstmatePortWeb.InboxLive do
      # Bumped after a send so the browser gets a blank compose box back.
      |> assign(:form_version, 0)
      |> assign(:error, nil)
-     |> load_messages()}
+     |> assign(:messages, [])
+     |> assign(:waiting, 0)}
   end
 
   @impl true
   def handle_params(params, _uri, socket) do
-    {:noreply, assign(socket, :filter, params["task"] || "")}
+    {:noreply, socket |> assign(:filter, params["task"] || "") |> load_messages()}
   end
 
   @impl true
@@ -52,11 +51,11 @@ defmodule FirstmatePortWeb.InboxLive do
     }
 
     case Inbox.put(socket.assigns.current_user, attrs) do
-      {:ok, message} ->
+      {:ok, _message} ->
         {:noreply,
          socket
          |> assign(:error, nil)
-         |> assign(:messages, merge(socket.assigns.messages, message))
+         |> load_messages()
          |> update(:form_version, &(&1 + 1))
          |> put_flash(:info, "Order filed.")}
 
@@ -70,11 +69,11 @@ defmodule FirstmatePortWeb.InboxLive do
 
   def handle_event("ack", %{"ack" => ack}, socket) do
     case Inbox.ack(socket.assigns.current_user, ack) do
-      {:ok, message} ->
+      {:ok, _message} ->
         {:noreply,
          socket
          |> assign(:error, nil)
-         |> assign(:messages, merge(socket.assigns.messages, message))}
+         |> load_messages()}
 
       {:error, _} ->
         {:noreply, assign(socket, :error, "That message is no longer here.")}
@@ -82,39 +81,22 @@ defmodule FirstmatePortWeb.InboxLive do
   end
 
   @impl true
-  def handle_info({:inbox_message, message}, socket) do
-    {:noreply, assign(socket, :messages, merge(socket.assigns.messages, message))}
-  end
-
-  # A message that is already on the page was claimed or acked, so it is
-  # replaced in place; anything else is new and goes on top. Sorting by seq
-  # rather than arrival keeps the order stable when both happen at once, and
-  # makes this idempotent: the broadcast that follows the captain's own action
-  # lands on a row that is already correct.
-  defp merge(messages, message) do
-    messages
-    |> Enum.reject(&(&1["ack"] == message["ack"]))
-    |> List.insert_at(0, message)
-    |> Enum.sort_by(& &1["seq"], :desc)
-    |> Enum.take(@keep)
+  def handle_info({:inbox_message, _message}, socket) do
+    {:noreply, load_messages(socket)}
   end
 
   defp load_messages(socket) do
-    case Inbox.recent(socket.assigns.current_user) do
-      {:ok, messages} ->
-        assign(socket, :messages, messages)
+    actor = socket.assigns.current_user
 
-      {:error, _} ->
-        socket |> assign(:messages, []) |> assign(:error, "Could not read the inbox.")
+    with {:ok, messages} <- Inbox.recent(actor, socket.assigns.filter),
+         {:ok, waiting} <- Inbox.waiting_count(actor) do
+      assign(socket, messages: messages, waiting: waiting)
+    else
+      {:error, _} -> assign(socket, :error, "Could not read the inbox.")
     end
   end
 
-  defp shown(messages, ""), do: messages
-  defp shown(messages, task), do: Enum.filter(messages, &(&1["task"] == task))
-
   defp tasks(messages), do: messages |> Enum.map(& &1["task"]) |> Enum.uniq() |> Enum.sort()
-
-  defp waiting(messages), do: Enum.count(messages, &(&1["status"] != "acked"))
 
   defp who(""), do: "unattributed"
   defp who(email), do: email
@@ -141,7 +123,7 @@ defmodule FirstmatePortWeb.InboxLive do
         Tenant <span class="kind">{@tenant}</span>. One queue both ways:
         <span class="kind">fm-steer inbox put</span>
         files here, <span class="kind">fm-steer inbox next</span>
-        takes the oldest one. {waiting(@messages)} waiting.
+        takes the oldest one. {@waiting} waiting.
       </p>
 
       <p :if={@error} class="empty-copy" role="alert">{@error}</p>
@@ -176,11 +158,11 @@ defmodule FirstmatePortWeb.InboxLive do
 
       <section class="plate">
         <h2>Traffic</h2>
-        <p :if={shown(@messages, @filter) == []} class="empty-state">
+        <p :if={@messages == []} class="empty-state">
           Nothing has passed through yet. The mates talk here instead of handing each other files.
         </p>
         <ol class="rows">
-          <li :for={message <- shown(@messages, @filter)} id={"message-" <> message["ack"]}>
+          <li :for={message <- @messages} id={"message-" <> message["ack"]}>
             <span>
               <span class="kind">{message["task"]} #{message["seq"]}</span>
               <span class="kind">{message["status"]}</span>

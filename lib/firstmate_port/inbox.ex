@@ -105,6 +105,14 @@ defmodule FirstmatePort.Inbox do
     read(actor, :recent, task)
   end
 
+  def waiting_count(actor) do
+    opts = Tenancy.opts(actor)
+
+    InboxMessage
+    |> Ash.Query.for_read(:open, %{}, opts)
+    |> Ash.count(opts)
+  end
+
   @doc "The `fm-task-inbox.v1` payload for one message."
   def wire(%InboxMessage{} = message) do
     %{

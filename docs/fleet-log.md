@@ -20,20 +20,23 @@ they cannot sign in.
 The Progress tab is filled by the GitHub poll, which reads its PAT and
 organisation from the tenant's credential slots (see `docs/credentials.md`).
 
-## Append-only progress events (contract, not yet built)
+## Append-only progress events
 
-This is the agreed shape for the next slice. It is written down here so the
-worker that owns fleet-log ingest builds to it; nothing in this repository
-implements it yet.
+`POST /api/progress` (or MCP `post_progress`) records the immutable initial
+state in `progress_items`. Existing rows serve as initial events too.
+`POST /api/progress/:id/events` (or MCP `post_progress_event`, with `item_id`)
+appends a row to `progress_events`. It accepts `kind`, `title`, `status`,
+`assignee`, `extra_workers`, and `interruption`. Omitted or null fields leave
+state unchanged; empty strings clear status, assignee, or interruption, and an
+empty list clears extra workers. Only tenant-scoped agents can record progress.
 
-- The fleet log is a log. An agent that "edits" progress - status, assignee,
-  extra workers, an interruption - **POSTs a new event**. It never `UPDATE`s a
-  historical row.
-- What the UI shows is a **projection** over those events, rebuilt from them
-  rather than stored as the truth. The progress-page worker owns that
-  projection.
-- Merkle trees, hash chains, and provenance proofs are explicitly out of scope.
-  Tabled; do not build them.
+All progress reads, including the portal, API, MCP, and GitHub poll, project
+initial state plus events in ascending event ID order. The last supplied value
+for each field wins. Historical rows have no update or delete action. GitHub
+polling appends title/kind changes and preserves crew-owned fields. Scheduled
+polls visit every tenant using that tenant's credential slots and agent actor.
+
+Merkle trees, hash chains, and provenance proofs remain out of scope.
 
 The inbox is a queue, not part of this log, and is not affected: `claim` and
 `ack` move a message's delivery status, while the message itself - who sent it,

@@ -30,9 +30,14 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   alias FirstmatePort.Credentials
   alias FirstmatePort.Tenancy
 
-  @spec run(term()) :: :ok
+  @spec run(term()) :: :ok | {:error, term()}
+  def run(nil) do
+    with {:ok, tenants} <- FirstmatePort.Accounts.Tenant.list(authorize?: false) do
+      Enum.each(tenants, fn tenant -> run(agent_actor(tenant.slug)) end)
+    end
+  end
+
   def run(actor) do
-    actor = actor || agent_actor()
     tenant = Tenancy.slug(actor)
     token = configured(tenant, "token", "GITHUB_TOKEN")
     org = configured(tenant, "org", "GITHUB_ORG")
@@ -98,7 +103,7 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   end
 
   defp poll_tracked(token, actor, offset) do
-    opts = FirstmatePort.Tenancy.opts(actor || agent_actor())
+    opts = FirstmatePort.Tenancy.opts(actor)
     limit = ProgressItem.max_page_size()
 
     case ProgressItem.list_paged(limit, offset, opts) do
@@ -156,7 +161,7 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
         buildbuddy_url: buildbuddy_url || "",
         github_updated_at: parse_time(item["updated_at"])
       },
-      FirstmatePort.Tenancy.opts(actor || agent_actor())
+      FirstmatePort.Tenancy.opts(actor)
     )
 
     enrich_progress(item, kind, actor)
@@ -241,7 +246,7 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   @spec enrich_progress(map(), :pr | :issue, term()) :: :ok
   def enrich_progress(%{"html_url" => html_url, "title" => title} = raw, kind, actor)
       when is_binary(html_url) do
-    opts = FirstmatePort.Tenancy.opts(actor || agent_actor())
+    opts = FirstmatePort.Tenancy.opts(actor)
 
     case ProgressItem.get_by_url(html_url, opts) do
       {:ok, item} when not is_nil(item) ->
@@ -299,12 +304,12 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
     existing.kind != kind or existing.title != title
   end
 
-  defp agent_actor do
+  defp agent_actor(tenant) do
     %{
       role: :agent,
       email: "agent@localhost",
       id: "github-poll",
-      tenant_slug: FirstmatePort.Tenancy.default_slug()
+      tenant_slug: tenant
     }
   end
 

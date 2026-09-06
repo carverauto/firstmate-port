@@ -72,6 +72,38 @@ defmodule FirstmatePortWeb.InboxLiveTest do
     refute html =~ "not yours"
   end
 
+  test "a delayed pending broadcast cannot undo an acknowledgment", %{
+    conn: conn,
+    captain: captain
+  } do
+    {:ok, pending} = Inbox.put(captain, %{body: "late notification"})
+    {:ok, view, _} = live(conn, ~p"/inbox")
+    {:ok, _} = Inbox.ack(captain, pending["ack"])
+    send(view.pid, {:inbox_message, pending})
+
+    assert render(view) =~ "0 waiting"
+    refute has_element?(view, "button[phx-value-ack='#{pending["ack"]}']")
+  end
+
+  test "task history and backlog survive more than 200 newer messages", %{
+    conn: conn,
+    captain: captain
+  } do
+    {:ok, _} = Inbox.put(captain, %{task: "fm-port", body: "older waiting order"})
+
+    for n <- 1..200 do
+      {:ok, message} = Inbox.put(captain, %{task: "elsewhere", body: "completed #{n}"})
+      {:ok, _} = Inbox.ack(captain, message["ack"])
+    end
+
+    {:ok, view, html} = live(conn, ~p"/inbox")
+    assert html =~ "1 waiting"
+    refute html =~ "older waiting order"
+    render_patch(view, ~p"/inbox?task=fm-port")
+    assert render(view) =~ "older waiting order"
+    assert render(view) =~ "1 waiting"
+  end
+
   defp human(slug) do
     {:ok, _} = Tenant.seed(%{slug: slug, name: slug}, authorize?: false)
 
