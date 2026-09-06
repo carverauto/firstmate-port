@@ -64,6 +64,15 @@ The login is a device-code approval in a browser: it is the operator's step, not
 an agent's. One login covers the whole host - firstmate and every crewmate it
 spawns run as the same user and share `~/.config/fm-steer/credentials.json`.
 
+The installer migrates no existing inbox messages. Before enabling portal
+delivery for an existing task, pause new steers and reconcile outstanding stock
+orders in `state/<id>.inbox/` with its worker and the captain. Confirm each was
+acted on and acknowledged under the stock procedure or explicitly cancelled by
+the captain. Leave uncertain records untouched and postpone that task's switch;
+do not assume they have portal copies. Once reconciled, replace the task's brief
+using the skill's instructions and tell the worker portal delivery is active.
+Only the exact constant doorbell body for that task may be cleared as a doorbell.
+
 Then, from a firstmate-port checkout:
 
 ```sh

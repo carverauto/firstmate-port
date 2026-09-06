@@ -303,6 +303,10 @@ cmd_install() {
   note "  instance        $INSTANCE"
   note "  second mate     ${SECONDMATE:-not enabled}"
   note ""
+  note "No existing inbox messages were migrated. Before switching each task,"
+  note "reconcile outstanding stock orders, update its brief, and notify its worker."
+  note "See $OWNED_DIR/SKILL.md for the cutover procedure."
+  note ""
   note "Log in once on this host before the first steer:"
   note "  fm-steer auth login --instance $INSTANCE"
   return 0

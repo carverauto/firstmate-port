@@ -4,9 +4,13 @@
 My firstmate-port portal is @@INSTANCE@@. `fm-steer` is on PATH and logged in for this
 user, so every agent spawned on this machine shares that one login.
 
-While this block is here, the portal is the live message plane between me, you, and the
-crew. `state/<id>.inbox/` still exists on disk, but it is no longer where orders are
-read or acknowledged.
+After each task's cutover, the portal is the live message plane between me, you,
+and the crew. The installer migrates no existing inbox messages. Before switching
+an existing task or replacing its brief, pause steers and reconcile outstanding
+stock orders with the worker and captain: confirm they were acted on and
+acknowledged, or explicitly cancelled. Leave uncertain records untouched and
+postpone that task's switch. Then update its brief and tell the worker portal
+delivery is active. After cutover, disk inboxes carry only doorbells.
 
 - Steer a crewmate by putting the message on the portal under the work item's task key,
   with the body on stdin in a quoted heredoc:
@@ -35,6 +39,8 @@ read or acknowledged.
 - After every successful crew put, ring with one constant doorbell through
   `bin/fm-send.sh <task-id> 'portal instruction waiting: fm-steer inbox next --task <task-id>'`.
   The doorbell carries no orders; the worker reads the body from the portal.
+  Clear only records whose entire message body exactly matches that doorbell for
+  the task. Leave any other disk record untouched and report it for reconciliation.
 - If `fm-steer inbox put` fails, report the failed delivery and stop. Never send
   the order through `bin/fm-send.sh` or the on-disk inbox as a fallback.
 - `not logged in` or `{"error":"unauthorized"}` means my token lapsed. Tell me and stop
