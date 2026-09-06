@@ -19,6 +19,9 @@ farm-specific naming anywhere in the product.
 
 ## BuildBuddy org API key
 
+This is a deployment-wide key shared by the portal's BuildBuddy client,
+separate from tenant credentials stored in the portal.
+
 Set `BUILDBUDDY_HOST` to your BuildBuddy endpoint for API lookups.
 Compose defaults to `https://app.buildbuddy.io`; Kubernetes has no default.
 The key alone enables recording and the Fleet-log plate, but lookups also

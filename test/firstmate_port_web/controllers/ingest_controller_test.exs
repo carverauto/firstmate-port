@@ -127,6 +127,40 @@ defmodule FirstmatePortWeb.Api.IngestControllerTest do
     assert conn.status in [400, 422]
   end
 
+  test "recorded builds are visible through their returned browser links", %{
+    token: token,
+    human: human
+  } do
+    {:ok, jwt, _} = FirstmatePort.Auth.Guardian.encode_and_sign(human)
+
+    for {name, endpoint, attrs, expected} <- [
+          {"docker", "/api/docker-builds",
+           %{repository: "ghcr.io/example/app", tag: "sha-review", status: "success"},
+           "sha-review"},
+          {"buildbuddy", "/api/buildbuddy-invocations",
+           %{invocation_id: "review-invocation", status: "SUCCESS"}, "review-invocation"}
+        ] do
+      response =
+        build_conn()
+        |> put_req_header("authorization", "Bearer " <> token)
+        |> post(endpoint, attrs)
+        |> json_response(200)
+
+      html =
+        build_conn()
+        |> init_test_session(%{"guardian_token" => jwt})
+        |> get(URI.parse(response["url"]).path)
+        |> html_response(200)
+
+      assert html =~ expected
+
+      if dir = System.get_env("TRACKING_TEST_EVIDENCE_DIR") do
+        File.write!(Path.join(dir, "recorded-#{name}.html"), html)
+        File.write!(Path.join(dir, "recorded-#{name}.json"), Jason.encode!(response))
+      end
+    end
+  end
+
   test "rejects a roll whose PR URL is not full https", %{conn: conn, token: token} do
     conn =
       conn

@@ -43,6 +43,8 @@ regular device-code user JWT cannot authorize ingest writes. When neither
 `--instance`, `FIRSTMATE_INSTANCE`, nor stored credentials name a host, the CLI
 targets `http://localhost:4000`. Set `FIRSTMATE_INSTANCE` for your deployment.
 
+Before recording rolls, enable [Kubernetes tracking](docs/build-tracking.md#switches).
+
 With the agent token supplied in your environment:
 
 ```sh
