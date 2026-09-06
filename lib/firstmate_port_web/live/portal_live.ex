@@ -44,7 +44,9 @@ defmodule FirstmatePortWeb.PortalLive do
           <.link patch={~p"/?tab=progress"} aria-current={@filter == "progress" && "page"}>
             Progress
           </.link>
-          <.link patch={~p"/?tab=rolls"} aria-current={@filter == "rolls" && "page"}>Rolls</.link>
+          <.link patch={~p"/?tab=rolls"} aria-current={@filter == "rolls" && "page"}>
+            Deploys
+          </.link>
           <.link patch={~p"/?tab=no-mistakes"} aria-current={@filter == "no-mistakes" && "page"}>
             no-mistakes
           </.link>
@@ -95,7 +97,7 @@ defmodule FirstmatePortWeb.PortalLive do
       <section :if={@filter in ["all", "no-mistakes"]} class="plate">
         <h2>no-mistakes</h2>
         <p :if={@no_mistakes == []} class="empty-state">
-          No pipeline runs posted. Firstmate keeps the daemon on the captain Mac.
+          No pipeline runs posted yet.
         </p>
         <ol class="rows">
           <li :for={n <- @no_mistakes} id={n.id}>
