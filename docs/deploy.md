@@ -33,28 +33,17 @@ fm-steer auth login --instance http://localhost:4000
 fm-steer inbox put --task fm-port --body "hello"
 ```
 
-Crew shape against the live portal (set `FIRSTMATE_INSTANCE` to
-`https://firstmate.carverauto.dev`; a bare `put` files under task
-`firstmate`, and `next` with no `--task` takes the next item from the one
-shared inbox — there is no second inbox):
-
-```sh
-fm-steer auth login
-fm-steer inbox put --body "hello from second mate"
-fm-steer inbox next
-fm-steer inbox ack --ack <ack-from-next>
-fm-steer inbox list
-```
-
 For Fleet log posting commands and authentication, see the
 [fm-steer CLI guide](../README.md#fm-steer-cli).
 
-The messages show up at `/inbox` on the portal, where the captain can also send
-an order or ack one. See `docs/inbox.md` for the routing and the payload.
+See [the inbox guide](inbox.md) for live-instance login, crew routing, and portal messaging.
 
-Each `fm-steer auth login` is listed at `/settings/sessions` with the client
-that asked for it and when it was last used. Revoking one there stops that
-token on its next request, and the CLI holding it says so:
+Each `fm-steer auth login` is listed at `/settings/sessions`. You can see only
+your own sessions, including their creation and expiry times, client user-agent,
+configured portal URL, and last use (updated at most once per minute).
+CLI tokens expire after 12 hours. Tokens issued before session tracking was
+installed have no session row and require a fresh login. Revoking a session
+stops its token on the next request, and the CLI holding it says so:
 
 ```
 not signed in (token expired or revoked); run fm-steer auth login
@@ -211,4 +200,4 @@ See [Sign-in](#sign-in) for bootstrap credentials and backfill behavior. For
 Carverauto, use the
 [deployment-specific bootstrap command](../deploy/examples/carverauto.md).
 
-See the [fm-steer CLI guide](../README.md#fm-steer-cli) for inbox, routing, usage and Fleet log commands (also served at `/steer/docs/fm-steer`). `fm-steer` talks to the Phoenix API over HTTP only and does not dial NATS. The Phoenix API is the only JetStream client. The on-disk firstmate inbox stays until dual-write is wired.
+For CLI messaging and the separate on-disk stores, see [the inbox guide](inbox.md).

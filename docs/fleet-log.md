@@ -13,7 +13,13 @@ own either way. Uploads appear on the Fleet log's Diagrams tab and at `/d/:id`.
 `/d/:id` is tenant data, so it needs a signed-in reader. A visitor who is not
 signed in is sent to sign in and returned to the diagram, rather than told it
 does not exist. Link-unfurling crawlers get the Open Graph card instead, since
-they cannot sign in.
+they cannot sign in; this unauthenticated preview uses the default tenant.
+
+Stored HTML is served unchanged with a Content-Security-Policy sandbox granting
+`allow-scripts` but not `allow-same-origin`. Self-contained inline HTML/SVG/JS
+remains interactive in an opaque origin, without access to the portal
+origin's DOM or storage. Sandbox restrictions also block forms, popups, and
+downloads; diagrams must not rely on those capabilities when viewed here.
 
 ## Progress
 

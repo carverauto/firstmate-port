@@ -48,11 +48,16 @@ at login.
 `/inbox` shows the traffic as it happens - a message filed from a script appears
 without a reload - and the captain can send an order or ack one from the page.
 It is the same queue: an order sent there is one the crew takes with
-`fm-steer inbox next`.
+`fm-steer inbox next`. The page shows the newest 200 messages, including
+acknowledged ones. Use `/inbox?task=<task>` to filter before that history limit.
+The waiting count includes all pending and delivered messages in the tenant,
+regardless of the selected task or history window.
 
 ## What the payload looks like
 
-Every response carries the `fm-task-inbox.v1` schema:
+Each message returned by `put`, `next`, or the `list` response's `data` array
+carries the `fm-task-inbox.v1` schema. An empty `next` returns HTTP 204;
+`ack` returns `{"ok": true}`. A message looks like:
 
 ```json
 {

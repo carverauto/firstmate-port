@@ -2,22 +2,12 @@ defmodule FirstmatePort.Portal.InboxMessage do
   @moduledoc """
   One message passed between firstmate, the second mate, and the crew.
 
-  This is the store behind `fm-steer inbox`: every order and every "this is
-  done" that goes through the CLI lands in a row the portal can render, so the
-  captain can watch the traffic on the site. It is reached over the HTTP API and
-  nothing else; firstmate keeps its own on-disk inbox and status files, which
-  this neither reads nor replaces.
+  The CLI and portal use this resource through `FirstmatePort.Inbox`.
+  See `docs/inbox.md` for routing, delivery, and persistence semantics.
 
   Queue state is not history. `claim` and `ack` move a message's delivery
   status; the message itself - who sent it, when, and what it said - is written
   once and never rewritten.
-
-  There is one inbox per tenant, not one per direction. `task` is the routing
-  key: `firstmate` (`FirstmatePort.Inbox.default_task/0`) is the mailbox
-  firstmate itself reads, and any other value addresses a crew lane. A message
-  is `:pending` until a reader claims it with `next`, `:delivered` while that
-  reader works, and `:acked` once they confirm it. Acked rows are kept rather
-  than deleted - the history is the point.
 
   Claiming is `FOR UPDATE SKIP LOCKED` inside a transaction, so two crew members
   polling `next` at the same time cannot be handed the same order.

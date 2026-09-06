@@ -2,21 +2,8 @@ defmodule FirstmatePort.Inbox do
   @moduledoc """
   The message bus between firstmate, the second mate, and the crew.
 
-  `fm-steer inbox put|next|ack|list` is the only client, and it speaks HTTP: the
-  Phoenix API stays the tenant wall and the only JetStream client, so the CLI
-  never dials NATS. Rows live in `FirstmatePort.Portal.InboxMessage`, which is
-  what lets the portal render the traffic and what makes a message survive a
-  restart. Firstmate's own on-disk inbox and status files are separate and stay
-  where they are; this is the portal's store, reached over the API.
-
-  One inbox per tenant carries both directions. `task` routes: a bare
-  `fm-steer inbox put` files under `default_task/0`, firstmate's own mailbox,
-  and any other task addresses a crew lane. There is deliberately no second
-  broker.
-
-  Every write also broadcasts on `topic/1` for the portal, and a new message is
-  republished to `<tenant>.steer.inbox` for anything watching JetStream. Neither
-  is the store: a NATS outage costs the fan-out, not the message.
+  Shared store for the HTTP CLI and portal UI. Routing, delivery semantics,
+  persistence, and the separate on-disk stores are documented in `docs/inbox.md`.
   """
 
   require Ash.Query
