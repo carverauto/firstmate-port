@@ -67,6 +67,9 @@ func MustCreds(instance string) Creds {
 	if instance != "" {
 		c.Instance = strings.TrimRight(instance, "/")
 	}
+	if c.Instance == "" {
+		c.Instance = DefaultInstance
+	}
 	return c
 }
 

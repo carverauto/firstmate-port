@@ -277,6 +277,7 @@ go_library(
         "internal/fmsteer/client.go",
         "internal/fmsteer/creds.go",
         "internal/fmsteer/inbox.go",
+        "internal/fmsteer/ingest.go",
     ],
     importpath = "github.com/mfreeman451/firstmate-port/internal/fmsteer",
 )

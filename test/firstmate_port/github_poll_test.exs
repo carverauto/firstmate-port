@@ -21,13 +21,6 @@ defmodule FirstmatePort.Jobs.GitHubPollTest do
     assert GitHubPoll.copied_buildbuddy_url([%{"details_url" => "https://github.com/a/b"}]) == ""
   end
 
-  test "parse_orgs splits comma-separated orgs" do
-    assert GitHubPoll.parse_orgs(nil) == []
-    assert GitHubPoll.parse_orgs("") == []
-    assert GitHubPoll.parse_orgs("carverauto") == ["carverauto"]
-    assert GitHubPoll.parse_orgs("carverauto, mfreeman451 ,,") == ["carverauto", "mfreeman451"]
-  end
-
   test "the default Req pool is supervised for outbound GitHub HTTP" do
     # The poll drives Req through its default Req.Finch pool, which the :req
     # OTP app supervises. A bare `eval` sidecar lacks it (unknown registry);

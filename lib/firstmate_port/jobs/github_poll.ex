@@ -8,22 +8,20 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   @spec run(term()) :: :ok
   def run(actor) do
     token = trim_credential(System.get_env("GITHUB_TOKEN"))
-    orgs = parse_orgs(System.get_env("GITHUB_ORG"))
+    org = String.trim(System.get_env("GITHUB_ORG") || "")
 
     cond do
       is_nil(token) or token == "" ->
         Logger.info("GitHub poll skipped: GITHUB_TOKEN unset")
         :ok
 
-      orgs == [] ->
+      org == "" ->
         Logger.info("GitHub poll skipped: GITHUB_ORG unset")
         :ok
 
       true ->
-        Enum.each(orgs, fn org ->
-          poll_search(org, token, actor, :pr, "is:pr+is:open")
-          poll_search(org, token, actor, :issue, "is:issue+is:open")
-        end)
+        poll_search(org, token, actor, :pr, "is:pr+is:open")
+        poll_search(org, token, actor, :issue, "is:issue+is:open")
 
         :ok
     end
@@ -37,18 +35,6 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   def trim_credential(nil), do: nil
   def trim_credential(""), do: ""
   def trim_credential(value) when is_binary(value), do: String.trim(value)
-
-  @doc "Splits a comma-separated GITHUB_ORG value into org names."
-  @spec parse_orgs(String.t() | nil) :: [String.t()]
-  def parse_orgs(nil), do: []
-  def parse_orgs(""), do: []
-
-  def parse_orgs(value) when is_binary(value) do
-    value
-    |> String.split(",")
-    |> Enum.map(&String.trim/1)
-    |> Enum.reject(&(&1 == ""))
-  end
 
   defp poll_search(org, token, actor, kind, extra) do
     url = "https://api.github.com/search/issues?q=org:#{org}+#{extra}&per_page=50"

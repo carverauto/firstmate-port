@@ -1,30 +1,16 @@
 package fmsteer
 
 import (
-"encoding/base64"
-"encoding/json"
-"flag"
-"io"
-"log"
-"os"
-"strings"
+	"encoding/base64"
+	"encoding/json"
+	"flag"
+	"log"
+	"os"
+	"strings"
 )
 
+// AgentTokenEnv carries the agent API token for Fleet log writes.
 const AgentTokenEnv = "FIRSTMATE_AGENT_TOKEN"
-
-func cmdProgress(args []string) {
-	if len(args) < 1 {
-		os.Exit(Usage())
-	}
-	switch args[0] {
-	case "post":
-		progressPost(args[1:])
-	case "list":
-		listIngest("/api/progress", instanceFlag(args[1:]))
-	default:
-		os.Exit(Usage())
-	}
-}
 
 func cmdRolls(args []string) {
 	if len(args) < 1 {
@@ -33,8 +19,6 @@ func cmdRolls(args []string) {
 	switch args[0] {
 	case "post":
 		rollsPost(args[1:])
-	case "list":
-		listIngest("/api/rolls", instanceFlag(args[1:]))
 	default:
 		os.Exit(Usage())
 	}
@@ -47,8 +31,6 @@ func cmdDiagrams(args []string) {
 	switch args[0] {
 	case "post":
 		diagramsPost(args[1:])
-	case "list":
-		listIngest("/api/diagrams", instanceFlag(args[1:]))
 	default:
 		os.Exit(Usage())
 	}
@@ -61,32 +43,9 @@ func cmdNoMistakes(args []string) {
 	switch args[0] {
 	case "post":
 		noMistakesPost(args[1:])
-	case "list":
-		listIngest("/api/no-mistakes", instanceFlag(args[1:]))
 	default:
 		os.Exit(Usage())
 	}
-}
-
-func progressPost(args []string) {
-	fs := flag.NewFlagSet("progress post", flag.ExitOnError)
-	kind := fs.String("kind", "", "pr|issue|achievement|note (required)")
-	title := fs.String("title", "", "title (required)")
-	url := fs.String("url", "", "link URL")
-	bodyFlag := fs.String("body", "", "body; piped stdin if omitted")
-	instance := fs.String("instance", Env("FIRSTMATE_INSTANCE", ""), "API base URL")
-	_ = fs.Parse(args)
-	if *kind == "" || *title == "" {
-		log.Fatal("progress post requires --kind and --title")
-	}
-	body := *bodyFlag
-	if body == "" {
-		body = stdinIfPiped()
-	}
-	payload := map[string]any{"kind": *kind, "title": *title}
-	setIf(payload, "url", *url)
-	setIf(payload, "body", body)
-	postIngest("/api/progress", *instance, payload)
 }
 
 func rollsPost(args []string) {
@@ -164,14 +123,6 @@ func noMistakesPost(args []string) {
 	postIngest("/api/no-mistakes", *instance, payload)
 }
 
-// instanceFlag parses only --instance / FIRSTMATE_INSTANCE for list commands.
-func instanceFlag(args []string) string {
-	fs := flag.NewFlagSet("list", flag.ExitOnError)
-	instance := fs.String("instance", Env("FIRSTMATE_INSTANCE", ""), "API base URL")
-	_ = fs.Parse(args)
-	return *instance
-}
-
 // endpointAuth resolves the API host and credential for Fleet log ingest.
 // An agent API token in FIRSTMATE_AGENT_TOKEN wins (ingest writes require an
 // agent role); otherwise the device-code login credentials are used.
@@ -189,15 +140,6 @@ func endpointAuth(instance string) (string, string) {
 	}
 	c := MustCreds(instance)
 	return c.Instance, c.Token
-}
-
-func listIngest(path, instance string) {
-	base, token := endpointAuth(instance)
-	var out map[string]any
-	if err := GetJSON(base+path, token, &out); err != nil {
-		log.Fatal(err)
-	}
-	printJSON(out)
 }
 
 func postIngest(path, instance string, payload map[string]any) {
@@ -253,17 +195,3 @@ func fileB64(path string) string {
 	}
 	return base64.StdEncoding.EncodeToString(raw)
 }
-
-// stdinIfPiped returns stdin when it is piped or redirected, "" on a terminal.
-func stdinIfPiped() string {
-	st, err := os.Stdin.Stat()
-	if err != nil || st.Mode()&os.ModeCharDevice != 0 {
-		return ""
-	}
-	raw, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return string(raw)
-}
-

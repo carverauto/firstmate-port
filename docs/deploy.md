@@ -33,7 +33,7 @@ fm-steer auth login --instance http://localhost:4000
 fm-steer inbox put --task fm-port --body "hello"
 ```
 
-Crew shape against the live portal (default instance
+Crew shape against the live portal (set `FIRSTMATE_INSTANCE` to
 `https://firstmate.carverauto.dev`; a bare `put` files under task
 `firstmate`, and `next` with no `--task` takes the next item from the one
 shared inbox — there is no second inbox):
@@ -46,10 +46,11 @@ fm-steer inbox ack --ack <ack-from-next>
 fm-steer inbox list
 ```
 
-Fleet log ingest posts (`progress|rolls|diagrams|no-mistakes post|list`) need an
+Fleet log ingest posts (`rolls|diagrams|no-mistakes post`) need an
 agent role, so they read the agent API token from `FIRSTMATE_AGENT_TOKEN`
 (env only; the CLI never prints or stores it) instead of the device-code user
-JWT:
+JWT. Set `FIRSTMATE_INSTANCE` to your deployment URL; the default is
+`http://localhost:4000`:
 
 ```sh
 FIRSTMATE_AGENT_TOKEN="$(cat /run/secrets/agent-token)" \

@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -89,7 +88,7 @@ func TestEndpointAuthDefaultsInstance(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	t.Setenv(AgentTokenEnv, "agent-tok")
 	base, _ := endpointAuth("")
-	if base != DefaultInstance {
+	if base != "http://localhost:4000" {
 		t.Fatalf("base %q", base)
 	}
 }
@@ -101,38 +100,8 @@ func TestMustCredsDefaultsInstance(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := mustCreds("")
-	if c.Instance != DefaultInstance {
+	if c.Instance != "http://localhost:4000" {
 		t.Fatalf("instance %q", c.Instance)
-	}
-}
-
-func TestProgressPostSendsPayload(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
-	t.Setenv(AgentTokenEnv, "agent-tok")
-	var gotPath, gotKind, gotTitle, gotBody string
-	var gotAuth bool
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath = r.URL.Path
-		gotAuth = strings.HasPrefix(r.Header.Get("authorization"), "Bearer ") &&
-			len(r.Header.Get("authorization")) > len("Bearer ")
-		var payload map[string]any
-		_ = json.NewDecoder(r.Body).Decode(&payload)
-		gotKind, _ = payload["kind"].(string)
-		gotTitle, _ = payload["title"].(string)
-		gotBody, _ = payload["body"].(string)
-		_ = json.NewEncoder(w).Encode(map[string]any{"id": "p1", "kind": gotKind})
-	}))
-	defer srv.Close()
-	progressPost([]string{"--kind", "note", "--title", "hello", "--body", "world", "--instance", srv.URL})
-	if gotPath != "/api/progress" {
-		t.Fatalf("path %q", gotPath)
-	}
-	if !gotAuth {
-		t.Fatal("missing auth header")
-	}
-	if gotKind != "note" || gotTitle != "hello" || gotBody != "world" {
-		t.Fatalf("payload kind=%q title=%q body=%q", gotKind, gotTitle, gotBody)
 	}
 }
 
@@ -220,29 +189,6 @@ func TestNoMistakesPostSendsPayload(t *testing.T) {
 	}
 }
 
-func TestIngestListUsesUserCreds(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
-	os.Unsetenv(AgentTokenEnv)
-	var gotPath, gotAuth string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath = r.URL.Path
-		gotAuth = r.Header.Get("authorization")
-		_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{}})
-	}))
-	defer srv.Close()
-	if err := writeCreds(srv.URL, "user-jwt", "local"); err != nil {
-		t.Fatal(err)
-	}
-	listIngest("/api/progress", "")
-	if gotPath != "/api/progress" {
-		t.Fatalf("path %q", gotPath)
-	}
-	if !strings.HasPrefix(gotAuth, "Bearer ") || len(gotAuth) <= len("Bearer ") {
-		t.Fatal("missing auth header")
-	}
-}
-
 func TestInboxPutGoesToHTTP(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
@@ -289,8 +235,8 @@ func TestInboxPutDefaultsTaskToFirstmate(t *testing.T) {
 	}
 }
 
-func TestDefaultInstanceIsLivePortal(t *testing.T) {
-	if DefaultInstance != "https://firstmate.carverauto.dev" {
+func TestDefaultInstanceIsLocalhost(t *testing.T) {
+	if DefaultInstance != "http://localhost:4000" {
 		t.Fatalf("default %q", DefaultInstance)
 	}
 	t.Setenv("FIRSTMATE_INSTANCE", "http://localhost:4000")
