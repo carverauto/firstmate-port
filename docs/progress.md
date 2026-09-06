@@ -85,6 +85,10 @@ The poll skips a status already explicitly projected and a transition already
 recorded at the same observed timestamp. Merge and close events retain GitHub’s
 observed timestamps, so repeated polls cannot replay an old transition after
 newer crew work.
+Open observations use GitHub's `updated_at` and are skipped when it is missing
+or invalid, so a delayed open response cannot outrank a later merge or close.
+See the observation-ordering regressions in
+`test/firstmate_port/github_poll_test.exs`.
 
 ## Ingest contract
 
