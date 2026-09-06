@@ -273,6 +273,7 @@ go_library(
     name = "fmsteer_lib",
     srcs = [
         "internal/fmsteer/auth.go",
+        "internal/fmsteer/build.go",
         "internal/fmsteer/cli.go",
         "internal/fmsteer/client.go",
         "internal/fmsteer/creds.go",
@@ -312,7 +313,10 @@ go_binary(
 
 go_test(
     name = "fm-steer_test",
-    srcs = ["internal/fmsteer/fmsteer_test.go"],
+    srcs = [
+        "internal/fmsteer/build_test.go",
+        "internal/fmsteer/fmsteer_test.go",
+    ],
     embed = [":fmsteer_lib"],
 )
 
