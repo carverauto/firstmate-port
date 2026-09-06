@@ -57,4 +57,4 @@ kubectl apply -k k8s
 # optional OIDC: ./deploy/bootstrap-authentik-oidc.sh
 ```
 
-`fm-steer` is the HTTP inbox port (`put` / `next` / `ack` / `list`). It does not dial NATS. The Phoenix API is the only JetStream client. The on-disk firstmate inbox stays until dual-write is wired.
+`fm-steer` talks to the Phoenix API over HTTP only (commands: `/steer/docs/fm-steer`). It does not dial NATS. The Phoenix API is the only JetStream client. The on-disk firstmate inbox stays until dual-write is wired.

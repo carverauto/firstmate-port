@@ -1,13 +1,18 @@
 <div class="doc">
   <.link navigate={~p"/steer/docs"} class="back">Back to docs</.link>
   <h1>fm-steer CLI</h1>
-  <p class="muted">The captain CLI. It talks only to the firstmate-port HTTP API, never NATS. Ranking, quota math, and provider keys stay server-side.</p>
+  <p class="muted">
+    The captain CLI. It talks only to the firstmate-port HTTP API, never NATS. Ranking, quota math, and provider keys stay server-side.
+  </p>
 
   <h2>Install</h2>
   <pre>go build -o fm-steer ./cmd/fm-steer</pre>
 
   <h2>Auth</h2>
-  <p>Device code login stores a JWT at <code>$XDG_CONFIG_HOME/fm-steer/credentials.json</code> (mode 0600).</p>
+  <p>
+    Device code login stores a JWT at <code>$XDG_CONFIG_HOME/fm-steer/credentials.json</code>
+    (mode 0600).
+  </p>
   <pre>fm-steer auth login --instance http://localhost:4000
 fm-steer auth status
 fm-steer auth logout</pre>
@@ -20,18 +25,29 @@ fm-steer inbox ack --ack &lt;token&gt;
 fm-steer inbox list</pre>
 
   <h2>Route</h2>
-  <p>Ask the portal router which worker to use. The answer carries harness, model, effort, and why.</p>
+  <p>
+    Ask the portal router which worker to use. The answer carries harness, model, effort, and why.
+  </p>
   <pre>fm-steer route "fix the failing test in the ingest controller"
 fm-steer route --intel "compare current embedding models"
 echo "deploy the portal to production" | fm-steer route</pre>
-  <p><code>--intel</code> folds in live Artificial Analysis input. <code>--json</code> prints the full response for scripts and rater agents.</p>
+  <p>
+    <code>--intel</code>
+    folds in live Artificial Analysis input. <code>--json</code>
+    prints the full response for scripts and rater agents.
+  </p>
 
   <h2>Usage</h2>
   <p>Per-account token usage and remaining allowance from the portal ledger.</p>
   <pre>fm-steer usage
 fm-steer usage --json</pre>
-  <p><code>--json</code> prints the portal's ledger response unchanged, for scripts that need every field.</p>
+  <p>
+    <code>--json</code>
+    prints the portal's ledger response unchanged, for scripts that need every field.
+  </p>
 
   <h2>Tenancy</h2>
-  <p>Credentials carry the tenant from login. Every request is scoped to that tenant by the API.</p>
+  <p>
+    Credentials carry the tenant from login. Every request is scoped to that tenant by the API.
+  </p>
 </div>

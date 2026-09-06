@@ -36,7 +36,7 @@ firstmate-port is the OSS companion portal for firstmate: a Phoenix LiveView sit
 
 ## Domain Context
 - Discord cannot render HTML; Archify URLs are the product
-- `fm-steer` is the inbox port (put/next/ack/list). Do not rip the on-disk inbox.
+- `fm-steer` is the CLI port to the portal API (see `/steer/docs/fm-steer`). Do not rip the on-disk inbox.
 - NATS in cluster shape is 3-replica FileStorage; compose may be single-node
 - Tenancy is attribute-based on shared Postgres; one NATS account; streams named `<tenant>.steer` and `<tenant>.inbound`
 - Public Discord failures stay generic

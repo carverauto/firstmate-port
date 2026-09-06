@@ -1,6 +1,6 @@
 # firstmate-port
 
-Phoenix LiveView companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, farm rolls, NATS queues, and no-mistakes runs. The Mac Discord notifier (`notify.py`, `watch.py`, launchd) stays in firstmate-notify.
+Phoenix LiveView companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, farm rolls, NATS queues, token usage, and no-mistakes runs. The Mac Discord notifier (`notify.py`, `watch.py`, launchd) stays in firstmate-notify.
 
 ## Local
 
@@ -35,7 +35,7 @@ CLI: `fm-steer` authenticates with RFC 8628 device-code against this API and dri
 ## Layout
 
 - `lib/` Phoenix/Ash portal
-- `cmd/fm-steer` HTTP inbox CLI (device-code; does not dial NATS)
+- `cmd/fm-steer` HTTP CLI (device-code; does not dial NATS)
 - `cmd/nats-tail`, `cmd/discord-inbound`, `cmd/discord-interactions`
 - `k8s/` portal + 3-node NATS + CNPG
 - `docker-compose.yml` portal + Postgres + single-node JetStream

@@ -17,7 +17,9 @@
     <div><span class="c">- codex wins on quality x cost x latency</span></div>
     <div>&nbsp;</div>
     <div><span class="p">$</span> fm-steer usage</div>
-    <div>openrouter&nbsp;&nbsp;captain&nbsp;&nbsp;100.00&nbsp;&nbsp;25.00&nbsp;&nbsp;75.00&nbsp;&nbsp;ok</div>
+    <div>
+      openrouter&nbsp;&nbsp;captain&nbsp;&nbsp;100.00&nbsp;&nbsp;25.00&nbsp;&nbsp;75.00&nbsp;&nbsp;ok
+    </div>
   </div>
 </section>
 
@@ -31,15 +33,21 @@
   <div class="flow">
     <div>
       <h3>Classify</h3>
-      <p>Kind, ambiguity, blast radius, citations, risk, and whether live web is required. A rater agent can override any axis.</p>
+      <p>
+        Kind, ambiguity, blast radius, citations, risk, and whether live web is required. A rater agent can override any axis.
+      </p>
     </div>
     <div>
       <h3>Filter</h3>
-      <p>Lanes that miss a constraint drop out with a note. Artificial Analysis only annotates the surviving lane; it never changes it.</p>
+      <p>
+        Lanes that miss a constraint drop out with a note. Artificial Analysis only annotates the surviving lane; it never changes it.
+      </p>
     </div>
     <div>
       <h3>Pick</h3>
-      <p>Cheapest qualifier wins, ties break on latency. Higher ambiguity, blast radius, or risk raises the effort and the model with it.</p>
+      <p>
+        Cheapest qualifier wins, ties break on latency. Higher ambiguity, blast radius, or risk raises the effort and the model with it.
+      </p>
     </div>
   </div>
 </section>
@@ -53,7 +61,13 @@
   </p>
   <table class="sample-table" aria-label="Sample usage ledger">
     <thead>
-      <tr><th>Account</th><th>Used</th><th>Remaining</th><th>Status</th><th>Runway</th></tr>
+      <tr>
+        <th>Account</th>
+        <th>Used</th>
+        <th>Remaining</th>
+        <th>Status</th>
+        <th>Runway</th>
+      </tr>
     </thead>
     <tbody>
       <tr>
@@ -72,7 +86,9 @@
       </tr>
     </tbody>
   </table>
-  <p class="lede" style="margin-top: 1rem; margin-bottom: 0;">Sample rows. Lower spend priority burns first. Every account is fed by posted readings.</p>
+  <p class="lede" style="margin-top: 1rem; margin-bottom: 0;">
+    Sample rows. Lower spend priority burns first. Every account is fed by posted readings.
+  </p>
 </section>
 
 <section class="mkt-section" id="commands">
@@ -99,15 +115,24 @@ fm-steer usage --json</pre>
   <p class="lede">Short pages for operators and for agents calling the API.</p>
   <div class="doc-rows">
     <.link navigate={~p"/steer/docs/fm-steer"}>
-      <span><strong>fm-steer CLI</strong><p>Install, auth, inbox, route, and usage commands.</p></span>
+      <span>
+        <strong>fm-steer CLI</strong>
+        <p>Install, auth, inbox, route, and usage commands.</p>
+      </span>
       <span aria-hidden="true">-&gt;</span>
     </.link>
     <.link navigate={~p"/steer/docs/routing"}>
-      <span><strong>Routing</strong><p>Axes, capability matrix, provider intel, eval set, API.</p></span>
+      <span>
+        <strong>Routing</strong>
+        <p>Axes, capability matrix, provider intel, eval set, API.</p>
+      </span>
       <span aria-hidden="true">-&gt;</span>
     </.link>
     <.link navigate={~p"/steer/docs/usage"}>
-      <span><strong>Usage and billing</strong><p>Accounts, windows, spend priority, runway.</p></span>
+      <span>
+        <strong>Usage and billing</strong>
+        <p>Accounts, windows, spend priority, runway.</p>
+      </span>
       <span aria-hidden="true">-&gt;</span>
     </.link>
   </div>
@@ -121,5 +146,7 @@ fm-steer usage --json</pre>
     <div><span class="p">$</span> export FIRSTMATE_INSTANCE=http://localhost:4000</div>
     <div><span class="p">$</span> fm-steer auth login</div>
   </div>
-  <p class="lede" style="margin-top: 1rem; margin-bottom: 0;">Credentials land at $XDG_CONFIG_HOME/fm-steer/credentials.json with mode 0600. The CLI only calls the portal API, so your tenant follows your login.</p>
+  <p class="lede" style="margin-top: 1rem; margin-bottom: 0;">
+    Credentials land at $XDG_CONFIG_HOME/fm-steer/credentials.json with mode 0600. The CLI only calls the portal API, so your tenant follows your login.
+  </p>
 </section>
