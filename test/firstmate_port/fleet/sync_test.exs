@@ -8,29 +8,12 @@ defmodule FirstmatePort.Fleet.SyncTest do
   alias FirstmatePort.Tenancy
 
   setup do
-    previous_tracking = Application.get_env(:firstmate_port, :build_tracking, [])
-
-    on_exit(fn ->
-      Application.put_env(:firstmate_port, :build_tracking, previous_tracking)
-    end)
-
-    Application.put_env(:firstmate_port, :build_tracking, kubernetes_enabled: true)
-
+    FirstmatePort.Test.AppConfig.put_env(:build_tracking, kubernetes_enabled: true)
     tenant("local")
     {:ok, actor: agent("local")}
   end
 
-  # Rolls are opt-in Kubernetes tracking, disabled by default, so tests that
-  # record rolls enable it for their duration only. Same pattern as
-  # FleetLogJourneyTest.
-  defp enable_kubernetes_tracking do
-    original = Application.get_env(:firstmate_port, :build_tracking, [])
-    Application.put_env(:firstmate_port, :build_tracking, kubernetes_enabled: true)
-    on_exit(fn -> Application.put_env(:firstmate_port, :build_tracking, original) end)
-  end
-
   test "one sync projects every source the fleet log has", %{actor: actor} do
-    enable_kubernetes_tracking()
     github_item(actor, %{title: "Rework the roll job"})
     progress_item(actor, %{title: "Shipped the search box"})
     roll(actor, %{outcome: "web-ng rolled"})
@@ -105,7 +88,6 @@ defmodule FirstmatePort.Fleet.SyncTest do
   end
 
   test "the projection carries the record's JSON, not just its title", %{actor: actor} do
-    enable_kubernetes_tracking()
     roll(actor, %{image_tag: "sha-cafe", outcome: "rolled"})
 
     assert {:ok, %{written: 1}} = Sync.run("local")
