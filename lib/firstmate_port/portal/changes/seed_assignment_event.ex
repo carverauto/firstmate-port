@@ -22,7 +22,9 @@ defmodule FirstmatePort.Portal.Changes.SeedAssignmentEvent do
 
   @impl true
   def change(changeset, _opts, context) do
-    Ash.Changeset.after_action(changeset, fn changeset, item ->
+    changeset
+    |> Ash.Changeset.before_action(&claim_existing/1)
+    |> Ash.Changeset.after_action(fn changeset, item ->
       worker = Ash.Changeset.get_argument(changeset, :worker)
 
       attrs = %{
@@ -38,4 +40,42 @@ defmodule FirstmatePort.Portal.Changes.SeedAssignmentEvent do
       end
     end)
   end
+
+  defp claim_existing(changeset) do
+    url = Ash.Changeset.get_attribute(changeset, :url)
+
+    if is_binary(url) and url != "" do
+      case FirstmatePort.Repo.query(
+             """
+             SELECT p.* FROM progress_items p
+             WHERE p.tenant_slug = $1 AND p.url = $2
+             AND NOT EXISTS (
+               SELECT 1 FROM progress_events e
+               WHERE e.tenant_slug = p.tenant_slug AND e.item_id = p.id AND e.type = 'assignment'
+             )
+             FOR UPDATE OF p
+             """,
+             [changeset.tenant, url]
+           ) do
+        {:ok, %{columns: columns, rows: [row]}} ->
+          item = FirstmatePort.Repo.load(FirstmatePort.Portal.ProgressItem, {columns, row})
+
+          changeset
+          |> Ash.Changeset.set_argument(
+            :assigned_at,
+            Ash.Changeset.get_argument(changeset, :assigned_at) || DateTime.utc_now()
+          )
+          |> Ash.Changeset.set_result({:ok, item})
+
+        {:ok, %{rows: []}} ->
+          changeset
+
+        {:error, error} ->
+          Ash.Changeset.add_error(changeset, error)
+      end
+    else
+      changeset
+    end
+  end
 end
+

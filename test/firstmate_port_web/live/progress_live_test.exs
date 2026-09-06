@@ -27,8 +27,18 @@ defmodule FirstmatePortWeb.ProgressLiveTest do
 
   test "assignment configuration appears in both detail sections", %{conn: conn, opts: opts} do
     item = seed_item(opts, title: "assigned work")
-    append(item, %{type: :assignment, worker: "crew-config", runtime: "codex",
-                   model: "gpt-test", effort: "high"}, opts)
+
+    append(
+      item,
+      %{
+        type: :assignment,
+        worker: "crew-config",
+        runtime: "codex",
+        model: "gpt-test",
+        effort: "high"
+      },
+      opts
+    )
 
     {:ok, _view, html} = live(conn, ~p"/progress?item=#{item.id}")
     assert html =~ "crew-config codex gpt-test high"
@@ -37,13 +47,28 @@ defmodule FirstmatePortWeb.ProgressLiveTest do
   test "zero token contributions remain distinct from missing telemetry" do
     alias FirstmatePortWeb.ProgressComponents
 
-    bars = ProgressComponents.contributor_bars(%{contributions: [
-      %{worker: "measured", tokens: 0, role: :implement},
-      %{worker: "unknown", tokens: nil, role: :implement}
-    ]})
+    bars =
+      ProgressComponents.contributor_bars(%{
+        contributions: [
+          %{worker: "measured", tokens: 0, role: :implement},
+          %{worker: "unknown", tokens: nil, role: :implement}
+        ]
+      })
 
     assert Enum.find(bars, &(&1.label == "measured")).display == "0"
     assert Enum.find(bars, &(&1.label == "unknown")).display == "—"
+  end
+
+  test "both modals page through the complete event history", %{conn: conn, opts: opts} do
+    item = seed_item(opts, title: "long history")
+    for n <- 1..101, do: append(item, %{type: :note, detail: "history-entry-#{n}"}, opts)
+
+    for path <- [~p"/?item=#{item.id}", ~p"/progress?item=#{item.id}"] do
+      {:ok, view, html} = live(conn, path)
+      refute html =~ "history-entry-101"
+      assert view |> element("a", "Next events") |> render_click() =~ "history-entry-101"
+      assert has_element?(view, "a", "Previous events")
+    end
   end
 
   describe "home preview" do
@@ -326,7 +351,7 @@ defmodule FirstmatePortWeb.ProgressLiveTest do
       {:ok, _view, html} = live(conn, ~p"/progress?item=#{bare.id}")
 
       assert html =~ "Nothing appended yet"
-      assert html =~ "No contributions reported yet"
+      assert html =~ "No contributions reported on this page"
       assert html =~ "no telemetry yet"
       assert html =~ "derived from kind"
     end
@@ -607,3 +632,4 @@ defmodule FirstmatePortWeb.ProgressLiveTest do
     |> json_response(200)
   end
 end
+

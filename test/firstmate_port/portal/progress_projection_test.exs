@@ -94,20 +94,6 @@ defmodule FirstmatePort.Portal.ProgressProjectionTest do
       assert Enum.map(projection.assignments, & &1.worker) == ["crew-b", "crew-a"]
     end
 
-    test "a contributor stands in as assignee on a row with no assignment", ctx do
-      legacy = seed_legacy_item(ctx.opts, kind: :pr, title: "polled long ago")
-
-      append(
-        legacy,
-        %{type: :contribution, worker: "crew-late", role: :implement, occurred_at: at(1)},
-        ctx.opts
-      )
-
-      assert {:ok, projection} = ProgressProjection.load_one(legacy, ctx.opts)
-      assert projection.assignee == "crew-late"
-      assert projection.assignee_source == :contribution
-    end
-
     test "every contributor survives, with runtime, model, effort and role", ctx do
       append(
         ctx.item,
@@ -213,6 +199,38 @@ defmodule FirstmatePort.Portal.ProgressProjectionTest do
     end
   end
 
+  test "summaries include events beyond a bounded history page", ctx do
+    for _ <- 1..120 do
+      append(
+        ctx.item,
+        %{type: :contribution, role: :review, worker: "reviewer", tokens: 1, duration_ms: 10},
+        ctx.opts
+      )
+    end
+
+    append(ctx.item, %{type: :status, status: :merged}, ctx.opts)
+
+    assert {:ok, [summary]} = ProgressProjection.load([ctx.item], ctx.opts)
+    assert summary.events == []
+    assert summary.status == :merged
+    assert summary.tokens == 120
+    assert summary.duration_ms == 1200
+    assert summary.review_count == 120
+    assert summary.event_count == 122
+
+    assert {:ok, first} = ProgressProjection.load_one(ctx.item, ctx.opts)
+    assert length(first.events) == 100
+    assert first.tokens == 120
+    assert first.status == :merged
+    assert {:ok, last} = ProgressProjection.load_one(ctx.item, ctx.opts, 100, 100)
+    assert length(last.events) == 22
+    assert List.last(last.events).status == :merged
+    assert last.event_count == 122
+    assert {:ok, stats, false} = ProgressProjection.tenant_stats(ctx.opts)
+    assert stats.tokens_total == 120
+    assert stats.review_total == 1
+  end
+
   describe "load/2" do
     test "projects a page of items in one query, preserving order", ctx do
       [a, b, c] = seed_items(ctx.opts, 3)
@@ -286,3 +304,4 @@ defmodule FirstmatePort.Portal.ProgressProjectionTest do
 
   defp at(n), do: DateTime.add(~U[2026-01-01 00:00:00.000000Z], n, :minute)
 end
+

@@ -100,18 +100,16 @@ defmodule FirstmatePort.Portal.ProgressStatus do
   def valid?(status), do: status in @statuses
 
   @doc """
-  Parses a status from ingest input, accepting the hyphenated and spaced
-  spellings the captain uses ("in-progress", "ready for review").
+  Parses only canonical status strings or enum atoms.
   """
   def parse(nil), do: :error
   def parse(status) when status in @statuses, do: {:ok, status}
 
   def parse(raw) when is_binary(raw) do
-    normalized = raw |> String.trim() |> String.downcase() |> String.replace(["-", " "], "_")
-
-    Enum.find_value(@statuses, :error, &(Atom.to_string(&1) == normalized && {:ok, &1}))
+    Enum.find_value(@statuses, :error, &(Atom.to_string(&1) == raw && {:ok, &1}))
   end
 
   def parse(raw) when is_atom(raw), do: raw |> Atom.to_string() |> parse()
   def parse(_), do: :error
 end
+

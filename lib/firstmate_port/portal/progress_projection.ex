@@ -4,15 +4,15 @@ defmodule FirstmatePort.Portal.ProgressProjection do
 
   Nothing here writes. A projection folds one item's events into the shape the
   fleet log, the `/progress` table, the details view, and the charts all need:
-  newest event wins for the single-value fields (status, assignee), and the full
-  ordered list survives for the details view.
+  newest event wins for the single-value fields (status, assignee), while
+  bounded pages expose the complete history in the details view.
 
   Every derived number is honest about missing data. Duration, tokens, and
   interrupted are `nil`/`:unknown` until an event reports them — they are never
   invented from wall-clock time or from a PR author.
   """
 
-  alias FirstmatePort.Portal.{ProgressEvent, ProgressItem, ProgressStatus}
+  alias FirstmatePort.Portal.{ProgressEvent, ProgressItem, ProgressStatus, ProgressSummary}
 
   @typedoc "yes / no / unknown, because 'nobody said' is not the same as 'no'."
   @type interrupted :: :yes | :no | :unknown
@@ -37,7 +37,12 @@ defmodule FirstmatePort.Portal.ProgressProjection do
     :status_spans,
     :first_event_at,
     :last_event_at,
-    :events
+    :events,
+    :event_count,
+    :event_offset,
+    :event_limit,
+    :review_count,
+    :worker_count
   ]
 
   @doc """
@@ -59,15 +64,6 @@ defmodule FirstmatePort.Portal.ProgressProjection do
     assignment_events = Enum.filter(events, &(&1.type == :assignment))
     contributions = Enum.filter(events, &(&1.type == :contribution))
     last_assignment = List.last(assignment_events)
-    last_contribution = List.last(contributions)
-
-    {assignee, assignee_source} =
-      cond do
-        last_assignment -> {last_assignment.worker, :assignment}
-        last_contribution -> {last_contribution.worker, :contribution}
-        true -> {nil, nil}
-      end
-
     status = (status_event && status_event.status) || ProgressStatus.default_for_kind(item.kind)
     started_at = events |> List.first() |> occurred_at()
     completed_at = completed_at(status, status_event)
@@ -77,8 +73,8 @@ defmodule FirstmatePort.Portal.ProgressProjection do
       status: status,
       status_source: if(status_event, do: :log, else: :kind),
       status_at: status_event && status_event.occurred_at,
-      assignee: assignee,
-      assignee_source: assignee_source,
+      assignee: last_assignment && last_assignment.worker,
+      assignee_source: if(last_assignment, do: :assignment),
       assignments: Enum.reverse(assignment_events),
       contributions: contributions,
       workers: workers(assignment_events ++ contributions),
@@ -92,7 +88,12 @@ defmodule FirstmatePort.Portal.ProgressProjection do
       status_spans: status_spans(events, status_event),
       first_event_at: started_at,
       last_event_at: events |> List.last() |> occurred_at(),
-      events: events
+      events: events,
+      event_count: length(events),
+      event_offset: 0,
+      event_limit: 100,
+      review_count: Enum.count(contributions, &(&1.role == :review)),
+      worker_count: length(workers(assignment_events ++ contributions))
     }
   end
 
@@ -145,36 +146,60 @@ defmodule FirstmatePort.Portal.ProgressProjection do
     }
   end
 
-  @doc """
-  Projects a page of items, fetching their events in a single query.
-
-  Returns `{:ok, [%__MODULE__{}]}` in the same order the items came in.
-  """
+  @doc "Projects a bounded item page using database summaries, without loading histories."
   def load(items, opts) when is_list(items) do
-    case events_for(items, opts) do
-      {:ok, events} ->
-        by_item = Enum.group_by(events, & &1.item_id)
-        {:ok, Enum.map(items, &project(&1, Map.get(by_item, &1.id, [])))}
-
-      {:error, error} ->
-        {:error, error}
+    with {:ok, summaries} <- ProgressSummary.load(Enum.map(items, & &1.id), opts) do
+      {:ok, Enum.map(items, &apply_summary(project(&1, []), Map.get(summaries, &1.id)))}
     end
   end
 
-  @doc "Projects a single item by loading just its own events."
-  def load_one(item, opts) do
-    case ProgressEvent.list_for_item(item.id, opts) do
-      {:ok, events} -> {:ok, project(item, events)}
-      {:error, error} -> {:error, error}
+  @doc "Loads one bounded event page and the full database summary."
+  def load_one(item, opts, limit \\ 100, offset \\ 0) do
+    with {:ok, [summary]} <- load([item], opts),
+         {:ok, events} <-
+           ProgressEvent.list_for_item(item.id, %{limit: limit, offset: offset}, opts) do
+      page = project(item, events)
+
+      {:ok,
+       %{
+         summary
+         | events: events,
+           event_limit: limit,
+           event_offset: offset,
+           assignments: page.assignments,
+           contributions: page.contributions,
+           reviewers: page.reviewers,
+           status_spans: page.status_spans
+       }}
     end
   end
 
-  defp events_for([], _opts), do: {:ok, []}
+  def parse_offset(raw) when is_binary(raw) do
+    case Integer.parse(raw) do
+      {offset, ""} when offset >= 0 -> offset
+      _ -> 0
+    end
+  end
 
-  defp events_for(items, opts) do
-    items
-    |> Enum.map(& &1.id)
-    |> ProgressEvent.list_for_items(opts)
+  def parse_offset(_), do: 0
+
+  defp apply_summary(projection, nil), do: projection
+
+  defp apply_summary(projection, summary) do
+    status = summary.status || ProgressStatus.default_for_kind(projection.item.kind)
+    completed = if ProgressStatus.terminal?(status), do: summary.status_at
+
+    struct!(
+      projection,
+      Map.merge(summary, %{
+        status: status,
+        status_source: if(summary.status, do: :log, else: :kind),
+        assignee_source: if(summary.assignee, do: :assignment),
+        first_event_at: summary.started_at,
+        completed_at: completed,
+        elapsed_ms: elapsed_ms(summary.started_at, completed)
+      })
+    )
   end
 
   @doc """
@@ -200,7 +225,7 @@ defmodule FirstmatePort.Portal.ProgressProjection do
       interrupted_tracked: Enum.count(projections, &(&1.interrupted != :unknown)),
       completed: Enum.count(projections, &(not is_nil(&1.completed_at))),
       worker_total: projections |> Enum.flat_map(& &1.workers) |> Enum.uniq() |> length(),
-      review_total: Enum.count(projections, &(&1.reviewers != []))
+      review_total: Enum.count(projections, &(&1.review_count > 0))
     }
   end
 
@@ -214,8 +239,9 @@ defmodule FirstmatePort.Portal.ProgressProjection do
   def tenant_stats(opts) do
     with {:ok, items} <- ProgressItem.list_for_stats(opts),
          {:ok, projections} <- load(items, opts),
-         {:ok, total} <- Ash.count(ProgressItem, opts) do
-      {:ok, stats(projections), total > length(items)}
+         {:ok, total} <- Ash.count(ProgressItem, opts),
+         {:ok, workers} <- ProgressSummary.worker_total(Enum.map(items, & &1.id), opts) do
+      {:ok, Map.put(stats(projections), :worker_total, workers), total > length(items)}
     end
   end
 
@@ -275,10 +301,20 @@ defmodule FirstmatePort.Portal.ProgressProjection do
   defp sort_events(events) do
     Enum.sort(events, fn a, b ->
       case DateTime.compare(a.occurred_at, b.occurred_at) do
-        :lt -> true
-        :gt -> false
-        :eq -> DateTime.compare(a.inserted_at, b.inserted_at) != :gt
+        :lt ->
+          true
+
+        :gt ->
+          false
+
+        :eq ->
+          case DateTime.compare(a.inserted_at, b.inserted_at) do
+            :lt -> true
+            :gt -> false
+            :eq -> a.id <= b.id
+          end
       end
     end)
   end
 end
+

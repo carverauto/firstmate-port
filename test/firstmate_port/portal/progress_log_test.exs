@@ -23,6 +23,32 @@ defmodule FirstmatePort.Portal.ProgressLogTest do
     {:ok, Map.put(ctx, :item, item)}
   end
 
+  test "repeated historical observations append the transition only once", ctx do
+    at = ~U[2026-09-01 12:00:00.000000Z]
+
+    append(
+      ctx.item,
+      %{type: :status, status: :in_progress, occurred_at: DateTime.add(at, 60)},
+      ctx.opts
+    )
+
+    assert {:ok, :appended, event} =
+             ProgressLog.record_observed_status(ctx.item, :merged, %{occurred_at: at}, ctx.opts)
+
+    assert {:ok, :unchanged, :merged} =
+             ProgressLog.record_observed_status(ctx.item, :merged, %{occurred_at: at}, ctx.opts)
+
+    assert {:ok, :unchanged, :merged} =
+             ProgressLog.record_observed_status(ctx.item, :merged, %{occurred_at: at}, ctx.opts)
+
+    assert {:ok, events} = ProgressEvent.list_for_item(ctx.item.id, ctx.opts)
+    assert [%{id: id, occurred_at: ^at}] = Enum.filter(events, &(&1.status == :merged))
+    assert id == event.id
+
+    assert {:ok, [%{status: :in_progress}]} =
+             FirstmatePort.Portal.ProgressProjection.load([ctx.item], ctx.opts)
+  end
+
   describe "record_status/4" do
     test "the first status is appended even when it matches the kind default", ctx do
       assert {:ok, :appended, event} =
@@ -97,3 +123,4 @@ defmodule FirstmatePort.Portal.ProgressLogTest do
     end
   end
 end
+

@@ -85,6 +85,7 @@ defmodule FirstmatePortWeb.ProgressComponents do
   """
   attr :projection, :any, default: nil
   attr :close_path, :string, required: true
+  attr :event_path, :any, default: nil
 
   def progress_details(assigns) do
     ~H"""
@@ -112,6 +113,14 @@ defmodule FirstmatePortWeb.ProgressComponents do
         </header>
 
         <div class="modal-body">
+          <nav :if={@event_path && @projection.event_count > @projection.event_limit} class="pager" aria-label="Event pages">
+            <.link :if={@projection.event_offset > 0}
+              patch={@event_path.(max(0, @projection.event_offset - @projection.event_limit))}>Previous events</.link>
+            <span>Event page starting at {@projection.event_offset + 1} of {@projection.event_count}.
+              History sections and charts below cover this page; totals cover the full log.</span>
+            <.link :if={@projection.event_offset + @projection.event_limit < @projection.event_count}
+              patch={@event_path.(@projection.event_offset + @projection.event_limit)}>Next events</.link>
+          </nav>
           <dl class="facts">
             <dt>Status</dt>
             <dd>
@@ -138,9 +147,7 @@ defmodule FirstmatePortWeb.ProgressComponents do
             <dt>Assignee</dt>
             <dd>
               {@projection.assignee || "unassigned"}
-              <span :if={@projection.assignee_source == :contribution} class="meta">
-                — from their contribution; never explicitly assigned
-              </span>
+
             </dd>
 
             <dt>Duration</dt>
@@ -209,7 +216,7 @@ defmodule FirstmatePortWeb.ProgressComponents do
           <section class="modal-section">
             <h3>Contributions</h3>
             <p :if={@projection.contributions == []} class="empty-copy">
-              No contributions reported yet. Producers append them; see docs/progress.md.
+              No contributions reported on this page. Producers append them; see docs/progress.md.
             </p>
             <div :if={@projection.contributions != []} class="table-wrap">
               <table class="data-table">
@@ -248,7 +255,7 @@ defmodule FirstmatePortWeb.ProgressComponents do
           <section class="modal-section">
             <h3>Assignment history</h3>
             <p :if={@projection.assignments == []} class="empty-copy">
-              No assignment events. Nobody has claimed this row in the log.
+              No assignment events on this page.
             </p>
             <ol class="rows">
               <li :for={a <- @projection.assignments}>
@@ -530,7 +537,7 @@ defmodule FirstmatePortWeb.ProgressComponents do
         <span class={"swatch " <> slot_class(s.status)} aria-hidden="true"></span>
         <span class="legend-label">{ProgressStatus.label(s.status)}</span>
         <span class="legend-value num">{format_duration(s.duration_ms)}</span>
-        <span :if={s.open?} class="meta">and counting</span>
+        <span :if={s.open?} class="meta">no next status in this page</span>
       </li>
     </ul>
     """
@@ -632,8 +639,10 @@ defmodule FirstmatePortWeb.ProgressComponents do
     [{"review", "Reviewed by #{Enum.join(reviewers, ", ")}."}]
   end
 
-  defp hands_heuristic(%{workers: workers}) when length(workers) > 1 do
-    [{"hands", "#{length(workers)} crew members touched this: #{Enum.join(workers, ", ")}."}]
+  defp hands_heuristic(%{workers: workers, worker_count: count}) when count > 1 do
+    names = Enum.join(workers, ", ")
+    suffix = if count > length(workers), do: " (first #{length(workers)} shown)", else: ""
+    [{"hands", "#{count} crew members touched this: #{names}#{suffix}."}]
   end
 
   defp hands_heuristic(_projection), do: []
@@ -649,7 +658,7 @@ defmodule FirstmatePortWeb.ProgressComponents do
   full list is one click away in the details view.
   """
   def assignee_label(projection) do
-    extra = max(length(projection.workers) - 1, 0)
+    extra = max(projection.worker_count - 1, 0)
 
     case {projection.assignee, extra} do
       {nil, _} -> "unassigned"

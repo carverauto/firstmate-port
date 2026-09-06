@@ -129,11 +129,11 @@ defmodule FirstmatePort.Portal.ProgressStatusTest do
   end
 
   describe "parse/1" do
-    test "accepts the hyphenated and spaced spellings the captain uses" do
-      assert ProgressStatus.parse("in-progress") == {:ok, :in_progress}
-      assert ProgressStatus.parse("In Progress") == {:ok, :in_progress}
-      assert ProgressStatus.parse("ready for review") == {:ok, :ready_for_review}
-      assert ProgressStatus.parse("ready-for-merge") == {:ok, :ready_for_merge}
+    test "rejects noncanonical wire spellings" do
+      assert ProgressStatus.parse("in-progress") == :error
+      assert ProgressStatus.parse("In Progress") == :error
+      assert ProgressStatus.parse("ready for review") == :error
+      assert ProgressStatus.parse("ready-for-merge") == :error
       assert ProgressStatus.parse("stalled") == {:ok, :stalled}
       assert ProgressStatus.parse("draft") == {:ok, :draft}
       assert ProgressStatus.parse(:complete) == {:ok, :complete}
@@ -147,10 +147,11 @@ defmodule FirstmatePort.Portal.ProgressStatusTest do
       assert ProgressStatus.parse(42) == :error
     end
 
-    test "every public status round-trips through its own label" do
+    test "every public status round-trips through its canonical string" do
       for status <- ProgressStatus.all() do
-        assert ProgressStatus.parse(ProgressStatus.label(status)) == {:ok, status}
+        assert ProgressStatus.parse(Atom.to_string(status)) == {:ok, status}
       end
     end
   end
 end
+

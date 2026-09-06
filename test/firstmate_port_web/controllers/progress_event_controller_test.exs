@@ -29,6 +29,52 @@ defmodule FirstmatePortWeb.Api.ProgressEventControllerTest do
     |> post(~p"/api/progress/events", params)
   end
 
+  test "recording an imported URL claims its existing identity", ctx do
+    legacy =
+      seed_legacy_item(ctx.opts,
+        kind: :pr,
+        title: "original import",
+        url: "https://github.com/example/repo/pull/73"
+      )
+
+    historical = append(legacy, %{type: :note, detail: "import history"}, ctx.opts)
+    before = FirstmatePort.Repo.query!("SELECT count(*) FROM progress_items", []).rows
+    assert {:ok, nil} = ProgressItem.get_by_url(legacy.url, ctx.opts)
+
+    conn =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{ctx.api_key}")
+      |> post(~p"/api/progress", %{
+        "kind" => "pr",
+        "title" => "crew work",
+        "url" => legacy.url,
+        "worker" => "claiming-crew",
+        "assigned_at" => "2026-09-01T12:00:00Z"
+      })
+
+    assert %{"id" => id} = json_response(conn, 200)
+    assert id == legacy.id
+    assert {:ok, claimed} = ProgressItem.get_by_url(legacy.url, ctx.opts)
+    assert claimed.title == "original import"
+    assert claimed.inserted_at == legacy.inserted_at
+    assert {:ok, events} = ProgressEvent.list_for_item(id, ctx.opts)
+    assert [%{type: :assignment, worker: "claiming-crew"}, note] = events
+    assert note.id == historical.id
+    assert note.detail == "import history"
+    assert FirstmatePort.Repo.query!("SELECT count(*) FROM progress_items", []).rows == before
+  end
+
+  test "rejects noncanonical status aliases", ctx do
+    conn =
+      post_event(ctx.api_key, %{
+        "item_id" => ctx.item.id,
+        "type" => "status",
+        "status" => "in-progress"
+      })
+
+    assert json_response(conn, 400)["error"] =~ "status must be one of"
+  end
+
   test "preserves backfilled assignment timestamps", ctx do
     conn =
       build_conn()
@@ -110,12 +156,12 @@ defmodule FirstmatePortWeb.Api.ProgressEventControllerTest do
     assert item_id == ctx.item.id
   end
 
-  test "accepts the hyphenated status spelling", ctx do
+  test "accepts the canonical status spelling", ctx do
     conn =
       post_event(ctx.api_key, %{
         "item_id" => ctx.item.id,
         "type" => "status",
-        "status" => "in-progress"
+        "status" => "in_progress"
       })
 
     assert %{"status" => "in_progress"} = json_response(conn, 200)
@@ -125,7 +171,7 @@ defmodule FirstmatePortWeb.Api.ProgressEventControllerTest do
     post_event(ctx.api_key, %{
       "item_id" => ctx.item.id,
       "type" => "status",
-      "status" => "in-progress"
+      "status" => "in_progress"
     })
 
     post_event(ctx.api_key, %{"item_id" => ctx.item.id, "type" => "status", "status" => "merged"})
@@ -220,3 +266,4 @@ defmodule FirstmatePortWeb.Api.ProgressEventControllerTest do
     assert {:ok, 1} = Ash.count(ProgressEvent, ctx.opts)
   end
 end
+

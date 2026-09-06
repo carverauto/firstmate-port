@@ -59,20 +59,41 @@ defmodule FirstmatePort.Portal.ProgressEvent do
   end
 
   actions do
-    defaults [:read]
+    read :read do
+      primary? true
+      prepare build(limit: 100, sort: [occurred_at: :asc, inserted_at: :asc, id: :asc])
+    end
 
     read :for_item do
-      description "Every event on one item, oldest first."
+      description "A bounded event page, oldest first; continue with offset and limit."
       argument :item_id, :string, allow_nil?: false
       filter expr(item_id == ^arg(:item_id))
-      prepare build(sort: [occurred_at: :asc, inserted_at: :asc])
+      argument :limit, :integer, default: 100, allow_nil?: false
+      argument :offset, :integer, default: 0, allow_nil?: false
+      validate compare(:limit, greater_than: 0, less_than_or_equal_to: 100)
+      validate compare(:offset, greater_than_or_equal_to: 0)
+      prepare build(sort: [occurred_at: :asc, inserted_at: :asc, id: :asc])
+      prepare fn query, _ ->
+        query
+        |> Ash.Query.limit(query.arguments.limit)
+        |> Ash.Query.offset(query.arguments.offset)
+      end
     end
 
     read :for_items do
-      description "Every event on a page of items, oldest first, in one query."
-      argument :item_ids, {:array, :string}, allow_nil?: false
+      description "A bounded event page for a bounded set of items, oldest first."
+      argument :item_ids, {:array, :string}, allow_nil?: false, constraints: [max_length: 1000]
       filter expr(item_id in ^arg(:item_ids))
-      prepare build(sort: [occurred_at: :asc, inserted_at: :asc])
+      argument :limit, :integer, default: 100, allow_nil?: false
+      argument :offset, :integer, default: 0, allow_nil?: false
+      validate compare(:limit, greater_than: 0, less_than_or_equal_to: 100)
+      validate compare(:offset, greater_than_or_equal_to: 0)
+      prepare build(sort: [occurred_at: :asc, inserted_at: :asc, id: :asc])
+      prepare fn query, _ ->
+        query
+        |> Ash.Query.limit(query.arguments.limit)
+        |> Ash.Query.offset(query.arguments.offset)
+      end
     end
 
     create :append do

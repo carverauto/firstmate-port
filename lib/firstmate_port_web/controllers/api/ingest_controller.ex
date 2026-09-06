@@ -184,9 +184,9 @@ defmodule FirstmatePortWeb.Api.IngestController do
     opts = FirstmatePort.Tenancy.opts(conn.assigns.current_user)
 
     with {:ok, item} when not is_nil(item) <- ProgressItem.get_by_id(id, opts),
-         {:ok, projection} <- ProgressProjection.load_one(item, opts) do
-      total = length(projection.events)
-      events = Enum.slice(projection.events, offset, limit)
+         {:ok, projection} <- ProgressProjection.load_one(item, opts, limit, offset) do
+      total = projection.event_count
+      events = projection.events
 
       json(
         conn,
@@ -302,8 +302,7 @@ defmodule FirstmatePortWeb.Api.IngestController do
   defp parse_occurred_at(_), do: {:error, {:bad_request, "occurred_at must be a string"}}
 
   defp enum_member(raw, allowed) when is_binary(raw) do
-    normalized = raw |> String.trim() |> String.downcase() |> String.replace(["-", " "], "_")
-    Enum.find_value(allowed, :error, &(to_string(&1) == normalized && {:ok, &1}))
+    Enum.find_value(allowed, :error, &(to_string(&1) == raw && {:ok, &1}))
   end
 
   defp enum_member(raw, allowed) when is_atom(raw) and not is_nil(raw) do
@@ -400,7 +399,9 @@ defmodule FirstmatePortWeb.Api.IngestController do
       status_source: projection.status_source,
       assignee: projection.assignee,
       workers: projection.workers,
-      review_count: length(projection.reviewers),
+      review_count: projection.review_count,
+      worker_count: projection.worker_count,
+      workers_truncated: projection.worker_count > length(projection.workers),
       duration_ms: projection.duration_ms,
       tokens: projection.tokens,
       interrupted: projection.interrupted,

@@ -259,3 +259,52 @@ func TestRunRejectsUnknownSubcommand(t *testing.T) {
 		t.Fatalf("exit %d", got)
 	}
 }
+
+func TestProgressPostSendsEvents(t *testing.T) {
+	t.Setenv(AgentTokenEnv, "progress-agent")
+	var payloads []map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/progress/events" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		if r.Header.Get("Authorization") != "Bearer progress-agent" {
+			t.Error("missing agent credential")
+		}
+		var payload map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Error(err)
+		}
+		payloads = append(payloads, payload)
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "event-1"})
+	}))
+	defer srv.Close()
+	if Run([]string{"progress", "post", "--instance", srv.URL,
+		"--item-id", "work-1", "--type", "contribution", "--worker", "crew-a",
+		"--role", "review", "--runtime", "codex", "--model", "test-model", "--effort", "high",
+		"--tokens", "0", "--duration-ms", "0", "--interrupted=false"}) != 0 {
+		t.Fatal("command failed")
+	}
+	Run([]string{"progress", "post", "--instance", srv.URL,
+		"--url", "https://github.com/example/repo/pull/1", "--type", "status",
+		"--status", "merged", "--occurred-at", "2026-09-01T12:00:00Z"})
+	if len(payloads) != 2 {
+		t.Fatalf("got %d requests", len(payloads))
+	}
+	first := payloads[0]
+	for key, expected := range map[string]any{"item_id": "work-1", "type": "contribution",
+		"worker": "crew-a", "role": "review", "runtime": "codex", "model": "test-model",
+		"effort": "high", "tokens": float64(0), "duration_ms": float64(0), "interrupted": false} {
+		if first[key] != expected {
+			t.Errorf("%s = %v; want %v", key, first[key], expected)
+		}
+	}
+	second := payloads[1]
+	if second["status"] != "merged" || second["occurred_at"] != "2026-09-01T12:00:00Z" {
+		t.Fatalf("unexpected status event: %v", second)
+	}
+	for _, key := range []string{"tokens", "duration_ms", "interrupted"} {
+		if _, ok := second[key]; ok {
+			t.Errorf("omitted telemetry %s was sent", key)
+		}
+	}
+}

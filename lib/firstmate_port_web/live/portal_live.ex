@@ -70,7 +70,7 @@ defmodule FirstmatePortWeb.PortalLive do
     {:noreply,
      socket
      |> assign(:filter, params["tab"] || "all")
-     |> assign(:detail, load_detail(params["item"], socket.assigns.progress, opts))}
+     |> assign(:detail, load_detail(params["item"], ProgressProjection.parse_offset(params["event_offset"]), opts))}
   end
 
   @impl true
@@ -201,7 +201,11 @@ defmodule FirstmatePortWeb.PortalLive do
         </ol>
       </section>
 
-      <.progress_details projection={@detail} close_path={close_path(@filter)} />
+      <.progress_details
+        projection={@detail}
+        close_path={close_path(@filter)}
+        event_path={fn offset -> detail_path(@filter, @detail.item.id) <> "&event_offset=#{offset}" end}
+      />
     </Layouts.app>
     """
   end
@@ -211,19 +215,12 @@ defmodule FirstmatePortWeb.PortalLive do
 
   # The preview only holds 20 rows, so a deep link to an older row still has to
   # be fetched by id.
-  defp load_detail(nil, _projections, _opts), do: nil
-  defp load_detail("", _projections, _opts), do: nil
+  defp load_detail(nil, _offset, _opts), do: nil
+  defp load_detail("", _offset, _opts), do: nil
 
-  defp load_detail(id, projections, opts) do
-    case Enum.find(projections, &(&1.item.id == id)) do
-      nil -> fetch_detail(id, opts)
-      found -> found
-    end
-  end
-
-  defp fetch_detail(id, opts) do
+  defp load_detail(id, offset, opts) do
     with {:ok, item} when not is_nil(item) <- ProgressItem.get_by_id(id, opts),
-         {:ok, projection} <- ProgressProjection.load_one(item, opts) do
+         {:ok, projection} <- ProgressProjection.load_one(item, opts, 100, offset) do
       projection
     else
       _ -> nil

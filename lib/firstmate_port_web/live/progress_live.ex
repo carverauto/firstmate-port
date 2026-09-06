@@ -53,7 +53,7 @@ defmodule FirstmatePortWeb.ProgressLive do
      |> assign(:total_pages, total_pages)
      |> assign(:stats, stats)
      |> assign(:capped, capped)
-     |> assign(:detail, load_detail(params["item"], projections, opts))}
+     |> assign(:detail, load_detail(params["item"], ProgressProjection.parse_offset(params["event_offset"]), opts))}
   end
 
   @impl true
@@ -103,7 +103,11 @@ defmodule FirstmatePortWeb.ProgressLive do
         </nav>
       </section>
 
-      <.progress_details projection={@detail} close_path={close_path(@page)} />
+      <.progress_details
+        projection={@detail}
+        close_path={close_path(@page)}
+        event_path={fn offset -> detail_path(@page, @detail.item.id) <> "&event_offset=#{offset}" end}
+      />
     </Layouts.app>
     """
   end
@@ -113,19 +117,12 @@ defmodule FirstmatePortWeb.ProgressLive do
 
   # A deep link may name a row that is not on this page, so fall back to
   # fetching it directly rather than only searching the loaded page.
-  defp load_detail(nil, _projections, _opts), do: nil
-  defp load_detail("", _projections, _opts), do: nil
+  defp load_detail(nil, _offset, _opts), do: nil
+  defp load_detail("", _offset, _opts), do: nil
 
-  defp load_detail(id, projections, opts) do
-    case Enum.find(projections, &(&1.item.id == id)) do
-      nil -> fetch_detail(id, opts)
-      found -> found
-    end
-  end
-
-  defp fetch_detail(id, opts) do
+  defp load_detail(id, offset, opts) do
     with {:ok, item} when not is_nil(item) <- ProgressItem.get_by_id(id, opts),
-         {:ok, projection} <- ProgressProjection.load_one(item, opts) do
+         {:ok, projection} <- ProgressProjection.load_one(item, opts, 100, offset) do
       projection
     else
       _ -> nil

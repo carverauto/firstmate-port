@@ -142,7 +142,7 @@ cannot fork a second fleet-log row — it returns `404` instead.
 |---|---|---|
 | `item_id` / `url` | string | one of the two is required |
 | `type` | `status`, `assignment`, `contribution`, `interruption`, `note` | required |
-| `status` | one of the seven above | required on `status`; `in-progress` and `ready for review` spellings are accepted |
+| `status` | one of the seven above | required on `status`; canonical underscore spellings only |
 | `worker` | string | required on `assignment` and `contribution` |
 | `role` | `implement` \| `review` | on `contribution`; review work shows as review |
 | `runtime` | string | the agent runtime or tool, e.g. `claude-code` |
@@ -192,13 +192,23 @@ The same actions are exposed over MCP as `post_progress_event` and
 Charts aggregate over the newest `ProgressItem.stats_cap/0` items and say so
 when there are more, so a chart is never an unbounded table scan.
 
-## Demo data
 
-```
-mix run priv/repo/demo_progress.exs
-```
+`fm-steer progress post --item-id <id> --type status --status merged` appends
+an event using `FIRSTMATE_AGENT_TOKEN`. Use `--url` instead of `--item-id` when
+holding the GitHub link. Assignment and contribution events accept `--worker`,
+`--runtime`, `--model`, `--effort`, and `--role`; telemetry uses `--tokens`,
+`--duration-ms`, and `--interrupted=true|false`. Omitted telemetry stays missing.
+`--occurred-at` supplies an ISO 8601 backfill timestamp; `--detail` adds notes.
 
-Seeds a handful of items with full event logs, plus two deliberately bare rows
-so the honest-empty states are visible. It is **not** part of `mix setup`: it
-invents workers, models, and token counts, which must never appear in a real
-deployment.
+Recording crew work at an existing hidden imported URL claims that identity by
+appending its first assignment. The old row and its history are preserved.
+
+
+Event reads are bounded to 100 rows. HTTP uses `limit` and `offset` with
+continuation metadata; MCP `list_progress_events` accepts the same arguments
+and callers continue until a page contains fewer than `limit` events. Both
+modals have Previous/Next events controls. Assignment and contribution history,
+the timeline, and contributor bars describe the selected event page; summary
+status, assignee, duration, tokens, and interruption cover the whole log through
+database aggregation. Worker-name previews are capped at 100, with
+`worker_count` and `workers_truncated` describing the complete set in HTTP.

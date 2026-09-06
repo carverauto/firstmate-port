@@ -195,3 +195,51 @@ func fileB64(path string) string {
 	}
 	return base64.StdEncoding.EncodeToString(raw)
 }
+
+func cmdProgress(args []string) {
+	if len(args) < 1 || args[0] != "post" {
+		os.Exit(Usage())
+	}
+	fs := flag.NewFlagSet("progress post", flag.ExitOnError)
+	itemID := fs.String("item-id", "", "progress item ID (or --url)")
+	url := fs.String("url", "", "tracked GitHub URL (or --item-id)")
+	typeName := fs.String("type", "", "status|assignment|contribution|interruption|note (required)")
+	status := fs.String("status", "", "canonical progress status")
+	worker := fs.String("worker", "", "crew member")
+	role := fs.String("role", "", "implement|review")
+	runtime := fs.String("runtime", "", "agent runtime")
+	model := fs.String("model", "", "agent model")
+	effort := fs.String("effort", "", "agent effort")
+	detail := fs.String("detail", "", "event notes")
+	occurredAt := fs.String("occurred-at", "", "ISO 8601 event timestamp")
+	tokens := fs.Int64("tokens", 0, "reported tokens")
+	duration := fs.Int64("duration-ms", 0, "reported duration in milliseconds")
+	interrupted := fs.Bool("interrupted", false, "whether work was interrupted")
+	instance := fs.String("instance", Env("FIRSTMATE_INSTANCE", ""), "API base URL")
+	_ = fs.Parse(args[1:])
+	if (*itemID == "") == (*url == "") || *typeName == "" {
+		log.Fatal("progress post requires exactly one of --item-id or --url, and --type")
+	}
+	payload := map[string]any{"type": *typeName}
+	setIf(payload, "item_id", *itemID)
+	setIf(payload, "url", *url)
+	setIf(payload, "status", *status)
+	setIf(payload, "worker", *worker)
+	setIf(payload, "role", *role)
+	setIf(payload, "runtime", *runtime)
+	setIf(payload, "model", *model)
+	setIf(payload, "effort", *effort)
+	setIf(payload, "detail", *detail)
+	setIf(payload, "occurred_at", *occurredAt)
+	fs.Visit(func(f *flag.Flag) {
+		switch f.Name {
+		case "tokens":
+			payload["tokens"] = *tokens
+		case "duration-ms":
+			payload["duration_ms"] = *duration
+		case "interrupted":
+			payload["interrupted"] = *interrupted
+		}
+	})
+	postIngest("/api/progress/events", *instance, payload)
+}
