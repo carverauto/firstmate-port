@@ -127,6 +127,50 @@ defmodule FirstmatePort.Fleet.SearchTest do
       assert result.semantic_rank == 1
     end
 
+    test "semantic matches respect exclusions before the candidate limit", %{actor: actor} do
+      progress_item(actor, %{title: "roll succeeded"})
+      progress_item(actor, %{title: "roll failed"})
+      {:ok, _} = Sync.run("local")
+      {:ok, documents} = Document.list(Tenancy.opts(actor))
+
+      for document <- documents do
+        vector = if document.title == "roll failed", do: [1.0, 0.0], else: [0.6, 0.8]
+
+        {:ok, _} =
+          Document.put_embedding(
+            document,
+            %{embedding: vector, model: "openai:text-embedding-3-small"},
+            Tenancy.opts(actor)
+          )
+      end
+
+      client = fn _model, _texts, _opts -> {:ok, [[1.0, 0.0]]} end
+
+      assert {:ok, %{results: [%{document: %{title: "roll succeeded"}}]}} =
+               Search.run("roll -failed", actor, client: client)
+
+      for query <- [
+            "deployment reverted -failed",
+            "deployment reverted -failing",
+            ~s(deployment reverted -"roll failed")
+          ] do
+        assert {:ok,
+                %{
+                  results: [
+                    %{document: %{title: "roll succeeded"}, lexical_rank: nil, semantic_rank: 1}
+                  ]
+                }} =
+                 Search.run(query, actor, client: client, candidates: 1, limit: 1)
+      end
+
+      assert {:ok, %{results: [%{document: %{title: "roll failed"}}]}} =
+               Search.run("deployment reverted -the", actor,
+                 client: client,
+                 candidates: 1,
+                 limit: 1
+               )
+    end
+
     test "a record found by both passes outranks one found by either", %{actor: actor} do
       progress_item(actor, %{title: "roll one"})
       progress_item(actor, %{title: "roll two"})

@@ -116,7 +116,7 @@ defmodule FirstmatePort.Fleet.Search do
   defp semantic(query, slug, candidates, ash_opts, opts) do
     case Embeddings.embed_query(query, slug, Keyword.drop(opts, [:limit, :candidates])) do
       {:ok, %{model: model, vector: vector}} ->
-        case Document.nearest(vector, model, %{limit: candidates}, ash_opts) do
+        case Document.nearest(vector, model, %{limit: candidates, query: query}, ash_opts) do
           {:ok, rows} -> {{:ready, model}, rows}
           {:error, reason} -> {{:error, reason}, []}
         end

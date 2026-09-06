@@ -20,15 +20,37 @@ defmodule FirstmatePort.Fleet.Preparations.VectorSearch do
     model = Ash.Query.get_argument(query, :model)
     limit = Ash.Query.get_argument(query, :limit)
     dimensions = length(embedding)
+    text = Ash.Query.get_argument(query, :query)
 
     query
     |> Ash.Query.filter(
       not is_nil(embedded_at) and embedding_model == ^model and
         embedding_dimensions == ^dimensions
     )
+    |> exclude(text)
     |> Ash.Query.load(similarity: %{embedding: embedding})
     |> Ash.Query.sort([{:similarity, {%{embedding: embedding}, :desc}}, {:occurred_at, :desc}])
     |> Ash.Query.select(Document.summary_select())
     |> Ash.Query.limit(limit)
+  end
+
+  defp exclude(query, text) do
+    ~r/"[^"]*(?:"|$)|-\s*(?:"[^"]*(?:"|$)|[^\s"]+)|[^\s"]+/u
+    |> Regex.scan(text)
+    |> Enum.reduce(query, fn
+      ["-" <> _rest = exclusion], query ->
+        Ash.Query.filter(
+          query,
+          fragment(
+            "(numnode(websearch_to_tsquery('english', ?)) = 0 OR to_tsvector('english', ?) @@ websearch_to_tsquery('english', ?))",
+            ^exclusion,
+            search_text,
+            ^exclusion
+          )
+        )
+
+      _token, query ->
+        query
+    end)
   end
 end

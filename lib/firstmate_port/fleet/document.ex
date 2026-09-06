@@ -138,6 +138,8 @@ defmodule FirstmatePort.Fleet.Document do
       argument :model, :string, allow_nil?: false
       argument :limit, :integer, default: 50
 
+      argument :query, :string, default: "", allow_nil?: false, constraints: [allow_empty?: true]
+
       prepare FirstmatePort.Fleet.Preparations.VectorSearch
     end
 
