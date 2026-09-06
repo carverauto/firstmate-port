@@ -1,9 +1,26 @@
 defmodule FirstmatePort.Jobs.GitHubPoll do
   @moduledoc """
-  Copies open GitHub PR and issue html_url values as given by the API.
+  Mirrors an organisation's open PRs and issues onto the `GithubItem` board, and
+  **enriches** the fleet log — it is never the fleet log's catalogue.
+
+  Progress tracks crew work: the PRs, issues, and tasks this fleet actually
+  worked, reviewed, or closed. Those rows arrive from firstmate and fm-steer,
+  which know who did the work. This poll only speaks for rows that already
+  exist: it refreshes their title and appends a `:status` event when a PR merges
+  or an issue closes. It cannot create a `ProgressItem` — `:record` requires a
+  worker, and an org listing has none to name.
+
+  That is deliberate, and it is what keeps `/progress` from filling with every
+  dependency bump in the organisation.
+
+  The search API keeps the open `GithubItem` board current. Fleet-log
+  enrichment queries tracked crew URLs directly in bounded pages. Neither
+  pass grows `progress_items`.
   """
 
   require Logger
+
+  alias FirstmatePort.Portal.{ProgressItem, ProgressLog, ProgressStatus}
 
   @spec run(term()) :: :ok
   def run(actor) do
@@ -22,7 +39,7 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
       true ->
         poll_search(org, token, actor, :pr, "is:pr+is:open")
         poll_search(org, token, actor, :issue, "is:issue+is:open")
-
+        poll_tracked(token, actor, 0)
         :ok
     end
   end
@@ -37,16 +54,63 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   def trim_credential(value) when is_binary(value), do: String.trim(value)
 
   defp poll_search(org, token, actor, kind, extra) do
-    url = "https://api.github.com/search/issues?q=org:#{org}+#{extra}&per_page=50"
+    url =
+      "https://api.github.com/search/issues?q=org:#{org}+#{extra}" <>
+        "&per_page=50&sort=updated&order=desc"
 
     case get_json(url, token) do
       {:ok, %{"items" => items}} ->
         Enum.each(items, &upsert_item(&1, kind, token, actor))
 
       {:error, reason} ->
-        Logger.warning("GitHub #{kind} poll failed: #{inspect(reason)}")
+        Logger.warning("GitHub #{kind} board poll failed: #{inspect(reason)}")
     end
   end
+
+  defp poll_tracked(token, actor, offset) do
+    opts = FirstmatePort.Tenancy.opts(actor || agent_actor())
+    limit = ProgressItem.max_page_size()
+
+    case ProgressItem.list_paged(limit, offset, opts) do
+      {:ok, items} ->
+        Enum.each(items, fn item ->
+          case tracked_api_url(item.url) do
+            {url, kind} ->
+              case get_json(url, token) do
+                {:ok, raw} ->
+                  raw = if kind == :pr, do: Map.put(raw, "pull_request", raw), else: raw
+                  enrich_progress(raw, kind, actor)
+
+                {:error, reason} ->
+                  Logger.warning("GitHub enrichment failed for #{item.id}: #{inspect(reason)}")
+              end
+
+            nil ->
+              :ok
+          end
+        end)
+
+        if length(items) == limit, do: poll_tracked(token, actor, offset + limit)
+
+      {:error, reason} ->
+        Logger.warning("GitHub tracked progress read failed: #{inspect(reason)}")
+    end
+  end
+
+  defp tracked_api_url(url) when is_binary(url) do
+    case Regex.run(~r{\Ahttps://github\.com/([^/]+)/([^/]+)/(pull|issues)/(\d+)\z}, url) do
+      [_, owner, repo, "pull", number] ->
+        {"https://api.github.com/repos/#{owner}/#{repo}/pulls/#{number}", :pr}
+
+      [_, owner, repo, "issues", number] ->
+        {"https://api.github.com/repos/#{owner}/#{repo}/issues/#{number}", :issue}
+
+      _ ->
+        nil
+    end
+  end
+
+  defp tracked_api_url(_), do: nil
 
   defp upsert_item(%{"html_url" => html_url, "title" => title} = item, kind, token, actor)
        when is_binary(html_url) do
@@ -65,7 +129,7 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
       FirstmatePort.Tenancy.opts(actor || agent_actor())
     )
 
-    record_item(item, kind, actor)
+    enrich_progress(item, kind, actor)
   end
 
   defp upsert_item(_, _, _, _), do: :ok
@@ -137,34 +201,69 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
     end
   end
 
-  defp record_item(%{"html_url" => html_url, "title" => title}, kind, actor)
-       when is_binary(html_url) do
-    actor = actor || agent_actor()
+  @doc """
+  Enriches the fleet-log row for one GitHub search result, if there is one.
 
-    case FirstmatePort.Portal.ProgressItem.get_by_url(
-           html_url,
-           FirstmatePort.Tenancy.opts(actor)
-         ) do
-      {:ok, existing} ->
-        if progress_changed?(existing, kind, title) do
-          FirstmatePort.Portal.ProgressItem.touch(
-            existing,
-            %{kind: kind, title: title},
-            FirstmatePort.Tenancy.opts(actor)
-          )
-        else
-          :ok
-        end
+  A URL nobody on this crew ever logged is skipped: the poll refreshes and moves
+  rows, it does not catalogue an organisation. Public so the contract itself is
+  testable — see `test/firstmate_port/github_poll_test.exs`.
+  """
+  @spec enrich_progress(map(), :pr | :issue, term()) :: :ok
+  def enrich_progress(%{"html_url" => html_url, "title" => title} = raw, kind, actor)
+      when is_binary(html_url) do
+    opts = FirstmatePort.Tenancy.opts(actor || agent_actor())
+
+    case ProgressItem.get_by_url(html_url, opts) do
+      {:ok, item} when not is_nil(item) ->
+        item
+        |> touch_if_changed(kind, title, opts)
+        |> append_status(kind, raw, opts)
 
       _ ->
-        FirstmatePort.Portal.ProgressItem.record(
-          %{kind: kind, title: title, url: html_url, body: ""},
-          FirstmatePort.Tenancy.opts(actor)
-        )
+        :ok
     end
   end
 
-  defp record_item(_, _, _), do: :ok
+  def enrich_progress(_raw, _kind, _actor), do: :ok
+
+  defp touch_if_changed(existing, kind, title, opts) do
+    if progress_changed?(existing, kind, title) do
+      case ProgressItem.touch(existing, %{kind: kind, title: title}, opts) do
+        {:ok, touched} -> touched
+        _ -> existing
+      end
+    else
+      existing
+    end
+  end
+
+  # Appends only when the status actually moved, so a poll that runs every few
+  # minutes does not fill the log with identical rows.
+  defp append_status(item, kind, raw, opts) do
+    status = ProgressStatus.from_github(kind, raw)
+
+    occurred_at =
+      case status do
+        :merged -> parse_time(get_in(raw, ["pull_request", "merged_at"]))
+        :complete -> parse_time(raw["closed_at"])
+        :in_progress -> parse_time(raw["updated_at"])
+      end
+
+    extra = %{detail: "github poll", occurred_at: occurred_at}
+
+    if status == :in_progress and is_nil(occurred_at) do
+      :ok
+    else
+      case ProgressLog.record_observed_status(item, status, extra, opts) do
+        {:ok, _outcome, _} ->
+          :ok
+
+        {:error, reason} ->
+          Logger.warning("GitHub poll could not append status for #{item.id}: #{inspect(reason)}")
+          :ok
+      end
+    end
+  end
 
   def progress_changed?(existing, kind, title) do
     existing.kind != kind or existing.title != title

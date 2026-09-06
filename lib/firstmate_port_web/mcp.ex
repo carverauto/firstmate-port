@@ -8,6 +8,8 @@ defmodule FirstmatePortWeb.Mcp do
       :get_diagram,
       :post_progress,
       :list_progress,
+      :post_progress_event,
+      :list_progress_events,
       :post_roll,
       :list_rolls,
       :post_docker_build,

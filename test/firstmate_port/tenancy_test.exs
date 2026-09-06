@@ -42,13 +42,13 @@ defmodule FirstmatePort.TenancyTest do
 
     assert {:ok, _} =
              ProgressItem.record(
-               %{kind: :note, title: "acme secret", url: "", body: ""},
+               %{kind: :note, title: "acme secret", url: "", body: "", worker: "acme-crew"},
                Tenancy.opts(acme)
              )
 
     assert {:ok, _} =
              ProgressItem.record(
-               %{kind: :note, title: "beta secret", url: "", body: ""},
+               %{kind: :note, title: "beta secret", url: "", body: "", worker: "beta-crew"},
                Tenancy.opts(beta)
              )
 

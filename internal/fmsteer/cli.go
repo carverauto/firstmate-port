@@ -34,6 +34,8 @@ func Run(args []string) int {
 		RouteRun(args[1:])
 	case "usage":
 		UsageRun(args[1:])
+	case "progress":
+		cmdProgress(args[1:])
 	case "rolls":
 		cmdRolls(args[1:])
 	case "diagrams":
@@ -52,7 +54,7 @@ func Usage() int {
 	fmt.Fprintf(os.Stderr, "       fm-steer route [--intel] [--json] <task description>\n")
 	fmt.Fprintf(os.Stderr, "       fm-steer usage [--json]\n")
 	fmt.Fprintf(os.Stderr, "       fm-steer build start|finish --kind k8s|docker|...\n")
-	fmt.Fprintf(os.Stderr, "       fm-steer rolls|diagrams|no-mistakes post\n")
+	fmt.Fprintf(os.Stderr, "       fm-steer progress|rolls|diagrams|no-mistakes post\n")
 	fmt.Fprintf(os.Stderr, "ingest writes require an agent role: set %s to an agent API token.\n", AgentTokenEnv)
 	return 2
 }

@@ -64,8 +64,9 @@ fm-steer diagrams post --title "Request flow" --html-file diagram.html
 fm-steer no-mistakes post --run-id run-123 --branch fm/example --step review
 ```
 
-Use `fm-steer <kind> post --help` for the available fields. Progress is populated
-by the [GitHub poll](docs/deploy.md#github-fleet-log-ingestion).
+Use `fm-steer <kind> post --help` for the available fields. For crew-work
+tracking, dashboard navigation, and `fm-steer progress post`, see the
+[Progress guide](docs/progress.md).
 
 ### Build and deployment tracking
 

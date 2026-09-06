@@ -61,12 +61,14 @@ mix phx.server
 
 ## GitHub Fleet log ingestion
 
-The scheduled GitHub poll populates Progress from open PRs and issues. Set
+For the scheduled poll’s board and Progress behavior, see
+[what the poll fills](progress.md#what-the-poll-fills-and-what-it-does-not). Set
 `GITHUB_ORG` to one organization name and `GITHUB_TOKEN` to a token with read
 access to its repositories in the portal process environment. Both values are
-trimmed; an unset or blank value skips the poll. The poll currently reads only
-the first 50 results for each kind and writes to the default tenant when run
-by the scheduler. The schedule is defined in
+trimmed; an unset or blank value skips the poll. The board search reads only
+the first 50 open results for each kind; Progress enrichment separately walks
+tracked crew URLs in bounded pages. The scheduler uses the default tenant.
+The schedule is defined in
 [`FirstmatePort.Jobs.Tick`](../lib/firstmate_port/jobs/tick.ex).
 
 For Compose, pass both variables through the portal service's `environment` in

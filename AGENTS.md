@@ -22,6 +22,9 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 - Fleet search is one projected table in the same CNPG database, not a second store: Postgres full-text search always, embeddings only when an operator sets a model and the tenant fills `embeddings`/`api_key`. Do not add a search engine, a vector extension, or a BM25 extension. See `docs/fleet-search.md`.
 - Build/deploy tracking is one append-only log for every system: `kind` names it (`docker`, `k8s`, `bazel`, ...). Add a kind, never a resource or endpoint per system, and never UPDATE an earlier event - a UI row is a projection (`FirstmatePort.BuildEvents`). See `docs/build-events.md`.
 - `skills/` holds installable agent skills that drive `fm-steer`. Keep them OSS-portable: no site hostnames, registries, or cluster names.
+- Progress is crew work, not a GitHub mirror. `ProgressItem.record` requires a `worker`, so the org poll cannot catalogue Progress - it only enriches rows the crew already logged (title, and a merge/close status event). The `/prs` and `/issues` boards are the org mirror. See `docs/progress.md`.
+- The fleet log is append-only. `ProgressItem` is identity; everything that happened to it is a `ProgressEvent` row, and the resource has no update or destroy action on purpose. Status, assignee, duration, tokens, and interrupted are projections (`ProgressProjection`), never stored on the item.
+- Missing telemetry is not zero. A metric nobody reported renders as an em dash or "no telemetry yet"; only a real count renders as a number.
 - Do not add `notify.py`, `watch.py`, or the launchd plist. Those stay in firstmate-notify.
 - Site hostnames, OIDC issuer URLs, registry namespaces, and email allowlists belong in env samples / compose overrides / `deploy/examples`. Defaults run on localhost.
 - Auth is two modes on one image, both environment-driven: local sign-in (`LOCAL_AUTH`, older name `DEV_AUTH`) is a bootstrap admin account and needs no IdP; OIDC is optional. See `docs/deploy.md` "Sign-in".
@@ -31,6 +34,11 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 - OIDC is generic, never a per-vendor adapter: endpoints come from the issuer's discovery document, and the provider process is `:firstmate_oidc`. Do not name it, or any module, secret, or default, after one vendor - `test/firstmate_port/auth/vendor_neutral_test.exs` enforces this.
 - Never put an issuer in `config :ueberauth_oidcc, :issuers`. That library supervises each entry as a permanent child, so a provider that cannot load its configuration takes the node down. `FirstmatePort.Auth.OIDC.Supervisor` owns it as a temporary child instead.
 - ghcr.io is the image registry (`ghcr.io/<owner>/firstmate-port`). CI logs in with the workflow `GITHUB_TOKEN`; there are no registry robot secrets. Do not invent a second forge.
+
+## Gotchas
+
+- Ash casts `""` to `nil` on string attributes, so an attribute whose default is `""` reads back as `nil` when unset. Guard with `is_binary(v) and v != ""`, not `v != ""`, or a `:if` renders an empty `<a>`.
+- Tailwind v4 scans `lib/firstmate_port_web`, so a hand-rolled CSS class that collides with a utility name loses. `.grid` was one; the tables use `.data-table`.
 
 ## Stack
 

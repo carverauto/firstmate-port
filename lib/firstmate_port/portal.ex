@@ -2,6 +2,9 @@ defmodule FirstmatePort.Portal do
   @moduledoc """
   Diagrams, progress, Kubernetes rolls, Docker builds, BuildBuddy
   invocations, build/deploy events, and no-mistakes run records.
+
+  Progress is two resources: `ProgressItem` is the subject row, and the
+  append-only `ProgressEvent` log carries everything that happened to it.
   """
 
   use Ash.Domain,
@@ -17,7 +20,9 @@ defmodule FirstmatePort.Portal do
     tool :list_diagrams, FirstmatePort.Portal.Diagram, :index
     tool :get_diagram, FirstmatePort.Portal.Diagram, :by_id
     tool :post_progress, FirstmatePort.Portal.ProgressItem, :record
-    tool :list_progress, FirstmatePort.Portal.ProgressItem, :read
+    tool :list_progress, FirstmatePort.Portal.ProgressItem, :paged
+    tool :post_progress_event, FirstmatePort.Portal.ProgressEvent, :append
+    tool :list_progress_events, FirstmatePort.Portal.ProgressEvent, :for_item
     tool :post_roll, FirstmatePort.Portal.Roll, :record
     tool :list_rolls, FirstmatePort.Portal.Roll, :read
     tool :post_docker_build, FirstmatePort.Portal.DockerBuild, :record
@@ -37,6 +42,7 @@ defmodule FirstmatePort.Portal do
   resources do
     resource FirstmatePort.Portal.Diagram
     resource FirstmatePort.Portal.ProgressItem
+    resource FirstmatePort.Portal.ProgressEvent
     resource FirstmatePort.Portal.Roll
     resource FirstmatePort.Portal.DockerBuild
     resource FirstmatePort.Portal.BuildBuddyInvocation
