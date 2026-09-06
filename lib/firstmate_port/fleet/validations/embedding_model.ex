@@ -1,11 +1,10 @@
 defmodule FirstmatePort.Fleet.Validations.EmbeddingModel do
   @moduledoc """
-  Refuses a model spec the portal could not actually embed with.
+  Validates a tenant's model choice through `Embeddings.validate_spec/1`.
 
-  Empty clears the choice and disables embeddings, so that is
-  always allowed. Anything else has to be a `provider:model` spec the provider
-  library recognises as an embedding model - a chat model pasted into the box is
-  a mistake worth catching in the form.
+  Empty clears the choice and disables embeddings. See that function for the
+  shape and provider checks; exact model support is checked by the provider
+  when embeddings are requested.
   """
 
   use Ash.Resource.Validation

@@ -73,7 +73,8 @@ defmodule FirstmatePortWeb.SearchLive do
   end
 
   def handle_async(:search, {:exit, _reason}, socket) do
-    {:noreply, assign(socket, error: "Search could not complete. Please try again.", loading: false)}
+    {:noreply,
+     assign(socket, error: "Search could not complete. Please try again.", loading: false)}
   end
 
   defp banner(:off) do

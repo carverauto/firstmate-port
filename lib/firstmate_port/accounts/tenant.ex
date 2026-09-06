@@ -44,8 +44,8 @@ defmodule FirstmatePort.Accounts.Tenant do
       attribute here; see `FirstmatePort.Fleet.Embeddings`.
       """
 
-      # The validation asks the provider library whether the spec names an
-      # embedding model, which is not something Postgres can do in an UPDATE.
+      # Provider availability is checked in Elixir; the validation cannot run
+      # inside a Postgres UPDATE. Exact model validation stays with the provider.
       require_atomic? false
 
       accept [:embedding_model]

@@ -238,7 +238,7 @@ defmodule FirstmatePortWeb.CredentialsLiveTest do
     assert html =~ "On, using openai:text-embedding-3-small"
 
     {:ok, credential} = Credential.get_slot("embeddings", "api_key", Tenancy.opts(local))
-    {:ok, _} = Credential.destroy(credential, Tenancy.opts(local))
+    :ok = Credential.destroy(credential, Tenancy.opts(local))
     {:ok, remounted, html} = live(conn, ~p"/settings/credentials")
     assert html =~ "Save an embeddings/api_key credential"
     {:ok, _} = Credentials.put(%{provider: "embeddings", key: "api_key", value: "sk-second"}, Tenancy.opts(local))

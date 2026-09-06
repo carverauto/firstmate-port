@@ -41,10 +41,16 @@ Left out on purpose:
 - Portal: `/search`.
 - API: `GET /api/fleet/search?q=...&limit=...` with any actor that can sign in
   or hold an agent key.
-- MCP: the `search_fleet` tool.
+- MCP: the `search_fleet` tool, with `query` and optional `limit` arguments.
 
-`q` goes to Postgres' `websearch_to_tsquery`, so `"quoted phrases"` and
-`-excluded` words behave the way a search box should.
+API and MCP searches default to 25 results, with a maximum of 100. Both return
+`query`, `data` (documents with fused scores and per-pass ranks), and `semantic`
+status through the same search path as the portal.
+
+`q` goes to Postgres' `websearch_to_tsquery` for lexical matching, including
+`"quoted phrases"` and `-excluded` words. Semantic results can match without
+sharing the positive query terms or phrases; explicit exclusions still filter
+them before candidate limiting and fusion.
 
 ## Ranking
 
@@ -82,14 +88,9 @@ on, and turning it on takes two deliberate steps.
 **1. Choose a model.** Set it per tenant in the portal at
 `/settings/credentials`. Clearing the model disables embeddings.
 
-The spec is `provider:model`. The portal lists these by name:
-
-| Spec | Dimensions |
-| --- | --- |
-| `openai:text-embedding-3-small` | 1536 |
-| `openai:text-embedding-3-large` | 3072 |
-| `google:gemini-embedding-001` | 3072 |
-| `mistral:mistral-embed` | 1024 |
+The spec is `provider:model`. The portal offers named choices from
+[`FirstmatePort.Fleet.Embeddings.catalog/0`](../lib/firstmate_port/fleet/embeddings.ex),
+the authoritative list of presets and their dimensions.
 
 That list is a convenience, not a gate. Any embedding model `ReqLLM` supports
 can be typed in.
@@ -116,8 +117,9 @@ Until both are set, `/search` says so and runs on text search alone.
 
 Turning embeddings on sends the indexed text of the fleet log to the chosen
 provider: PR and issue titles, progress notes, roll outcomes, and no-mistakes
-findings and intents. That is the same text the search box matches on. Diagram
-payloads and no-mistakes logs are never projected, so they are never sent.
+findings and intents. That is the same text the search box matches on. Each
+nonempty search also sends its query text to that provider. Diagram payloads
+and no-mistakes logs are never projected, so they are never sent.
 
 If that is not acceptable for a fleet, leave embeddings off. Text search is the
 whole default product and does not degrade without them.
@@ -134,12 +136,14 @@ queue. They are separate on purpose: the projection is local Postgres work that
 must keep running when a provider is down, and the backfill is the half allowed
 to fail.
 
-A sync is idempotent. Documents whose `content_hash` still matches are skipped,
-so a quiet tick writes nothing and leaves every vector valid. Documents whose
+A sync is idempotent. The sync digest is defined by
+[`FirstmatePort.Fleet.Projection`](../lib/firstmate_port/fleet/projection.ex).
+Documents whose `content_hash` still matches are skipped, so a quiet tick writes
+nothing and leaves every vector valid. Documents whose
 source record has gone are removed, so the index cannot answer with rows the log
 no longer has.
 
-Changing a document's text does not delete its vector; it marks it stale, and
+Changing projected content does not delete its vector; it marks it stale, and
 the old vector keeps answering searches until the next backfill replaces it.
 
 To sync now rather than on the tick:
@@ -156,7 +160,6 @@ stored unit-normalised, so the dot product *is* cosine similarity and the query
 is one `ORDER BY`. There is no approximate-nearest-neighbour index: `pgvector`
 is not in the Compose image, and a fleet log is thousands of rows, not millions.
 
-That is the tradeoff, stated plainly. At the point where a fleet log has enough
-documents for the scan to be felt, the fix is `pgvector` plus an HNSW index on
-the same column, and the rest of this design - the projection, the fusion, the
-credential path - is unchanged.
+If the fleet log grows enough for the scan to be felt, reassess this tradeoff
+with measured query costs. Adding a vector extension would require revisiting
+the project's current no-extension boundary.

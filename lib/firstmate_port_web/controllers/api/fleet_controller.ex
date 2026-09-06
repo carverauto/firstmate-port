@@ -2,7 +2,7 @@ defmodule FirstmatePortWeb.Api.FleetController do
   @moduledoc """
   Searching the fleet log, and asking for a sync now rather than on the tick.
 
-  `fm-steer` reads this; the portal's own search page calls
+  API clients read this; the portal's own search page calls
   `FirstmatePort.Fleet.Search` directly. Both are the one Elixir path, so
   there is nothing to keep in step.
   """

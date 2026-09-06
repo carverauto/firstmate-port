@@ -6,7 +6,7 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 
 - Local stack: `docker compose up --build` (see `docs/deploy.md`)
 - Mix: `mix setup` then `mix phx.server` against compose Postgres
-- Tests: `unbuffer mix test` when `unbuffer` is available. `test/test_helper.exs` loads ReqLLM's model catalogue before the suite starts; without it the first lazy load pauses the VM mid-run and unrelated tests fail on database checkouts.
+- Tests: `unbuffer mix test` when `unbuffer` is available. Preserve the ReqLLM catalogue preload in `test/test_helper.exs` before database-backed tests.
 - Bazel: `./tools/bazel` (forces `--output_base=/tmp/fm-fm-port/bazel`). `--config=remote` is fine; never `--config=ci` locally. See `docs/bazel.md`
 - Prefix every `npm` with `sfw`
 

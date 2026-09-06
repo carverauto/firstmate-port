@@ -1,6 +1,6 @@
 # firstmate-port
 
-Phoenix/Ash companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, NATS queues, and no-mistakes runs in one LiveView UI, and searches all of it at `/search`. Discord inbound is served by Phoenix at POST `/interactions`.
+Phoenix/Ash companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, NATS queues, and no-mistakes runs in one LiveView UI, and searches the [indexed fleet log](docs/fleet-search.md) at `/search`. Discord inbound is served by Phoenix at POST `/interactions`.
 
 Each tenant stores its own credentials - Discord keys, GitHub tokens, provider API keys - in the portal, encrypted with AshCloak before they reach Postgres. No per-tenant `kubectl create secret`.
 

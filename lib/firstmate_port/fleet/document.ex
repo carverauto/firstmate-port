@@ -4,9 +4,8 @@ defmodule FirstmatePort.Fleet.Document do
 
   A document is addressed by its origin - `source` plus the `source_id` of the
   row it was projected from - so re-running `FirstmatePort.Fleet.Sync` updates
-  the same row instead of piling up duplicates. `content_hash` covers the JSON
-  and the flattened text, which is how a sync knows a record changed and how the
-  embedder knows a vector went stale.
+  the same row instead of piling up duplicates. See `FirstmatePort.Fleet.Projection`
+  for the sync digest contract used to detect changes and mark vectors stale.
 
   ## Two indexes over the same text
 
