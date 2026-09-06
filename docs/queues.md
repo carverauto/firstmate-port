@@ -27,7 +27,9 @@ work recorded on the first.
 
 Publishing the normalized entry rather than the raw request is what makes that
 round trip safe: the recording node merges its own message back onto an
-identical entry and broadcasts nothing. Reports older than the tracked
+identical entry and broadcasts nothing. Locally seeded status and start time
+remain display defaults and are omitted from published reports, so sparse
+reports cannot replace another node’s known status or start time. Reports older than the tracked
 `updated_at` cannot replace status, assignment, descriptive fields, or timing.
 Input and output token counters each retain their highest reported value, even
 from an older report. Without `updated_at`, the portal uses receipt time.
@@ -55,7 +57,7 @@ start otherwise defaults to the first report.
 `POST /api/queues` needs an agent credential (as with fleet log ingest);
 `GET /api/queues` and the page itself need a signed-in account, and both are
 scoped to the caller's tenant. Reports use canonical field names, with no
-aliases; [Entry.new/2 and Entry.to_map/1](../lib/firstmate_port/queues/entry.ex)
+aliases; [Entry.new/2 and Entry.to_report/1](../lib/firstmate_port/queues/entry.ex)
 define the accepted fields and normalized wire form. Invalid reports return
 HTTP 422. Omitted or null optional values do not explicitly clear prior fields.
 GET returns `{"data": [...]}`; POST returns the normalized entry.

@@ -62,7 +62,7 @@ defmodule FirstmatePort.QueueBrokerTest do
 
     assert {:ok, entry} = Queues.record("local", %{"task" => "broker-task", "status" => "working"})
     assert {:ok, %{subject: "local.steer.queue", data: body}} = stored_message(conn, 100)
-    assert Jason.decode!(body) == Jason.decode!(Jason.encode!(Queues.Entry.to_map(entry)))
+    assert Jason.decode!(body) == Jason.decode!(Jason.encode!(Queues.Entry.to_report(entry)))
   end
 
   @tag timeout: 90_000, jetstream: false

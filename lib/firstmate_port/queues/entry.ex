@@ -31,7 +31,8 @@ defmodule FirstmatePort.Queues.Entry do
     :tokens_out,
     :started_at,
     :stopped_at,
-    :updated_at
+    :updated_at,
+    defaulted_fields: []
   ]
 
   @type t :: %__MODULE__{}
@@ -92,6 +93,7 @@ defmodule FirstmatePort.Queues.Entry do
   """
   @spec merge(t() | nil, t()) :: t()
   def merge(nil, %__MODULE__{} = update) do
+    %__MODULE__{} = update = reported(update)
     at = update.updated_at || DateTime.utc_now()
 
     settle(%__MODULE__{
@@ -100,11 +102,13 @@ defmodule FirstmatePort.Queues.Entry do
         tokens_in: update.tokens_in || 0,
         tokens_out: update.tokens_out || 0,
         started_at: update.started_at || at,
-        updated_at: at
+        updated_at: at,
+        defaulted_fields: Enum.filter([:status, :started_at], &is_nil(Map.fetch!(update, &1)))
     })
   end
 
   def merge(%__MODULE__{} = prior, %__MODULE__{} = update) do
+    %__MODULE__{} = update = reported(update)
     at = update.updated_at || DateTime.utc_now()
 
     prior = %{
@@ -126,7 +130,9 @@ defmodule FirstmatePort.Queues.Entry do
           status: update.status || prior.status,
           started_at: update.started_at || prior.started_at,
           stopped_at: update.stopped_at || prior.stopped_at,
-          updated_at: at
+          updated_at: at,
+          defaulted_fields:
+            Enum.filter(prior.defaulted_fields, &is_nil(Map.fetch!(update, &1)))
       })
     end
   end
@@ -150,9 +156,8 @@ defmodule FirstmatePort.Queues.Entry do
   end
 
   @doc """
-  The wire form: string keys and ISO8601 timestamps. Publishing the normalized
-  entry rather than the raw request is what keeps a round trip through JetStream
-  idempotent — the node that recorded it merges its own message back to itself.
+  The display form: string keys and ISO8601 timestamps, including local defaults.
+  Use `to_report/1` for publication so defaults do not become reported facts.
   """
   @spec to_map(t()) :: map()
   def to_map(%__MODULE__{} = entry) do
@@ -173,6 +178,16 @@ defmodule FirstmatePort.Queues.Entry do
       "stopped_at" => iso(entry.stopped_at),
       "updated_at" => iso(entry.updated_at)
     }
+  end
+
+  @doc "The normalized wire report, excluding locally seeded status and start time."
+  @spec to_report(t()) :: map()
+  def to_report(%__MODULE__{} = entry) do
+    Map.drop(to_map(entry), Enum.map(entry.defaulted_fields, &Atom.to_string/1))
+  end
+
+  defp reported(%__MODULE__{} = entry) do
+    Enum.reduce(entry.defaulted_fields, entry, &Map.put(&2, &1, nil))
   end
 
   # A terminal report stops the clock; resuming a task clears the stop again so

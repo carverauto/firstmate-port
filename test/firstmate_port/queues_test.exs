@@ -130,7 +130,7 @@ defmodule FirstmatePort.QueuesTest do
       })
 
     Phoenix.PubSub.subscribe(FirstmatePort.PubSub, Tracker.topic(ctx.tenant))
-    assert {:ok, ^done} = Tracker.track(ctx.name, ctx.tenant, Entry.to_map(working))
+    assert {:ok, ^done} = Tracker.track(ctx.name, ctx.tenant, Entry.to_report(working))
     assert [^done] = Tracker.list(ctx.name, ctx.tenant)
     refute_receive {:queue_entry, _}, 50
   end
@@ -158,7 +158,7 @@ defmodule FirstmatePort.QueuesTest do
 
     assert merged == %{done | tokens_in: 100, tokens_out: 50}
     assert_receive {:queue_entry, ^merged}
-    assert {:ok, ^merged} = Tracker.track(ctx.name, ctx.tenant, Entry.to_map(merged))
+    assert {:ok, ^merged} = Tracker.track(ctx.name, ctx.tenant, Entry.to_report(merged))
     refute_receive {:queue_entry, _}, 50
 
     {:ok, newer} =
@@ -267,7 +267,16 @@ defmodule FirstmatePort.QueuesTest do
       assert_receive {:queue_entry, %Entry{task: "t1"}}
 
       # The node's own message coming back around from JetStream is a no-op.
-      assert {:ok, ^entry} = Tracker.track(ctx.name, ctx.tenant, Entry.to_map(entry))
+      assert {:ok, ^entry} = Tracker.track(ctx.name, ctx.tenant, Entry.to_report(entry))
+      refute_receive {:queue_entry, _}, 50
+    end
+
+    test "a sparse entry's published defaults do not trigger another broadcast", ctx do
+      {:ok, entry} = Tracker.track(ctx.name, ctx.tenant, %{"task" => "t1", "tokens_in" => 10})
+      Phoenix.PubSub.subscribe(FirstmatePort.PubSub, Tracker.topic(ctx.tenant))
+
+      payload = entry |> Entry.to_report() |> Jason.encode!() |> Jason.decode!()
+      assert {:ok, ^entry} = Tracker.track(ctx.name, ctx.tenant, payload)
       refute_receive {:queue_entry, _}, 50
     end
 
@@ -320,7 +329,7 @@ defmodule FirstmatePort.QueuesTest do
           "tokens_out" => 20
         })
 
-      payload = entry |> Entry.to_map() |> Jason.encode!() |> Jason.decode!()
+      payload = entry |> Entry.to_report() |> Jason.encode!() |> Jason.decode!()
 
       assert payload["schema"] == Entry.schema()
       assert payload["tokens_total"] == 30

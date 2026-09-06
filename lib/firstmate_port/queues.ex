@@ -48,6 +48,6 @@ defmodule FirstmatePort.Queues do
   defdelegate absorb(tenant, params), to: Tracker, as: :track
 
   defp publish(tenant, entry) do
-    NATS.Connection.publish(subject(tenant), Jason.encode!(Entry.to_map(entry)))
+    NATS.Connection.publish(subject(tenant), Jason.encode!(Entry.to_report(entry)))
   end
 end
