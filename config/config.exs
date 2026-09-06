@@ -8,12 +8,12 @@
 import Config
 
 # Scheduler lives in this app (same role as serviceradar_core_elx).
-config :ash_oban, pro?: false, oban_name: Oban
+config :ash_oban, oban_name: Oban
 
 config :firstmate_port, Oban,
   engine: Oban.Engines.Basic,
   notifier: Oban.Notifiers.Postgres,
-  queues: [default: 10, discord: 5, github: 2],
+  queues: [default: 10, github: 2, fleet: 1],
   lifeline: [rescue_after: {2, :hours}],
   pruner: [max_age: {1, :day}],
   repo: FirstmatePort.Repo,
@@ -71,27 +71,53 @@ config :firstmate_port,
   generators: [timestamp_type: :utc_datetime],
   ash_domains: [
     FirstmatePort.Accounts,
+    FirstmatePort.Credentials,
     FirstmatePort.Portal,
     FirstmatePort.Events,
+    FirstmatePort.Fleet,
     FirstmatePort.Jobs
   ],
   public_url: "http://localhost:4000",
-  allowed_email_domain: "localhost",
+  # Unset means any account an identity provider vouches for may sign in. A
+  # domain here is an extra restriction on top of the provider, not the login.
+  allowed_email_domain: nil,
   oidc_issuer: nil,
-  dev_auth: false,
+  # Local sign-in is the default way in: a fresh portal must be signable-into
+  # without an identity provider.
+  local_auth: true,
+  # Seam, not a feature. Public images are OSS and compile with this off; the
+  # SaaS lane owns sign-up, tenant provisioning, and billing in its own repo.
+  # Tenancy is already attribute-based, so nothing here needs rewriting later.
+  enable_saas: false,
   default_tenant_slug: "local"
+
+# Deliberately slow. Test config lowers it; nothing else should.
+config :firstmate_port, FirstmatePort.Accounts.Password, iterations: 210_000
+
+# Build tracking plates (Kubernetes rolls, Docker builds, BuildBuddy
+# invocations) are opt-in. Absent config hides the plate, it never renders
+# an empty state. See docs/build-tracking.md.
+config :firstmate_port, :build_tracking,
+  kubernetes_enabled: false,
+  docker_enabled: false,
+  buildbuddy_host: nil,
+  buildbuddy_api_key: nil
 
 config :firstmate_port, FirstmatePort.Auth.Guardian,
   issuer: "firstmate_port",
   secret_key: "dev-guardian-secret-change-in-runtime",
   ttl: {12, :hours}
 
-config :firstmate_port, FirstmatePortWeb.Auth.OIDCStrategy,
-  client_id: System.get_env("OIDC_CLIENT_ID") || "firstmate-port",
-  client_secret: System.get_env("OIDC_CLIENT_SECRET"),
-  issuer: System.get_env("OIDC_ISSUER"),
-  discovery_url: System.get_env("OIDC_DISCOVERY_URL"),
-  redirect_uri: System.get_env("OIDC_REDIRECT_URI") || "http://localhost:4000/auth/oidc/callback",
+# OIDC is optional and vendor-neutral. Compiled defaults configure no issuer, so
+# a fresh checkout and the public image run on local auth alone. Real values are
+# read from the environment in config/runtime.exs; nothing here is baked into a
+# release.
+config :firstmate_port, FirstmatePort.Auth.OIDC,
+  client_id: nil,
+  client_secret: nil,
+  issuer: nil,
+  discovery_url: nil,
+  redirect_uri: nil,
   scopes: ["openid", "email", "profile"]
 
 config :firstmate_port, FirstmatePort.NATS.Connection,
@@ -104,9 +130,10 @@ config :firstmate_port, FirstmatePort.NATS.Connection,
   password: nil,
   replicas: 1
 
-config :firstmate_port, :discord_webhook_url, nil
-config :firstmate_port, :discord_public_key, nil
-
+# Deliberately empty, in every environment. UeberauthOidcc.Application starts one
+# permanent child per entry, and a provider that cannot load its configuration
+# crashes there and terminates the node. FirstmatePort.Auth.OIDC.Supervisor owns
+# the provider instead, as a temporary child.
 config :ueberauth_oidcc, issuers: []
 
 config :ueberauth, Ueberauth,
@@ -114,7 +141,8 @@ config :ueberauth, Ueberauth,
     oidc:
       {Ueberauth.Strategy.Oidcc,
        [
-         issuer: :firstmate_authentik,
+         # The name of the provider process, not a vendor.
+         issuer: :firstmate_oidc,
          client_id: {:system, "OIDC_CLIENT_ID"},
          client_secret: {:system, "OIDC_CLIENT_SECRET"},
          scopes: ["openid", "email", "profile"],
@@ -172,6 +200,18 @@ config :logger, :default_formatter,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+
+# Keep secrets out of request and LiveView event logs. `value` is the parameter
+# tenant credentials are submitted under; the rest are the usual suspects.
+config :phoenix, :filter_parameters, [
+  "password",
+  "secret",
+  "token",
+  "value",
+  "api_key",
+  "public_key",
+  "client_secret"
+]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

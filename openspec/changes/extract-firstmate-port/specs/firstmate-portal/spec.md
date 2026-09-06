@@ -10,7 +10,7 @@ The repository SHALL contain the Phoenix/Ash portal, fm-steer, NATS cluster mani
 - **THEN** they can build the portal and fm-steer without any Discord webhook sender from the Mac notifier
 
 ### Requirement: Local compose is the default identity
-Compiled defaults SHALL run locally via docker compose with generic names (`localhost`, example hostnames). Site-specific hostnames, VIP, Authentik URL, Harbor, and email allowlists SHALL appear only in env samples, compose overrides, or docs.
+Compiled defaults SHALL run locally via docker compose with generic names (`localhost`, example hostnames). Site-specific hostnames, VIP, OIDC issuer URL, registry namespace, and email allowlists SHALL appear only in env samples, compose overrides, or docs.
 
 #### Scenario: First boot
 - **WHEN** an operator runs `docker compose up` with `.env` from `.env.example`

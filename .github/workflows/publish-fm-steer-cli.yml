@@ -1,0 +1,99 @@
+name: Publish fm-steer CLI
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cli:
+    # Same self-hosted runners as ServiceRadar publish (captain directive).
+    runs-on: firstmate-signing
+    env:
+      BUILDBUDDY_ORG_API_KEY: ${{ secrets.BUILDBUDDY_ORG_API_KEY || secrets.BUILDBUDDY_API_KEY }}
+      BAZELISK_HOME: ${{ github.workspace }}/.cache/bazelisk
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Bazel artifacts
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BAZELISK_HOME }}
+          key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'MODULE.bazel') }}
+          restore-keys: |
+            ${{ runner.os }}-bazel-
+      - name: Install Bazelisk
+        env:
+          # Public GitHub/Bazel downloads must go through Smokescreen;
+          # direct egress is blocked. Do not set these on the runner pod
+          # (breaks Actions broker).
+          HTTP_PROXY: http://smokescreen.egress.svc.cluster.local:4750
+          HTTPS_PROXY: http://smokescreen.egress.svc.cluster.local:4750
+          NO_PROXY: localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local,carverauto.buildbuddy.io,registry.carverauto.dev,ghcr.io
+        run: ./scripts/install-bazelisk.sh
+
+      - name: Verify Bazel version
+        run: |
+          set -euo pipefail
+          want="$(tr -d '[:space:]' < .bazelversion)"
+          # bazel on PATH is the bazelisk shim; under HTTPS_PROXY it can hang
+          # even when the distribution is already cached. Prefer the real binary.
+          real="$(find "${BAZELISK_HOME}/downloads" -type f -path '*/bin/bazel' ! -name '*.lock' 2>/dev/null | head -1 || true)"
+          if [ -z "${real}" ]; then
+            echo "cached bazel binary not found under BAZELISK_HOME=${BAZELISK_HOME:-unset}" >&2
+            exit 1
+          fi
+          got="$(timeout 60 "${real}" --version | awk '{print $2}')"
+          echo "want=${want} got=${got} via=${real}"
+          test "${got}" = "${want}"
+      - name: Configure BuildBuddy remote
+        run: |
+          set -euo pipefail
+
+          if [ -z "${BUILDBUDDY_ORG_API_KEY:-}" ]; then
+            echo "BUILDBUDDY_ORG_API_KEY is unavailable; --config=remote cannot authenticate." >&2
+            exit 1
+          fi
+
+          umask 077
+          printf 'common --remote_header=x-buildbuddy-api-key=%s\n' "${BUILDBUDDY_ORG_API_KEY}" > .bazelrc.remote
+      - name: Build multi-arch fm-steer
+        run: |
+          set -euo pipefail
+          env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel build --config=remote \
+            //:fm-steer_linux_amd64 \
+            //:fm-steer_linux_arm64 \
+            //:fm-steer_darwin_amd64 \
+            //:fm-steer_darwin_arm64
+      - name: Stage release assets
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
+            ver="${REF_NAME}"
+          else
+            ver="dev-sha-$(git rev-parse --short HEAD)"
+          fi
+          echo "CLI_VER=${ver}" >> "${GITHUB_ENV}"
+          mkdir -p dist
+          for spec in "linux_amd64:linux:amd64" "linux_arm64:linux:arm64" "darwin_amd64:darwin:amd64" "darwin_arm64:darwin:arm64"; do
+            suffix="${spec%%:*}"
+            pair="${spec#*:}"
+            os="${pair%%:*}"
+            arch="${pair##*:}"
+            src="$(env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel cquery --config=remote --output=files "//:fm-steer_${suffix}")"
+            cp "${src}" "dist/fm-steer_${ver}_${os}_${arch}"
+          done
+          (cd dist && sha256sum fm-steer_* > SHA256SUMS)
+          ls -la dist
+      - name: Upload GitHub Release assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release view "${TAG_NAME}" >/dev/null 2>&1 \
+            || gh release create "${TAG_NAME}" --title "${TAG_NAME}" --notes "fm-steer CLI (${TAG_NAME})"
+          gh release upload "${TAG_NAME}" dist/fm-steer_* dist/SHA256SUMS --clobber

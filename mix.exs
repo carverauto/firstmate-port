@@ -9,6 +9,7 @@ defmodule FirstmatePort.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
+      releases: releases(),
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
@@ -23,6 +24,18 @@ defmodule FirstmatePort.MixProject do
     [
       mod: {FirstmatePort.Application, []},
       extra_applications: [:logger, :runtime_tools, :crypto, :public_key, :ssl]
+    ]
+  end
+
+  # Explicit release so we can disable validate_compile_env. Bazel Hex
+  # builds don't see host config.exs at compile time, so every Ash
+  # compile_env key would otherwise abort Config.Provider boot when the
+  # release-time config differs. Same as serviceradar web-ng.
+  defp releases do
+    [
+      firstmate_port: [
+        validate_compile_env: false
+      ]
     ]
   end
 
@@ -51,14 +64,25 @@ defmodule FirstmatePort.MixProject do
       {:ash_postgres, "~> 2.4"},
       {:ash_paper_trail, "~> 0.6.0"},
       {:ash_events, "~> 0.7.0"},
+      {:ash_cloak, "~> 0.4.0"},
+      {:cloak, "~> 1.1"},
       {:ash, "~> 3.31"},
       {:simple_sat, "~> 0.1.4"},
       {:guardian, "~> 2.3"},
+      # Already in mix.lock via ash_events; no new closure for Bazel.
+      {:bcrypt_elixir, "~> 3.0"},
       {:ueberauth, "~> 0.10"},
       {:ueberauth_oidcc, "~> 0.4"},
       {:gnat, "~> 1.15"},
       {:igniter, "~> 0.6", only: [:dev, :test]},
       {:phoenix, "~> 1.8.1"},
+      # Optional Hex deps that Bazel hex stubs require as hard deps:
+      {:castore, "~> 1.0"},
+      {:phoenix_view, "~> 2.0"},
+      {:cowboy, "~> 2.12"},
+      {:ranch, "~> 2.1"},
+      {:cowlib, "~> 2.12"},
+      {:gen_smtp, "~> 1.2"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
       {:postgrex, ">= 0.0.0"},

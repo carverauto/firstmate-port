@@ -13,6 +13,9 @@ erl_crash.dump
 firstmate_port-*.tar
 /priv/static/assets
 /priv/static/cache_manifest.json
+# Phoenix digest siblings (mix phx.digest writes <name>-<32hex>.<ext>[.gz]
+# next to the sources). The Bazel asset pipeline regenerates them; never commit.
+/priv/static/**/*-????????????????????????????????.*
 
 # Node
 npm-debug.log*
@@ -47,6 +50,7 @@ __pycache__/
 # Go
 *.test
 *.out
+/fm-steer
 coverage.txt
 .gobuildcache/
 .gocache/

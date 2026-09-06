@@ -1,29 +1,63 @@
 name: bazel
 on:
-  pull_request:
-  push:
-    branches: [main, "fm/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   bazel:
-    runs-on: ubuntu-latest
+    # Same self-hosted runners as ServiceRadar publish (captain directive).
+    runs-on: firstmate-signing
     env:
       BUILDBUDDY_ORG_API_KEY: ${{ secrets.BUILDBUDDY_ORG_API_KEY || secrets.BUILDBUDDY_API_KEY }}
+      BAZELISK_HOME: ${{ github.workspace }}/.cache/bazelisk
     steps:
       - uses: actions/checkout@v4
-      - uses: bazel-contrib/setup-bazel@0.15.0
+      - name: Cache Bazel artifacts
+        uses: actions/cache@v4
         with:
-          bazelisk-version: "1.25.0"
-      - name: Configure BuildBuddy remote
-        if: ${{ env.BUILDBUDDY_ORG_API_KEY != '' }}
+          path: ${{ env.BAZELISK_HOME }}
+          key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'MODULE.bazel') }}
+          restore-keys: |
+            ${{ runner.os }}-bazel-
+      - name: Install Bazelisk
+        env:
+          # Public GitHub/Bazel downloads must go through Smokescreen;
+          # direct egress is blocked. Do not set these on the runner pod
+          # (breaks Actions broker).
+          HTTP_PROXY: http://smokescreen.egress.svc.cluster.local:4750
+          HTTPS_PROXY: http://smokescreen.egress.svc.cluster.local:4750
+          NO_PROXY: localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local,carverauto.buildbuddy.io,registry.carverauto.dev,ghcr.io
+        run: ./scripts/install-bazelisk.sh
+
+      - name: Verify Bazel version
         run: |
+          set -euo pipefail
+          want="$(tr -d '[:space:]' < .bazelversion)"
+          # bazel on PATH is the bazelisk shim; under HTTPS_PROXY it can hang
+          # even when the distribution is already cached. Prefer the real binary.
+          real="$(find "${BAZELISK_HOME}/downloads" -type f -path '*/bin/bazel' ! -name '*.lock' 2>/dev/null | head -1 || true)"
+          if [ -z "${real}" ]; then
+            echo "cached bazel binary not found under BAZELISK_HOME=${BAZELISK_HOME:-unset}" >&2
+            exit 1
+          fi
+          got="$(timeout 60 "${real}" --version | awk '{print $2}')"
+          echo "want=${want} got=${got} via=${real}"
+          test "${got}" = "${want}"
+      - name: Configure BuildBuddy remote
+        run: |
+          set -euo pipefail
+
+          if [ -z "${BUILDBUDDY_ORG_API_KEY:-}" ]; then
+            echo "BUILDBUDDY_ORG_API_KEY is unavailable; --config=remote cannot authenticate." >&2
+            exit 1
+          fi
+
           umask 077
-          {
-            echo "common --remote_header=x-buildbuddy-api-key=${BUILDBUDDY_ORG_API_KEY}"
-            echo "build:cache_only --bes_backend=grpcs://cloud.buildbuddy.io"
-            echo "build:cache_only --remote_cache=grpcs://cloud.buildbuddy.io"
-            echo "build:remote_base --remote_executor=grpcs://cloud.buildbuddy.io"
-          } > .bazelrc.remote
+          printf 'common --remote_header=x-buildbuddy-api-key=%s\n' "${BUILDBUDDY_ORG_API_KEY}" > .bazelrc.remote
       - name: Bazel build CLI
-        run: bazel --output_base=/tmp/fm-fm-port/bazel build //:fm-steer //:nats-tail
+        run: env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel build --config=remote //:fm-steer
       - name: Bazel test Go
-        run: bazel --output_base=/tmp/fm-fm-port/bazel test //:fm-steer_test //:nats-tail_test //:natsutil_test
+        run: env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel test --config=remote //:fm-steer_test

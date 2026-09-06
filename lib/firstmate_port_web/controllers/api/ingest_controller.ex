@@ -1,30 +1,48 @@
 defmodule FirstmatePortWeb.Api.IngestController do
   use FirstmatePortWeb, :controller
 
-  alias FirstmatePort.Portal.{Diagram, NoMistakesRun, ProgressItem, Roll}
+  alias FirstmatePort.BuildBuddy
+
+  alias FirstmatePort.Portal.{
+    BuildBuddyInvocation,
+    Diagram,
+    DockerBuild,
+    NoMistakesRun,
+    ProgressItem,
+    Roll
+  }
 
   def create_diagram(conn, params) do
     actor = conn.assigns.current_user
 
-    attrs = %{
-      id: params["id"],
-      title: params["title"] || "untitled",
-      notes: params["notes"] || "",
-      html: decode_bin(params["html"] || params["html_base64"]),
-      png: decode_bin(params["png_base64"]),
-      svg: decode_bin(params["svg"])
-    }
+    with {:ok, html} <- decode_bin("html_base64", params["html_base64"]),
+         {:ok, png} <- decode_bin("png_base64", params["png_base64"]),
+         {:ok, svg} <- decode_bin("svg_base64", params["svg_base64"]) do
+      attrs = %{
+        id: params["id"],
+        title: params["title"] || "untitled",
+        notes: params["notes"] || "",
+        html: html,
+        png: png,
+        svg: svg
+      }
 
-    case Diagram.upload(attrs, FirstmatePort.Tenancy.opts(actor)) do
-      {:ok, diagram} ->
-        json(conn, %{
-          id: diagram.id,
-          url: public_url() <> "/d/" <> diagram.id,
-          title: diagram.title
-        })
+      case Diagram.upload(attrs, FirstmatePort.Tenancy.opts(actor)) do
+        {:ok, diagram} ->
+          json(conn, %{
+            id: diagram.id,
+            url: public_url() <> "/d/" <> diagram.id,
+            title: diagram.title
+          })
 
-      {:error, error} ->
-        conn |> put_status(:unprocessable_entity) |> json(%{error: inspect(error)})
+        {:error, error} ->
+          conn |> put_status(:unprocessable_entity) |> json(%{error: inspect(error)})
+      end
+    else
+      {:error, field} ->
+        conn
+        |> put_status(:bad_request)
+        |> json(%{error: "#{field} must be base64-encoded"})
     end
   end
 
@@ -39,7 +57,7 @@ defmodule FirstmatePortWeb.Api.IngestController do
 
   def create_roll(conn, params) do
     record(conn, Roll, :record, %{
-      cluster: params["cluster"] || "farm01",
+      cluster: params["cluster"],
       namespace: params["namespace"],
       status: params["status"],
       image_tag: params["image_tag"],
@@ -48,6 +66,34 @@ defmodule FirstmatePortWeb.Api.IngestController do
       helm_revision: params["helm_revision"] || "",
       pr_url: params["pr_url"] || "",
       issue_url: params["issue_url"] || "",
+      outcome: params["outcome"] || ""
+    })
+  end
+
+  def create_docker_build(conn, params) do
+    record(conn, DockerBuild, :record, %{
+      repository: params["repository"],
+      tag: params["tag"],
+      status: params["status"],
+      digest: params["digest"] || "",
+      dockerfile: params["dockerfile"] || "",
+      context: params["context"] || "",
+      pr_url: params["pr_url"] || "",
+      issue_url: params["issue_url"] || "",
+      outcome: params["outcome"] || ""
+    })
+  end
+
+  def create_buildbuddy_invocation(conn, params) do
+    record(conn, BuildBuddyInvocation, :record, %{
+      invocation_id: params["invocation_id"],
+      host: BuildBuddy.host() || "",
+      status: params["status"] || "",
+      commit_sha: params["commit_sha"] || "",
+      branch: params["branch"] || "",
+      repo_url: params["repo_url"] || "",
+      buildbuddy_url: params["buildbuddy_url"] || "",
+      pr_url: params["pr_url"] || "",
       outcome: params["outcome"] || ""
     })
   end
@@ -70,6 +116,8 @@ defmodule FirstmatePortWeb.Api.IngestController do
   def list_diagrams(conn, _params), do: list(conn, Diagram)
   def list_progress(conn, _params), do: list(conn, ProgressItem)
   def list_rolls(conn, _params), do: list(conn, Roll)
+  def list_docker_builds(conn, _params), do: list(conn, DockerBuild)
+  def list_buildbuddy_invocations(conn, _params), do: list(conn, BuildBuddyInvocation)
   def list_no_mistakes(conn, _params), do: list(conn, NoMistakesRun)
 
   defp list(conn, resource) do
@@ -103,6 +151,26 @@ defmodule FirstmatePortWeb.Api.IngestController do
     }
   end
 
+  defp summarize(%DockerBuild{} = b) do
+    %{
+      id: b.id,
+      repository: b.repository,
+      tag: b.tag,
+      status: b.status,
+      pr_url: b.pr_url
+    }
+  end
+
+  defp summarize(%BuildBuddyInvocation{} = i) do
+    %{
+      id: i.id,
+      invocation_id: i.invocation_id,
+      status: i.status,
+      buildbuddy_url: i.buildbuddy_url,
+      pr_url: i.pr_url
+    }
+  end
+
   defp summarize(%NoMistakesRun{} = n) do
     %{
       id: n.id,
@@ -117,6 +185,11 @@ defmodule FirstmatePortWeb.Api.IngestController do
 
   defp url_for(%Diagram{id: id}), do: public_url() <> "/d/" <> id
   defp url_for(%Roll{id: id}), do: public_url() <> "/rolls/" <> id
+  defp url_for(%DockerBuild{id: id}), do: public_url() <> "/docker-builds/" <> id
+
+  defp url_for(%BuildBuddyInvocation{id: id}),
+    do: public_url() <> "/buildbuddy-invocations/" <> id
+
   defp url_for(%ProgressItem{id: id}), do: public_url() <> "/?tab=progress#" <> id
   defp url_for(%NoMistakesRun{id: id}), do: public_url() <> "/?tab=no-mistakes#" <> id
 
@@ -125,19 +198,15 @@ defmodule FirstmatePortWeb.Api.IngestController do
     |> String.trim_trailing("/")
   end
 
-  defp decode_bin(nil), do: nil
-  defp decode_bin(""), do: nil
+  defp decode_bin(_field, nil), do: {:ok, nil}
+  defp decode_bin(_field, ""), do: {:ok, nil}
 
-  defp decode_bin(value) when is_binary(value) do
-    case Base.decode64(value, padding: false) do
-      {:ok, bin} ->
-        bin
-
-      :error ->
-        case Base.decode64(value) do
-          {:ok, bin} -> bin
-          :error -> value
-        end
+  defp decode_bin(field, value) when is_binary(value) do
+    case Base.decode64(value) do
+      {:ok, bin} -> {:ok, bin}
+      :error -> {:error, field}
     end
   end
+
+  defp decode_bin(field, _value), do: {:error, field}
 end

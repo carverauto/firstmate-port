@@ -50,12 +50,10 @@ defmodule FirstmatePort.Portal.ProgressItem do
       accept [:kind, :title, :url, :body]
       change FirstmatePort.Changes.AssignPublicId
       change FirstmatePort.Changes.NormalizeProgressUrl
-      change {FirstmatePort.Changes.FanoutDiscord, kind: :progress}
     end
 
     update :touch do
       accept [:kind, :title]
-      change {FirstmatePort.Changes.FanoutDiscord, kind: :progress}
     end
   end
 

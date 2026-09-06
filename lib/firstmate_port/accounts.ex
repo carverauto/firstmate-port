@@ -1,6 +1,6 @@
 defmodule FirstmatePort.Accounts do
   @moduledoc """
-  Humans (Authentik OIDC) and agent service credentials.
+  Humans (OIDC or local sign-in) and agent service credentials.
   """
 
   use Ash.Domain,

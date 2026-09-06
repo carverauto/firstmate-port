@@ -23,10 +23,15 @@ try-import %workspace%/.bazelrc.remote
 build:cache_only --experimental_remote_cache_chunking
 build:cache_only --remote_cache_compression
 build:cache_only --experimental_remote_cache_compression_threshold=100
+build:cache_only --remote_bytestream_uri_prefix=carverauto.buildbuddy.io
+build:cache_only --remote_cache=grpcs://cache-proxy.carverauto.dev:443
+build:cache_only --bes_backend=grpcs://carverauto.buildbuddy.io
+build:cache_only --bes_results_url=https://carverauto.buildbuddy.io/invocation/
 
 build:remote_base --config=cache_only
 build:remote_base --jobs=100
 build:remote_base --remote_download_minimal
+build:remote_base --remote_executor=grpcs://carverauto.buildbuddy.io
 build:remote_base --host_platform=//build/rbe:rbe_platform
 build:remote_base --platforms=//build/rbe:rbe_platform
 build:remote_base --cpu=k8

@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# Build, push, and sign the portal image.
-# Harbor is the internal registry. ghcr.io is a later public mirror.
+# Push (and optionally sign) the portal image.
+# ghcr.io is the registry. CI publishes from .github/workflows/publish-oci.yml
+# with the workflow GITHUB_TOKEN; this script is the manual escape hatch.
+# Signing is optional: set COSIGN_KEY_REF only if your site signs images.
 # Site-specific OpenBao/k8s names belong in env or deploy/examples, not here.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 TAG="sha-$(git rev-parse HEAD)"
-REGISTRY="${HARBOR_REGISTRY:-registry.example.com}"
-PROJECT="${HARBOR_PROJECT:-firstmate}"
+REGISTRY="${OCI_REGISTRY:-ghcr.io}"
+PROJECT="${OCI_PROJECT:?set OCI_PROJECT to the ghcr namespace, for example your GitHub owner}"
 IMAGE="${REGISTRY}/${PROJECT}/firstmate-port"
 DIGEST="${1:?usage: sign-and-push.sh sha256:<digest>}"
 if [ "${COSIGN_KEY_REF:-}" = "" ]; then
-  echo "set COSIGN_KEY_REF to sign, or push unsigned"
+  echo "no COSIGN_KEY_REF; pushing unsigned (ghcr does not require a signature)"
   docker push "${IMAGE}@${DIGEST}"
   exit 0
 fi

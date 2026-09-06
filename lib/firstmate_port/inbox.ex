@@ -2,7 +2,7 @@ defmodule FirstmatePort.Inbox do
   @moduledoc """
   Tenant-scoped task inbox. The Phoenix API is the only JetStream client;
   fm-steer talks HTTP only. When NATS is disabled, an ETS table holds
-  messages so local tests and DEV_AUTH compose still work.
+  messages so local tests and local-auth compose still work.
   """
 
   use GenServer

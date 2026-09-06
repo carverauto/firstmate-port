@@ -1,6 +1,7 @@
 defmodule FirstmatePort.Portal.Roll do
   @moduledoc """
-  First-class farm01/demo image build and helm roll events.
+  Kubernetes cluster image build and helm roll events. Recording is
+  opt-in; see `FirstmatePort.BuildTracking`.
   """
 
   import Ash.Expr
@@ -61,10 +62,10 @@ defmodule FirstmatePort.Portal.Roll do
         :outcome
       ]
 
+      validate {FirstmatePort.Validations.TrackingEnabled, track: :kubernetes}
       change FirstmatePort.Changes.AssignPublicId
       validate {FirstmatePort.Validations.HttpsUrl, attribute: :pr_url, required?: false}
       validate {FirstmatePort.Validations.HttpsUrl, attribute: :issue_url, required?: false}
-      change {FirstmatePort.Changes.FanoutDiscord, kind: :roll}
     end
   end
 

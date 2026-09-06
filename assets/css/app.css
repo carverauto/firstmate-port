@@ -117,11 +117,68 @@ a:hover {
 }
 
 .brand {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.5rem;
   color: var(--ink);
   font-weight: 600;
   letter-spacing: -0.03em;
   text-decoration: none;
   flex: none;
+  white-space: nowrap;
+}
+
+.brand-text {
+  line-height: 1;
+}
+
+.brand-wheel {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: block;
+  overflow: hidden;
+}
+
+.brand-wheel img {
+  position: absolute;
+  inset: 0;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.brand-wheel-dark {
+  opacity: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-wheel-light {
+    opacity: 0;
+  }
+
+  :root:not([data-theme="light"]) .brand-wheel-dark {
+    opacity: 1;
+  }
+}
+
+[data-theme="dark"] .brand-wheel-light {
+  opacity: 0;
+}
+
+[data-theme="dark"] .brand-wheel-dark {
+  opacity: 1;
+}
+
+[data-theme="light"] .brand-wheel-light {
+  opacity: 1;
+}
+
+[data-theme="light"] .brand-wheel-dark {
+  opacity: 0;
 }
 
 .brand:hover {
@@ -152,7 +209,6 @@ a:hover {
   gap: 0.75rem;
 }
 
-.who,
 .quiet,
 .meta,
 .hint,
@@ -348,62 +404,185 @@ pre {
   color: var(--ink);
 }
 
+.account-menu {
+  position: relative;
+}
+
+.account-menu summary {
+  display: inline-flex;
+  border-radius: 50%;
+  cursor: pointer;
+  list-style: none;
+}
+
+.account-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.account-menu summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.account-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  display: block;
+  background: var(--bg);
+}
+
+.account-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 30;
+  min-width: 15rem;
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+
+.account-email {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-section-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.account-signout {
+  justify-self: start;
+}
+
 .auth-shell {
   min-height: 100dvh;
-  display: grid;
-  grid-template-columns: 1fr 22rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .auth-top {
-  position: absolute;
-  inset: 0 0 auto 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.25rem;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-elev);
+}
+
+/* Only hero + sign-in live in this grid. The header and flashes are flex
+   siblings above it, so they can never steal a grid cell. */
+.auth-main {
+  flex: 1;
+  width: 100%;
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 3rem 1.25rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(19rem, 22rem);
+  gap: 3rem;
+  align-items: center;
 }
 
 .auth-hero {
-  padding: 7rem 3rem 3rem;
-  border-right: 1px solid var(--line);
+  padding: 0;
 }
 
 .auth-hero h1 {
-  margin: 0.4rem 0 0.75rem;
-  font-size: clamp(2rem, 4vw, 3.4rem);
+  margin: 0 0 0.75rem;
+  font-size: clamp(2rem, 4vw, 3.2rem);
   letter-spacing: -0.05em;
   line-height: 1.05;
   max-width: 14ch;
 }
 
-.brand-mark {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
 .lede {
   margin: 0;
-  max-width: 36ch;
+  max-width: 38ch;
+  color: var(--muted);
+  font-size: 1.02rem;
+}
+
+.auth-points {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
   color: var(--muted);
 }
 
-.auth-panel {
-  padding: 7rem 1.5rem 3rem;
+.auth-points li {
+  position: relative;
+  padding-left: 1.35rem;
 }
 
-.auth-panel h2 {
+.auth-points li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 22rem;
+  justify-self: end;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.5rem;
+}
+
+.auth-card h2 {
   margin: 0 0 1rem;
   font-size: 1rem;
 }
 
-.auth-cta,
-.auth-form .btn {
+.auth-cta {
   width: 100%;
+  min-height: 2.5rem;
 }
 
 .auth-form {
+  display: grid;
+  gap: 0.15rem;
   margin-top: 1.25rem;
+}
+
+.auth-form label {
+  margin-bottom: 0;
+}
+
+.auth-form input[type="email"],
+.auth-form input[type="password"] {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.5rem;
+}
+
+.auth-form .hint {
+  margin: 0.35rem 0 0.9rem;
+}
+
+/* Bounded by the 22rem card: never a page-wide bar. */
+.auth-form .btn {
+  width: 100%;
+  min-height: 2.5rem;
 }
 
 .empty-state {
@@ -755,19 +934,24 @@ pre {
 }
 
 @media (max-width: 768px) {
-  .auth-shell,
   .axi-split {
     grid-template-columns: 1fr;
   }
 
-  .auth-hero {
-    padding: 5rem 1.25rem 1.5rem;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
+  .auth-main {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+    align-items: start;
+    padding: 2rem 1.25rem 3rem;
   }
 
-  .auth-panel {
-    padding: 1.5rem 1.25rem 3rem;
+  .auth-hero h1 {
+    font-size: clamp(1.8rem, 8vw, 2.4rem);
+  }
+
+  .auth-card {
+    max-width: none;
+    justify-self: stretch;
   }
 
   .topbar {

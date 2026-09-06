@@ -29,6 +29,16 @@ git_override(
 hexpm_ext = use_extension("//third_party/hex:extensions.bzl", "hex")
 use_repo(hexpm_ext, "hexpm")
 
+# Spoke repositories whose file trees Bazel actions read directly (the
+# esbuild step resolves phoenix_* JS the way Mix NODE_PATH=deps does).
+# Depending on @hexpm//:<app> keeps Erlang consumers on the hub alias.
+use_repo(
+    hexpm_ext,
+    "hex_phoenix",
+    "hex_phoenix_html",
+    "hex_phoenix_live_view",
+)
+
 host_platform_ext = use_extension("@platforms//host:extension.bzl", "host_platform")
 use_repo(host_platform_ext, "host_platform")
 
@@ -61,6 +71,8 @@ elixir_config_ext.prebuilt_elixir_from_hex_builds(
 )
 use_repo(elixir_config_ext, "elixir_config")
 
+register_toolchains("//build:mix_payloads")
+
 register_toolchains(
     "@erlang_config//otp_28_1:toolchain_major",
     "@erlang_config//otp_28_1:toolchain_major_minor",
@@ -79,17 +91,103 @@ use_repo(hex_ext, "hex")
 go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(version = "1.24.6")
 
-go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
-go_deps.from_file(go_mod = "//:go.mod")
-use_repo(
-    go_deps,
-    "com_github_bwmarrin_discordgo",
-    "com_github_nats_io_nats_go",
-)
-
 http_archive = use_repo_rule(
     "@bazel_tools//tools/build_defs/repo:http.bzl",
     "http_archive",
+)
+
+http_file = use_repo_rule(
+    "@bazel_tools//tools/build_defs/repo:http.bzl",
+    "http_file",
+)
+
+# Standalone tailwindcss binaries (same version as config/config.exs).
+# Single-file downloads, hence http_file with executable=True.
+http_file(
+    name = "tailwind_linux_x86_64",
+    executable = True,
+    sha256 = "0706292935a9773c6c879e17d23625322e4490e7e8f7a0ad0e688faae4def981",
+    urls = ["https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.7/tailwindcss-linux-x64"],
+)
+
+http_file(
+    name = "tailwind_linux_arm64",
+    executable = True,
+    sha256 = "8c419a662196f05726551ad006bd8341f47b8bedf8e0cb651687d9ae3c0ae066",
+    urls = ["https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.7/tailwindcss-linux-arm64"],
+)
+
+http_file(
+    name = "tailwind_darwin_x86_64",
+    executable = True,
+    sha256 = "4cded3296e7ad63f6abe069d2ff3ff710861ba6d650abb23360961c60cfd192c",
+    urls = ["https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.7/tailwindcss-macos-x64"],
+)
+
+http_file(
+    name = "tailwind_darwin_arm64",
+    executable = True,
+    sha256 = "0a3cce066867116d1cf95eaeb4d28f44e8403b1d6a976bc6f12e06d614fa59da",
+    urls = ["https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.7/tailwindcss-macos-arm64"],
+)
+
+# Heroicons SVGs the tailwind `@plugin "../vendor/heroicons"` shim reads from
+# `deps/heroicons/optimized` (same v2.2.0 tag as the Mix git dep in mix.exs,
+# which sparse-checkouts `optimized`).
+http_archive(
+    name = "heroicons",
+    build_file_content = """
+filegroup(
+    name = "optimized",
+    srcs = glob(["optimized/**"]),
+    visibility = ["//visibility:public"],
+)
+""",
+    sha256 = "42bd31001127631a20270e7bd87ac13647bfcd628dd533e2ff31497068b4f7af",
+    strip_prefix = "heroicons-2.2.0",
+    urls = ["https://github.com/tailwindlabs/heroicons/archive/refs/tags/v2.2.0.tar.gz"],
+)
+
+# Standalone esbuild binaries via the @esbuild npm platform tarballs (same
+# 0.25.4 as config/config.exs; same artefacts `mix esbuild.install` fetches).
+_ESBUILD_BUILD = """
+filegroup(
+    name = "bin",
+    srcs = ["bin/esbuild"],
+    visibility = ["//visibility:public"],
+)
+"""
+
+http_archive(
+    name = "esbuild_linux_x86_64",
+    build_file_content = _ESBUILD_BUILD,
+    sha256 = "387f77dd2ed4f66ab2b02150943554c6131431a7df36a62191112ec21453f009",
+    strip_prefix = "package",
+    urls = ["https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.25.4.tgz"],
+)
+
+http_archive(
+    name = "esbuild_linux_arm64",
+    build_file_content = _ESBUILD_BUILD,
+    sha256 = "987dfa55a81204e13e9d339e67bed8762db1af0906ba17b04cf8148b27bc1f0b",
+    strip_prefix = "package",
+    urls = ["https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.25.4.tgz"],
+)
+
+http_archive(
+    name = "esbuild_darwin_x86_64",
+    build_file_content = _ESBUILD_BUILD,
+    sha256 = "753fb829d8245a78b3fac7aea07a499306fbc6fd47243aa02b76896fc580405a",
+    strip_prefix = "package",
+    urls = ["https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.25.4.tgz"],
+)
+
+http_archive(
+    name = "esbuild_darwin_arm64",
+    build_file_content = _ESBUILD_BUILD,
+    sha256 = "08e2df29ec7df9c08988beeb65428cadaa28c22a7dcdfcb11ac280b810308b5c",
+    strip_prefix = "package",
+    urls = ["https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.25.4.tgz"],
 )
 
 http_archive(
@@ -118,10 +216,16 @@ filegroup(
 
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(
-    name = "debian_bookworm_slim",
+    name = "debian_trixie_slim",
+    digest = "sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132",
     image = "docker.io/library/debian",
-    platforms = ["linux/amd64"],
-    tag = "bookworm-slim",
+    platforms = [
+        "linux/amd64",
+        "linux/arm/v7",
+        "linux/arm64/v8",
+        "linux/386",
+        "linux/ppc64le",
+    ],
 )
-use_repo(oci, "debian_bookworm_slim")
+use_repo(oci, "debian_trixie_slim", "debian_trixie_slim_linux_amd64")
 

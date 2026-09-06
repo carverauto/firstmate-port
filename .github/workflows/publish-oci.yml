@@ -1,5 +1,8 @@
 name: Publish OCI Images
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       extra_tag:
@@ -8,43 +11,115 @@ on:
         type: string
 permissions:
   contents: read
-  id-token: write
+  packages: write
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    # Same self-hosted runners as ServiceRadar publish (captain directive).
+    runs-on: firstmate-signing
     env:
       BUILDBUDDY_ORG_API_KEY: ${{ secrets.BUILDBUDDY_ORG_API_KEY || secrets.BUILDBUDDY_API_KEY }}
-      OCI_REGISTRY: ${{ vars.OCI_REGISTRY || 'registry.example.com' }}
-      OCI_PROJECT: ${{ vars.OCI_PROJECT || 'firstmate' }}
-      OCI_USERNAME: ${{ secrets.HARBOR_ROBOT_USERNAME }}
-      OCI_TOKEN: ${{ secrets.HARBOR_ROBOT_SECRET }}
+      OCI_REGISTRY: ${{ vars.OCI_REGISTRY || 'ghcr.io' }}
+      OCI_PROJECT: ${{ vars.OCI_PROJECT || github.repository_owner }}
+      BAZELISK_HOME: ${{ github.workspace }}/.cache/bazelisk
     steps:
       - uses: actions/checkout@v4
-      - uses: bazel-contrib/setup-bazel@0.15.0
+      # Bootstrap copied from the working serviceradar publish: cache the
+      # bazelisk home (keyed by version + configs) so the Bazel distribution
+      # download happens once per version, then install via script.
+      - name: Cache Bazel artifacts
+        uses: actions/cache@v4
         with:
-          bazelisk-version: "1.25.0"
+          path: ${{ env.BAZELISK_HOME }}
+          key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'MODULE.bazel') }}
+          restore-keys: |
+            ${{ runner.os }}-bazel-
+      - name: Install Bazelisk
+        env:
+          # Public GitHub/Bazel downloads must go through Smokescreen;
+          # direct egress is blocked. Do not set these on the runner pod
+          # (breaks Actions broker).
+          HTTP_PROXY: http://smokescreen.egress.svc.cluster.local:4750
+          HTTPS_PROXY: http://smokescreen.egress.svc.cluster.local:4750
+          NO_PROXY: localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local,carverauto.buildbuddy.io,registry.carverauto.dev,ghcr.io
+        run: ./scripts/install-bazelisk.sh
+
+      - name: Verify Bazel version
+        run: |
+          set -euo pipefail
+          want="$(tr -d '[:space:]' < .bazelversion)"
+          # bazel on PATH is the bazelisk shim; under HTTPS_PROXY it can hang
+          # even when the distribution is already cached. Prefer the real binary.
+          real="$(find "${BAZELISK_HOME}/downloads" -type f -path '*/bin/bazel' ! -name '*.lock' 2>/dev/null | head -1 || true)"
+          if [ -z "${real}" ]; then
+            echo "cached bazel binary not found under BAZELISK_HOME=${BAZELISK_HOME:-unset}" >&2
+            exit 1
+          fi
+          got="$(timeout 60 "${real}" --version | awk '{print $2}')"
+          echo "want=${want} got=${got} via=${real}"
+          test "${got}" = "${want}"
       - name: Configure BuildBuddy remote
-        if: ${{ env.BUILDBUDDY_ORG_API_KEY != '' }}
         run: |
+          set -euo pipefail
+
+          if [ -z "${BUILDBUDDY_ORG_API_KEY:-}" ]; then
+            echo "BUILDBUDDY_ORG_API_KEY is unavailable; --config=remote cannot authenticate." >&2
+            exit 1
+          fi
+
           umask 077
-          {
-            echo "common --remote_header=x-buildbuddy-api-key=${BUILDBUDDY_ORG_API_KEY}"
-            echo "build:cache_only --bes_backend=grpcs://cloud.buildbuddy.io"
-            echo "build:cache_only --remote_cache=grpcs://cloud.buildbuddy.io"
-            echo "build:remote_base --remote_executor=grpcs://cloud.buildbuddy.io"
-          } > .bazelrc.remote
-      - name: Login to Harbor
-        if: ${{ env.OCI_USERNAME != '' && env.OCI_TOKEN != '' }}
+          printf 'common --remote_header=x-buildbuddy-api-key=%s\n' "${BUILDBUDDY_ORG_API_KEY}" > .bazelrc.remote
+      - name: Login to the container registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "${OCI_TOKEN}" | docker login "${OCI_REGISTRY}" -u "${OCI_USERNAME}" --password-stdin
+          set -euo pipefail
+          echo "${GITHUB_TOKEN}" | docker login "${OCI_REGISTRY}" -u "${GITHUB_ACTOR}" --password-stdin
+      # Never print .bazelrc.remote (it holds the BuildBuddy API key header).
+      - name: Diagnose Bazel remote reachability
+        run: |
+          set -euo pipefail
+          getent hosts carverauto.buildbuddy.io || echo "WARN: carverauto.buildbuddy.io does not resolve"
+          getent hosts cache-proxy.carverauto.dev || echo "WARN: cache-proxy.carverauto.dev does not resolve"
       - name: Push portal image
         env:
           EXTRA_TAG: ${{ github.event.inputs.extra_tag }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
           repo="${OCI_REGISTRY}/${OCI_PROJECT}/firstmate-port"
           tag="sha-$(git rev-parse --short HEAD)"
-          bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${tag}"
-          if [ -n "${EXTRA_TAG}" ]; then
-            bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
+          echo "IMAGE_REPO=${repo}" >> "${GITHUB_ENV}"
+          echo "IMAGE_TAG=${tag}" >> "${GITHUB_ENV}"
+          env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${tag}"
+          if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
+            env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${REF_NAME}"
           fi
+          if [ -n "${EXTRA_TAG}" ]; then
+            env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:portal_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
+          fi
+      - name: Push fm-steer image
+        env:
+          EXTRA_TAG: ${{ github.event.inputs.extra_tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          repo="${OCI_REGISTRY}/${OCI_PROJECT}/fm-steer"
+          tag="sha-$(git rev-parse --short HEAD)"
+          echo "STEER_IMAGE_REPO=${repo}" >> "${GITHUB_ENV}"
+          echo "STEER_IMAGE_TAG=${tag}" >> "${GITHUB_ENV}"
+          env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${tag}"
+          if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
+            env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${REF_NAME}"
+          fi
+          if [ -n "${EXTRA_TAG}" ]; then
+            env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy bazel --output_base=/tmp/fm-fm-port/bazel run --config=remote //:fm-steer_image_push -- --repository "${repo}" --tag "${EXTRA_TAG}"
+          fi
+      - name: Verify pushed manifests
+        run: |
+          set -euo pipefail
+          for ref in "${IMAGE_REPO}:${IMAGE_TAG}" "${STEER_IMAGE_REPO}:${STEER_IMAGE_TAG}"; do
+            digest="$(docker manifest inspect "${ref}" \
+              | sha256sum | cut -d' ' -f1)"
+            echo "manifest for ${ref} resolved (body sha256:${digest})"
+          done
+          docker manifest inspect "${IMAGE_REPO}:${IMAGE_TAG}" | head -40

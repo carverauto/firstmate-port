@@ -20,6 +20,60 @@ if System.get_env("PHX_SERVER") do
   config :firstmate_port, FirstmatePortWeb.Endpoint, server: true
 end
 
+# Authentication is configured the same way in every runtime, so a setting that
+# works in compose works in Kubernetes. Test stays hermetic: it must not pick up
+# an issuer from a developer's shell.
+if config_env() != :test do
+  # Runtime auth settings and compatibility names: docs/deploy.md, "Sign-in".
+  local_auth? = System.get_env("LOCAL_AUTH") || System.get_env("DEV_AUTH")
+
+  oidc_issuer = System.get_env("OIDC_ISSUER")
+  oidc_discovery = System.get_env("OIDC_DISCOVERY_URL")
+
+  # One source of truth for the callback URL. An explicit OIDC_REDIRECT_URI wins;
+  # otherwise derive it from PUBLIC_URL, which is what a portal behind a
+  # TLS-terminating proxy needs so the redirect matches what is registered at the
+  # provider. With neither set, Ueberauth derives it from the request, which is
+  # right for localhost.
+  oidc_redirect_uri =
+    case {System.get_env("OIDC_REDIRECT_URI"), System.get_env("PUBLIC_URL")} do
+      {uri, _} when is_binary(uri) and uri != "" ->
+        uri
+
+      {_, public} when is_binary(public) and public != "" ->
+        String.trim_trailing(public, "/") <> "/auth/oidc/callback"
+
+      _ ->
+        nil
+    end
+
+  config :firstmate_port,
+    allowed_email_domain: System.get_env("ALLOWED_EMAIL_DOMAIN"),
+    oidc_issuer: oidc_issuer,
+    local_auth: local_auth? not in ~w(false 0),
+    enable_saas: System.get_env("ENABLE_SAAS") in ~w(true 1)
+
+  # Optional in every runtime. An unset, wrong, or unreachable issuer leaves the
+  # portal serving local sign-in; it never stops the node.
+  config :firstmate_port, FirstmatePort.Auth.OIDC,
+    client_id: System.get_env("OIDC_CLIENT_ID"),
+    client_secret: System.get_env("OIDC_CLIENT_SECRET"),
+    issuer: oidc_issuer,
+    discovery_url: oidc_discovery,
+    redirect_uri: oidc_redirect_uri,
+    scopes: ["openid", "email", "profile"]
+
+  # Client credentials for the Ueberauth strategy, read at request time. The
+  # issuer list stays empty on purpose; see config/config.exs.
+  oidc_provider_opts =
+    [
+      client_id: System.get_env("OIDC_CLIENT_ID"),
+      client_secret: System.get_env("OIDC_CLIENT_SECRET")
+    ] ++ if(oidc_redirect_uri, do: [redirect_uri: oidc_redirect_uri], else: [])
+
+  config :ueberauth_oidcc, issuers: [], providers: [oidc: oidc_provider_opts]
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||
@@ -47,7 +101,7 @@ if config_env() == :prod do
     System.get_env("SECRET_KEY_BASE") ||
       raise """
       environment variable SECRET_KEY_BASE is missing.
-      You can generate one by calling: mix phx.gen.secret
+      You can generate one by calling: openssl rand -base64 48
       """
 
   host = System.get_env("PHX_HOST") || "localhost"
@@ -56,27 +110,13 @@ if config_env() == :prod do
   config :firstmate_port, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   public_url = System.get_env("PUBLIC_URL") || "http://#{host}:#{port}"
-  oidc_issuer = System.get_env("OIDC_ISSUER")
-  oidc_discovery = System.get_env("OIDC_DISCOVERY_URL")
 
-  config :firstmate_port,
-    public_url: public_url,
-    allowed_email_domain: System.get_env("ALLOWED_EMAIL_DOMAIN") || "localhost",
-    oidc_issuer: oidc_issuer,
-    dev_auth: System.get_env("DEV_AUTH") in ~w(true 1)
+  config :firstmate_port, public_url: public_url
 
   config :firstmate_port, FirstmatePort.Auth.Guardian,
     issuer: "firstmate_port",
     secret_key: secret_key_base,
     ttl: {12, :hours}
-
-  config :firstmate_port, FirstmatePortWeb.Auth.OIDCStrategy,
-    client_id: System.get_env("OIDC_CLIENT_ID") || "firstmate-port",
-    client_secret: System.get_env("OIDC_CLIENT_SECRET"),
-    issuer: oidc_issuer,
-    discovery_url: oidc_discovery,
-    redirect_uri: System.get_env("OIDC_REDIRECT_URI") || public_url <> "/auth/oidc/callback",
-    scopes: ["openid", "email", "profile"]
 
   config :firstmate_port, FirstmatePort.NATS.Connection,
     enabled: System.get_env("NATS_ENABLED") in ~w(true 1),
@@ -88,24 +128,39 @@ if config_env() == :prod do
     password: System.get_env("NATS_PASSWORD"),
     replicas: String.to_integer(System.get_env("NATS_REPLICAS") || "1")
 
-  config :firstmate_port, :discord_webhook_url, System.get_env("DISCORD_WEBHOOK_URL")
-  config :firstmate_port, :discord_public_key, System.get_env("DISCORD_PUBLIC_KEY")
+  # Preserve boot compatibility through key derivation. Before changing keys,
+  # follow docs/credentials.md to keep existing ciphertext readable.
+  cloak_key =
+    System.get_env("CLOAK_KEY") ||
+      Base.encode64(:crypto.hash(:sha256, "firstmate-port cloak v1:" <> secret_key_base))
 
-  issuers =
-    if is_binary(oidc_issuer) and oidc_issuer != "" do
-      [%{name: :firstmate_authentik, issuer: oidc_issuer}]
-    else
-      []
-    end
+  config :firstmate_port, FirstmatePort.Vault,
+    key: cloak_key,
+    # Each key generation needs its own tag; see docs/credentials.md.
+    tag: System.get_env("CLOAK_KEY_TAG") || "AES.GCM.V1",
+    retired_keys:
+      System.get_env("CLOAK_KEYS_RETIRED", "")
+      |> String.split(",", trim: true)
+      |> Enum.map(fn pair ->
+        case String.split(pair, "=", parts: 2) do
+          [tag, key] ->
+            {String.trim(tag), String.trim(key)}
 
-  config :ueberauth_oidcc,
-    issuers: issuers,
-    providers: [
-      oidc: [
-        client_id: System.get_env("OIDC_CLIENT_ID") || "firstmate-port",
-        client_secret: System.get_env("OIDC_CLIENT_SECRET")
-      ]
-    ]
+          _ ->
+            raise "CLOAK_KEYS_RETIRED must be comma-separated tag=base64key pairs"
+        end
+      end)
+
+  # Deployment switches and secret setup: docs/build-tracking.md.
+  config :firstmate_port, :build_tracking,
+    kubernetes_enabled: System.get_env("KUBERNETES_TRACKING_ENABLED") in ~w(true 1),
+    docker_enabled: System.get_env("DOCKER_TRACKING_ENABLED") in ~w(true 1),
+    buildbuddy_host: System.get_env("BUILDBUDDY_HOST"),
+    buildbuddy_api_key:
+      (case System.get_env("BUILDBUDDY_ORG_API_KEY_FILE") do
+         nil -> System.get_env("BUILDBUDDY_ORG_API_KEY")
+         path -> path |> File.read!() |> String.trim()
+       end)
 
   config :firstmate_port, FirstmatePortWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],

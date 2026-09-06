@@ -18,6 +18,22 @@ else
     --from-literal=password="$PG_PASS"
 fi
 
+# CNPG does not create a <cluster>-app secret when bootstrap.initdb.secret is
+# supplied, so build the DATABASE_URL the Deployment reads from the credentials
+# above. Passwords generated here are alphanumeric, so no URL escaping is needed.
+PG_CLUSTER="${PG_CLUSTER:-firstmate-pg}"
+PG_DB="${PG_DB:-firstmate}"
+PG_USER="$(kubectl -n "$NS" get secret firstmate-db-credentials -o jsonpath='{.data.username}' | base64 -d)"
+PG_PASSWORD="$(kubectl -n "$NS" get secret firstmate-db-credentials -o jsonpath='{.data.password}' | base64 -d)"
+kubectl -n "$NS" create secret generic "${PG_CLUSTER}-app" \
+  --from-literal=uri="postgresql://${PG_USER}:${PG_PASSWORD}@${PG_CLUSTER}-rw:5432/${PG_DB}" \
+  --from-literal=username="${PG_USER}" \
+  --from-literal=password="${PG_PASSWORD}" \
+  --from-literal=dbname="${PG_DB}" \
+  --from-literal=host="${PG_CLUSTER}-rw" \
+  --from-literal=port="5432" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
 if kubectl -n "$NS" get secret firstmate-app >/dev/null 2>&1; then
   echo "reusing firstmate-app"
 else
@@ -32,6 +48,43 @@ else
     --from-literal=token="fmh_$(openssl rand -hex 24)"
 fi
 
+# Encrypts every tenant credential typed into the portal. Losing it means every
+# stored credential has to be re-entered, so back it up with the database.
+if kubectl -n "$NS" get secret firstmate-cloak >/dev/null 2>&1; then
+  echo "reusing firstmate-cloak"
+else
+  APP_SECRET_BASE="$(kubectl -n "$NS" get secret firstmate-app -o jsonpath='{.data.secret-key-base}' | base64 -d)"
+  if [[ -z "$APP_SECRET_BASE" ]]; then
+    echo "firstmate-app is missing secret-key-base; refusing to provision firstmate-cloak" >&2
+    exit 1
+  fi
+  CLOAK_DERIVED_KEY="$(printf 'firstmate-port cloak v1:%s' "$APP_SECRET_BASE" | openssl dgst -sha256 -binary | openssl base64 -A)"
+  kubectl -n "$NS" create secret generic firstmate-cloak \
+    --from-literal=key="$CLOAK_DERIVED_KEY"
+fi
+
+# The first-run sign-in. Created here so the operator can read it back with
+# kubectl instead of hunting for it in pod logs. The Deployment requires both
+# keys, so a secret that predates the email key gets it backfilled -- the
+# password is never regenerated here, and an existing email is never changed.
+if kubectl -n "$NS" get secret firstmate-admin >/dev/null 2>&1; then
+  if kubectl -n "$NS" get secret firstmate-admin -o jsonpath='{.data.email}' | base64 -d | grep -q .; then
+    echo "reusing firstmate-admin"
+  else
+    ADMIN_EMAIL="${ADMIN_EMAIL:-admin@localhost}"
+    EMAIL_B64="$(printf '%s' "$ADMIN_EMAIL" | openssl base64 -A)"
+    kubectl -n "$NS" patch secret firstmate-admin \
+      --type=json \
+      -p="[{\"op\":\"add\",\"path\":\"/data/email\",\"value\":\"$EMAIL_B64\"}]"
+    echo "backfilled firstmate-admin email (password untouched)"
+  fi
+else
+  ADMIN_EMAIL="${ADMIN_EMAIL:-admin@localhost}"
+  kubectl -n "$NS" create secret generic firstmate-admin \
+    --from-literal=email="$ADMIN_EMAIL" \
+    --from-literal=password="$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)"
+fi
+
 if kubectl -n "$NS" get secret firstmate-nats >/dev/null 2>&1; then
   echo "reusing firstmate-nats"
 else
@@ -39,8 +92,19 @@ else
     --from-literal=token="$(openssl rand -hex 32)"
 fi
 
+echo
+echo "Sign in with the bootstrap admin account:"
+echo "  kubectl -n $NS get secret firstmate-admin -o jsonpath='{.data.email}' | base64 -d; echo"
+echo "  kubectl -n $NS get secret firstmate-admin -o jsonpath='{.data.password}' | base64 -d; echo"
+echo
 echo "GitHub PAT (optional until poll is enabled):"
 echo "  kubectl -n $NS create secret generic github-token --from-literal=GITHUB_TOKEN=<fine-grained-pat>"
-echo "Discord interactions (captain):"
-echo "  kubectl -n $NS create secret generic firstmate-discord --from-literal=public-key=<hex> --from-literal=bot-token=<token>"
-echo "done. OIDC secret is created by deploy/bootstrap-authentik-oidc.sh"
+echo "Discord and other per-tenant credentials are NOT kubectl secrets."
+echo "  Each tenant enters its own at https://<host>/settings/credentials"
+echo "  or through PUT /api/credentials/<provider>/<key>. See docs/credentials.md."
+echo "Optional OIDC (any OpenID Connect provider; the portal runs on local sign-in without it):"
+echo "  kubectl -n $NS create secret generic firstmate-oidc --from-literal=client-id=<id> --from-literal=client-secret=<secret>"
+echo "  then set OIDC_ISSUER on the Deployment. See deploy/examples for a worked provider."
+echo "BuildBuddy org API key (optional, enables the BuildBuddy plate):"
+echo "  kubectl -n $NS create secret generic firstmate-buildbuddy --from-literal=org-api-key=<key>"
+echo "done."

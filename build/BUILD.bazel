@@ -1,5 +1,27 @@
+load("@rules_elixir//:mix_payloads.bzl", "mix_payloads")
+
 exports_files([
     "hex_compile_env.bzl",
     "elixir_release.bzl",
     "phoenix_digest.bzl",
+    "phoenix-colocated-index.js",
 ])
+
+# Inputs every Mix compile in this repository needs. Resolved as a toolchain
+# (registered in //MODULE.bazel) so the ~100 generated Hex stubs in
+# third_party/hex repeat none of it. Pattern from serviceradar //build.
+mix_payloads(
+    name = "payloads",
+    # The Hex package manager itself, as a Mix archive. Not used to fetch
+    # anything -- every dependency is already a Bazel repository and mix runs
+    # with HEX_OFFLINE=1 -- but Mix refuses to resolve a project without it,
+    # aborting with "Could not find an SCM for dependency" (and interactively
+    # asking "Shall I install Hex?") even for a dev-only dep nothing compiles.
+    archives = ["@hex//:archive"],
+)
+
+toolchain(
+    name = "mix_payloads",
+    toolchain = ":payloads",
+    toolchain_type = "@rules_elixir//:mix_payloads_toolchain_type",
+)

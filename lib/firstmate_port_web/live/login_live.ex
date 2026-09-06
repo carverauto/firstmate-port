@@ -1,19 +1,27 @@
 defmodule FirstmatePortWeb.LoginLive do
-  @moduledoc "Editorial sign-in. OIDC when configured; local email when DEV_AUTH is on."
+  @moduledoc """
+  Editorial sign-in.
+
+  Offers whatever is actually available: the local account when local auth is on,
+  an identity provider when `FirstmatePort.Auth.OIDC.ready?/1` permits it, and an
+  honest message when neither is. A configured-but-unreachable provider is called
+  out as unreachable rather than unconfigured, because those need different fixes.
+  """
   use FirstmatePortWeb, :live_view
 
   import Phoenix.Controller, only: [get_csrf_token: 0]
 
   @impl true
   def mount(_params, _session, socket) do
-    oidc? = oidc_configured?()
-    dev? = Application.get_env(:firstmate_port, :dev_auth, false)
+    oidc = FirstmatePort.Auth.OIDC.status()
+    local? = Application.get_env(:firstmate_port, :local_auth, false)
 
     {:ok,
      socket
      |> assign(:page_title, "Sign in")
-     |> assign(:oidc?, oidc?)
-     |> assign(:dev?, dev?)
+     |> assign(:oidc, oidc)
+     |> assign(:oidc?, oidc == :ready)
+     |> assign(:local?, local?)
      |> assign(:email, "")
      |> assign(:error, nil)}
   end
@@ -23,14 +31,18 @@ defmodule FirstmatePortWeb.LoginLive do
     ~H"""
     <Layouts.auth flash={@flash}>
       <section class="auth-hero">
-        <p class="brand-mark">firstmate port</p>
         <h1>The companion for a captain and crew.</h1>
         <p class="lede">
-          Review diagrams, PRs, issues, farm rolls, and no-mistakes runs in one place.
+          Review diagrams, PRs, issues, builds, and no-mistakes runs in one place.
         </p>
+        <ul class="auth-points">
+          <li>One log for diagrams, progress, and pipeline runs</li>
+          <li>Sign in with your identity provider</li>
+          <li>Local-dev sign-in for development</li>
+        </ul>
       </section>
 
-      <section class="auth-panel" aria-labelledby="sign-in-heading">
+      <section class="auth-card" aria-labelledby="sign-in-heading">
         <h2 id="sign-in-heading">Sign in</h2>
 
         <%= if @oidc? do %>
@@ -39,8 +51,8 @@ defmodule FirstmatePortWeb.LoginLive do
           </.link>
         <% end %>
 
-        <%= if @dev? do %>
-          <form action={~p"/auth/dev"} method="post" class="auth-form">
+        <%= if @local? do %>
+          <form action={~p"/auth/local"} method="post" class="auth-form">
             <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
             <label for="email">Email</label>
             <input
@@ -49,27 +61,38 @@ defmodule FirstmatePortWeb.LoginLive do
               name="email"
               value={@email}
               autocomplete="username"
+              placeholder="you@example.com"
               required
             />
-            <p class="hint">Local only. Allowed domains come from ALLOWED_EMAIL_DOMAIN.</p>
+            <label for="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              name="password"
+              autocomplete="current-password"
+              required
+            />
+            <p class="hint">
+              For Docker Compose, find generated first-run credentials in <code>docker compose logs portal</code>.
+              For Kubernetes, read the bootstrap admin secret, <code>firstmate-admin</code>.
+            </p>
             <button type="submit" class="btn btn-primary">Enter the port</button>
           </form>
         <% end %>
 
-        <%= if not @oidc? and not @dev? do %>
+        <%= if @oidc == :unavailable do %>
           <p class="empty-copy" role="status">
-            Sign-in is not configured. Set OIDC_ISSUER and OIDC_CLIENT_SECRET, or enable DEV_AUTH for a local compose stack.
+            Your identity provider is not reachable right now.
+          </p>
+        <% end %>
+
+        <%= if @oidc == :disabled and not @local? do %>
+          <p class="empty-copy" role="status">
+            Sign-in is not configured. Enable the local account, or connect an identity provider.
           </p>
         <% end %>
       </section>
     </Layouts.auth>
     """
-  end
-
-  defp oidc_configured? do
-    cfg = Application.get_env(:firstmate_port, FirstmatePortWeb.Auth.OIDCStrategy) || []
-    discovery = cfg[:discovery_url] || Application.get_env(:firstmate_port, :oidc_issuer)
-    secret = cfg[:client_secret]
-    is_binary(discovery) and discovery != "" and is_binary(secret) and secret != ""
   end
 end

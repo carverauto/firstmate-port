@@ -1,0 +1,22 @@
+# Example overlay only. These hostnames, gateways, and the ghcr namespace are a
+# private deployment's identity; they are never compiled-in defaults. Copy this
+# directory into a GitOps repo, or apply it directly:
+#
+#   kubectl apply -k deploy/examples/carverauto
+#
+# Set the image tag to the sha- tag that publish-oci.yml pushed.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: firstmate
+resources:
+  - ../../../k8s
+  - discord-httproute.yaml
+images:
+  - name: firstmate-port
+    newName: ghcr.io/carverauto/firstmate-port
+    newTag: sha-1e7ad1f
+patches:
+  - path: deployment-patch.yaml
+  - path: portal-httproute-patch.yaml
+  - path: portal-http-redirect-patch.yaml
+  - path: namespace-patch.yaml

@@ -35,6 +35,24 @@ spec:
               value: firstmate.example.com
             - name: PUBLIC_URL
               value: https://firstmate.example.com
+            # Local sign-in with the bootstrap admin account, no identity
+            # provider required. This is the supported way to bring a cluster
+            # up; add OIDC below once you have a provider.
+            - name: LOCAL_AUTH
+              value: "true"
+            # Read the credentials back with:
+            #   kubectl -n firstmate get secret firstmate-admin \
+            #     -o jsonpath='{.data.password}' | base64 -d
+            - name: BOOTSTRAP_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-admin
+                  key: email
+            - name: BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-admin
+                  key: password
             - name: NATS_ENABLED
               value: "true"
             - name: NATS_HOST
@@ -44,17 +62,12 @@ spec:
                 secretKeyRef:
                   name: firstmate-nats
                   key: token
-            - name: DISCORD_WEBHOOK_URL
+            # Vault key setup and optional fallback: docs/credentials.md.
+            - name: CLOAK_KEY
               valueFrom:
                 secretKeyRef:
-                  name: firstmate-discord
-                  key: webhook-url
-                  optional: true
-            - name: DISCORD_PUBLIC_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: firstmate-discord
-                  key: public-key
+                  name: firstmate-cloak
+                  key: key
                   optional: true
             - name: DATABASE_URL
               valueFrom:
@@ -66,16 +79,23 @@ spec:
                 secretKeyRef:
                   name: firstmate-app
                   key: secret-key-base
+            # OIDC is optional and vendor-neutral: any OpenID Connect provider
+            # works, and the portal keeps serving local sign-in when these are
+            # absent or the provider is unreachable. Every key is optional so a
+            # missing secret cannot block the pod from starting. Set
+            # OIDC_ISSUER in an overlay to turn it on; see deploy/examples.
             - name: OIDC_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: firstmate-authentik-oauth
+                  name: firstmate-oidc
                   key: client-id
+                  optional: true
             - name: OIDC_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: firstmate-authentik-oauth
+                  name: firstmate-oidc
                   key: client-secret
+                  optional: true
             - name: FIRSTMATE_AGENT_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -86,6 +106,25 @@ spec:
                 secretKeyRef:
                   name: github-token
                   key: GITHUB_TOKEN
+                  optional: true
+            # Optional GitHub poll configuration: see docs/deploy.md
+            # "GitHub Fleet log ingestion".
+            # - name: GITHUB_ORG
+            #   value: ""
+
+            # Opt-in build tracking (see docs/build-tracking.md). Absent
+            # config hides the plate; nothing is collected.
+            # - name: KUBERNETES_TRACKING_ENABLED
+            #   value: "true"
+            # - name: DOCKER_TRACKING_ENABLED
+            #   value: "true"
+            # - name: BUILDBUDDY_HOST
+            #   value: https://app.buildbuddy.io
+            - name: BUILDBUDDY_ORG_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: firstmate-buildbuddy
+                  key: org-api-key
                   optional: true
           securityContext:
             allowPrivilegeEscalation: false

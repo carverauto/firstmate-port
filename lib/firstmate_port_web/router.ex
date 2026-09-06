@@ -70,7 +70,12 @@ defmodule FirstmatePortWeb.Router do
     get "/diagrams", IngestController, :list_diagrams
     get "/progress", IngestController, :list_progress
     get "/rolls", IngestController, :list_rolls
+    get "/docker-builds", IngestController, :list_docker_builds
+    get "/buildbuddy-invocations", IngestController, :list_buildbuddy_invocations
     get "/no-mistakes", IngestController, :list_no_mistakes
+    get "/fleet/search", FleetController, :search
+    get "/build-events", BuildEventsController, :index
+    get "/build-runs", BuildEventsController, :runs
   end
 
   scope "/api/cli", FirstmatePortWeb do
@@ -78,6 +83,17 @@ defmodule FirstmatePortWeb.Router do
 
     post "/auth/device", CliAuthController, :device
     post "/auth/token", CliAuthController, :token
+  end
+
+  scope "/api", FirstmatePortWeb.Api do
+    pipe_through :cli
+
+    get "/credentials", CredentialsController, :index
+    get "/credentials/slots", CredentialsController, :slots
+    post "/credentials", CredentialsController, :create
+    put "/credentials/:provider/:key", CredentialsController, :put
+    patch "/credentials/:provider/:key", CredentialsController, :patch
+    delete "/credentials/:provider/:key", CredentialsController, :delete
   end
 
   scope "/api/cli", FirstmatePortWeb do
@@ -103,7 +119,11 @@ defmodule FirstmatePortWeb.Router do
     post "/diagrams", IngestController, :create_diagram
     post "/progress", IngestController, :create_progress
     post "/rolls", IngestController, :create_roll
+    post "/docker-builds", IngestController, :create_docker_build
+    post "/buildbuddy-invocations", IngestController, :create_buildbuddy_invocation
     post "/no-mistakes", IngestController, :create_no_mistakes
+    post "/fleet/sync", FleetController, :sync
+    post "/build-events", BuildEventsController, :create
   end
 
   scope "/", FirstmatePortWeb do
@@ -112,7 +132,7 @@ defmodule FirstmatePortWeb.Router do
     live "/login", LoginLive
     get "/auth/oidc", AuthController, :request
     get "/auth/oidc/callback", AuthController, :callback
-    post "/auth/dev", AuthController, :dev_login
+    post "/auth/local", AuthController, :local_login
     get "/auth/logout", AuthController, :logout
     get "/healthz", PageController, :healthz
     get "/steer", SteerController, :landing
@@ -135,12 +155,16 @@ defmodule FirstmatePortWeb.Router do
 
     live "/login/device", DeviceLive
     live "/", PortalLive
+    live "/search", SearchLive
     live "/queues", QueuesLive
     live "/usage", UsageLive
     live "/prs", BoardLive
     live "/issues", BoardLive
     live "/rolls/:id", RollLive
+    live "/docker-builds/:id", DockerBuildLive
+    live "/buildbuddy-invocations/:id", BuildBuddyLive
     live "/no-mistakes", NoMistakesLive
+    live "/settings/credentials", CredentialsLive
   end
 
   if Application.compile_env(:firstmate_port, :dev_routes) do

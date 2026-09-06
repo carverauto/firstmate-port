@@ -1,28 +1,28 @@
 # Project Context
 
 ## Purpose
-firstmate-port is the OSS companion portal for firstmate: a Phoenix LiveView site where a captain and crew review Archify diagrams, PRs, issues, farm/demo rolls, NATS queues, and no-mistakes runs. Discord webhook sending on the captain Mac stays in firstmate-notify.
+See [README.md](../README.md) for the product introduction and common usage.
 
 ## Tech Stack
 - Elixir 1.19 / Phoenix 1.8 LiveView / Bandit
-- Ash, AshPostgres, AshPhoenix, AshOban, AshPaperTrail, AshEvents, AshAi MCP
+- Ash, AshPostgres, AshPhoenix, AshOban, AshPaperTrail, AshEvents, AshAi MCP, AshCloak (tenant credentials) + Cloak vault
 - Guardian + Ueberauth/ueberauth_oidcc + PKCE. No AshAuthentication tokens. No AshJsonApi.
 - Gnat / NATS JetStream
-- Go CLIs: `fm-steer`, `nats-tail`, `discord-inbound`
+- Go CLI: `fm-steer` (stdlib only; HTTP to the API, never NATS). Discord inbound is Phoenix (`POST /interactions`); no Go/Python sidecars.
 - Tailwind v4 + Geist
 - Bazel (rules_elixir / BuildBuddy remote-exec)
 - Docker Compose (portal, Postgres, single-node JetStream)
-- Harbor for internal images; ghcr.io is a later public mirror
+- ghcr.io for images (`ghcr.io/<owner>/firstmate-port`)
 
 ## Project Conventions
 
 ### Code Style
 - Elixir: mix format, pattern match in tests, `unbuffer mix test` when available
-- Go: stdlib plus official NATS client / discordgo
+- Go: stdlib only
 - Prefix every `npm` with `sfw`
 
 ### Architecture Patterns
-- Browser users: OIDC. Agents: hashed service token + MCP at `/mcp`
+- Browser sign-in: see [Deploy](../docs/deploy.md#sign-in). Agents: hashed service token + MCP at `/mcp`
 - GitHub URLs stored exactly as copied from the API; never assembled from owner/repo/number
 - Site-specific hostnames and allowlists live in env samples / compose overrides / docs, never as the only compiled-in identity
 
@@ -39,16 +39,18 @@ firstmate-port is the OSS companion portal for firstmate: a Phoenix LiveView sit
 - `fm-steer` is the CLI port to the portal API (see `/steer/docs/fm-steer`). Do not rip the on-disk inbox.
 - NATS in cluster shape is 3-replica FileStorage; compose may be single-node
 - Tenancy is attribute-based on shared Postgres; one NATS account; streams named `<tenant>.steer` and `<tenant>.inbound`
+- Tenant credential storage, Discord routing, and vault-key operations: see [docs/credentials.md](../docs/credentials.md).
 - Public Discord failures stay generic
 
 ## Important Constraints
 - Do not copy `notify.py`, `watch.py`, or the launchd plist into this repo
 - Do not schedule a Mac Bazel cache wipe in AshOban or Kubernetes
 - Do not relocate `~/.no-mistakes` into the cluster
+- Do not `kubectl create secret` per-tenant credentials, and never return a stored secret over HTTP or MCP
 - Local Bazel: `--output_base=/tmp/fm-fm-port/bazel`. `--config=remote` is fine; never `--config=ci` locally
-- Harbor is the internal registry; do not invent a second forge
+- ghcr.io is the registry; do not invent a second forge
 
 ## External Dependencies
-- Optional OIDC issuer (Authentik or other)
+- Optional OIDC issuer: any OpenID Connect provider, discovered from the issuer URL. No per-vendor adapter.
 - GitHub API (fine-grained PAT) when poll is enabled
-- Harbor for image publish
+- ghcr.io for image publish

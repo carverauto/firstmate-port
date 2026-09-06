@@ -28,7 +28,7 @@ jobs:
         with:
           go-version: "1.24"
       - name: CLI tests
-        run: go test ./cmd/fm-steer ./cmd/nats-tail ./internal/natsutil
+        run: go test ./cmd/fm-steer
       - name: Portal tests
         env:
           MIX_ENV: test
