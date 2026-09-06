@@ -9,7 +9,7 @@ defmodule FirstmatePortWeb.Plugs.DiscordHostGuard do
   gets a bare 404 - the same answer an unrouted host gets, so the hostname
   reveals nothing about what else this deployment runs.
 
-  Inert until `:discord_interactions_hosts` is configured, because without it no
+  Inert until `:discord_interactions_host` is configured, because without it no
   hostname is published for Discord and the single-origin localhost default
   serves everything from one host. See `FirstmatePortWeb.DiscordHosts`.
   """

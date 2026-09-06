@@ -92,6 +92,11 @@ defmodule FirstmatePort.Accounts.Tenant do
       """
 
       accept [:discord_application_id]
+      require_atomic? false
+
+      change fn changeset, context ->
+        Ash.Changeset.before_action(changeset, &refuse_unavailable_claim(&1, context.actor))
+      end
     end
   end
 
@@ -165,6 +170,44 @@ defmodule FirstmatePort.Accounts.Tenant do
 
     # One Discord application belongs to one tenant. Without this a tenant could
     # claim another's application and quietly take over the routing for it.
-    identity :unique_discord_application_id, [:discord_application_id], nils_distinct?: true
+    identity :unique_discord_application_id, [:discord_application_id],
+      nils_distinct?: true,
+      message: "Discord application claim is not permitted"
   end
+
+  defp refuse_unavailable_claim(changeset, actor) do
+    application_id = Ash.Changeset.get_attribute(changeset, :discord_application_id)
+    default = FirstmatePort.Tenancy.default_slug()
+
+    if is_nil(application_id) do
+      changeset
+    else
+      with {:ok, holder} <-
+             get_by_discord_application_id(application_id,
+               authorize?: false,
+               not_found_error?: false
+             ),
+           true <- is_nil(holder) or holder.id == changeset.data.id,
+           true <-
+             changeset.data.slug == default or
+               match?(%{role: :human, tenant_slug: ^default}, actor) or
+               fallback_empty?(default) do
+        changeset
+      else
+        _ ->
+          Ash.Changeset.add_error(changeset,
+            field: :discord_application_id,
+            message: "Discord application claim is not permitted"
+          )
+      end
+    end
+  end
+
+  defp fallback_empty?(default) do
+    FirstmatePort.Credentials.Credential.get_slot("discord", "public_key",
+      tenant: default,
+      authorize?: false
+    ) == {:ok, nil}
+  end
+
 end

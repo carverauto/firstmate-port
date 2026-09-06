@@ -9,11 +9,11 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
   @acme_app "222222222222222222"
 
   setup do
-    previous = Application.get_env(:firstmate_port, :discord_interactions_hosts)
-    Application.put_env(:firstmate_port, :discord_interactions_hosts, [])
+    previous = Application.get_env(:firstmate_port, :discord_interactions_host)
+    Application.put_env(:firstmate_port, :discord_interactions_host, nil)
 
     on_exit(fn ->
-      Application.put_env(:firstmate_port, :discord_interactions_hosts, previous)
+      Application.put_env(:firstmate_port, :discord_interactions_host, previous)
     end)
 
     local = :crypto.generate_key(:eddsa, :ed25519)
@@ -56,8 +56,15 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
   defp claim(slug, application_id) do
     {:ok, tenant} = Tenant.get_by_slug(slug, authorize?: false)
 
+    {:ok, owner} =
+      User.upsert_oidc(
+        %{email: "default-owner@example.com", name: "Default owner", tenant_slug: Tenancy.default_slug()},
+        authorize?: false
+      )
+
     {:ok, _} =
       Tenant.claim_discord_application(tenant, %{discord_application_id: application_id},
+        actor: owner,
         authorize?: false
       )
 
@@ -298,9 +305,7 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
 
   describe "published interactions hostnames serve nothing else" do
     setup do
-      Application.put_env(:firstmate_port, :discord_interactions_hosts, [
-        "discord.example.com"
-      ])
+      Application.put_env(:firstmate_port, :discord_interactions_host, "discord.example.com")
 
       :ok
     end

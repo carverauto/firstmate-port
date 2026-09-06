@@ -9,7 +9,7 @@ the portal. Copy them into GitOps overlays, `.env`, or `docker-compose.override.
 | LAN VIP (previous gateway) | `192.168.6.87` |
 | OIDC issuer (Authentik) | `https://auth.carverauto.dev/application/o/firstmate/` |
 | Image | `ghcr.io/carverauto/firstmate-port` |
-| Discord interactions | `discord-firstmate.carverauto.dev` (`DISCORD_INTERACTIONS_HOSTS`) |
+| Discord interactions | `discord-firstmate.carverauto.dev` (`DISCORD_INTERACTIONS_HOST`) |
 | Local sign-in | `LOCAL_AUTH=true`; provision credentials with the command below (see [Sign-in](../../docs/deploy.md#sign-in)) |
 | BuildBuddy | `carverauto.buildbuddy.io` |
 

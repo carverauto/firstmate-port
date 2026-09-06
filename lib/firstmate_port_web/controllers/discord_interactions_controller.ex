@@ -92,16 +92,12 @@ defmodule FirstmatePortWeb.DiscordInteractionsController do
   # request without one could never verify anyway.
   defp fresh?(timestamp) when is_binary(timestamp) do
     case Integer.parse(timestamp) do
-      {seconds, ""} -> abs(System.system_time(:second) - seconds) <= max_skew()
+      {seconds, ""} -> abs(System.system_time(:second) - seconds) <= @max_skew_seconds
       _ -> false
     end
   end
 
   defp fresh?(_timestamp), do: false
-
-  defp max_skew do
-    Application.get_env(:firstmate_port, :discord_max_skew_seconds, @max_skew_seconds)
-  end
 
   defp header(conn, name), do: conn |> get_req_header(name) |> List.first()
 

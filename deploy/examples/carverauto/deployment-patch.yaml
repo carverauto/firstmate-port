@@ -27,7 +27,7 @@ spec:
             # and the tenant that claimed it is the one whose key verifies it.
             # Listing it here confines it to POST /interactions. Discord public
             # keys are never environment values - see docs/credentials.md.
-            - name: DISCORD_INTERACTIONS_HOSTS
+            - name: DISCORD_INTERACTIONS_HOST
               value: discord-firstmate.carverauto.dev
             - name: NATS_REPLICAS
               value: "3"

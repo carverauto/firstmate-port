@@ -88,11 +88,11 @@ config :firstmate_port,
   # Reserved compatibility switch; public images compile with this off.
   enable_saas: false,
   default_tenant_slug: "local",
-  # The hostnames this deployment publishes its one interactions URL on (see
-  # DISCORD_INTERACTIONS_HOSTS in .env.example). Empty means the portal and the
+  # The hostname this deployment publishes its interactions URL on (see
+  # DISCORD_INTERACTIONS_HOST in .env.example). Empty means the portal and the
   # endpoint share one origin, which is the localhost default; the tenant an
   # interaction belongs to comes from the payload either way.
-  discord_interactions_hosts: []
+  discord_interactions_host: nil
 
 # Deliberately slow. Test config lowers it; nothing else should.
 config :firstmate_port, FirstmatePort.Accounts.Password, iterations: 210_000

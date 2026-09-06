@@ -184,7 +184,7 @@ verified interaction is published on that tenant's `<tenant>.discord.inbound`
 subject.
 
 Beyond the signature, an interaction must also arrive with a timestamp within
-`:discord_max_skew_seconds` (default 300) of now, and a body no larger than 64
+300 seconds of now, and a body no larger than 64
 KB. The body cap is applied while the request is being read, so an oversized
 payload is never buffered or verified; it gets a 413.
 
@@ -202,7 +202,11 @@ Once per deployment, in the
    Information** page, as **Public Key**.
 2. Optionally paste the application id from the same page into **Discord
    application** on that screen. Do it when more than one tenant answers
-   interactions here, or to stop answering for anything else.
+   interactions here, or to stop answering for anything else. A claim requires
+   a human belonging to that tenant. An application already claimed by another
+   tenant cannot be claimed. Once the default tenant stores its public key,
+   other tenants cannot make new claims through their own accounts, protecting
+   the default tenant's unclaimed-application fallback.
 3. Set **Interactions Endpoint URL** to the URL the portal shows on
    `/settings/credentials` - `https://<interactions hostname>/interactions`.
    Discord also requires a **Terms of Service URL** and a **Privacy Policy URL**;
@@ -226,9 +230,8 @@ and nothing else. The portal UI, `/mcp`, `/api`, and NATS are not routed there,
 and `FirstmatePortWeb.Plugs.DiscordHostGuard` answers 404 for any other path on
 it even if a route is later widened.
 
-List the hostname in `DISCORD_INTERACTIONS_HOSTS` - comma separated, for the
-window where a deployment is moving between names. That is what tells the app
-which of its names is the exposed one; it does not route anything. Leave it
+Set the hostname in `DISCORD_INTERACTIONS_HOST`. That tells the app
+which name is exposed; it does not route anything. Leave it
 unset in development, where the portal and the endpoint share one origin.
 
 If the hostname is behind Cloudflare, Cloudflare must reach the origin over TLS:

@@ -1,68 +1,31 @@
 defmodule FirstmatePortWeb.DiscordHosts do
   @moduledoc """
-  The hostnames this deployment publishes its Discord interactions URL on.
+  The public hostname serving only `POST /interactions` for this deployment.
 
-  A deployment serves one interactions URL for every tenant it hosts - the
-  interaction payload, not the hostname, says which tenant an interaction is for
-  (see `FirstmatePort.Credentials.Discord`). What the hostname decides is
-  exposure: a name listed here is public, reachable by Discord, and must
-  therefore serve `POST /interactions` and nothing else.
-
-  Configured, never compiled in: `:discord_interactions_hosts` is the list a
-  deployment owns (`DISCORD_INTERACTIONS_HOSTS`). Leave it empty - the localhost
-  default - and no hostname is treated as public, which is the right answer when
-  the portal and the endpoint share one origin in development.
-
-  Listing a hostname here does not route it. The gateway does that; see
-  `deploy/examples/carverauto/discord-httproute.yaml`. This list is what teaches
-  the app which of its names are the exposed ones, so
-  `FirstmatePortWeb.Plugs.DiscordHostGuard` can keep the portal, `/mcp`, `/api`,
-  and the auth endpoints off them.
+  Configure `:discord_interactions_host` through `DISCORD_INTERACTIONS_HOST`.
+  Unset keeps the portal and endpoint on one origin for localhost development.
+  The payload's application id selects the tenant independently of this host.
   """
 
-  @doc "The configured interactions hostnames, normalised and deduplicated."
-  def hosts do
+  def host do
     :firstmate_port
-    |> Application.get_env(:discord_interactions_hosts, [])
-    |> List.wrap()
-    |> Enum.flat_map(&split/1)
-    |> Enum.uniq()
+    |> Application.get_env(:discord_interactions_host)
+    |> normalize()
   end
 
-  @doc """
-  Whether `host` is one of this deployment's public interactions hostnames.
-
-  False whenever nothing is configured, which keeps the guard that uses this
-  inert on a single-origin deployment.
-  """
-  def interactions_host?(host) do
-    case normalize(host) do
+  def interactions_host?(value) do
+    case normalize(value) do
       nil -> false
-      normalized -> normalized in hosts()
+      normalized -> normalized == host()
     end
   end
 
-  @doc """
-  The interactions URL to hand an operator, or `nil` when none is published.
-
-  The first configured hostname: a deployment lists more than one only while it
-  is moving between names, and the first is the one it means.
-  """
   def interactions_url do
-    case hosts() do
-      [host | _] -> "https://#{host}/interactions"
-      [] -> nil
+    case host() do
+      nil -> nil
+      host -> "https://#{host}/interactions"
     end
   end
-
-  defp split(value) when is_binary(value) do
-    value
-    |> String.split(",", trim: true)
-    |> Enum.map(&normalize/1)
-    |> Enum.reject(&is_nil/1)
-  end
-
-  defp split(_value), do: []
 
   # `conn.host` carries no port and no trailing dot; a hand-written config value
   # or a raw `Host` header may carry either.

@@ -11,11 +11,11 @@ defmodule FirstmatePortWeb.CredentialsJourneyTest do
   @application_id "333333333333333333"
 
   setup do
-    previous = Application.get_env(:firstmate_port, :discord_interactions_hosts)
-    Application.put_env(:firstmate_port, :discord_interactions_hosts, [@interactions_host])
+    previous = Application.get_env(:firstmate_port, :discord_interactions_host)
+    Application.put_env(:firstmate_port, :discord_interactions_host, @interactions_host)
 
     on_exit(fn ->
-      Application.put_env(:firstmate_port, :discord_interactions_hosts, previous)
+      Application.put_env(:firstmate_port, :discord_interactions_host, previous)
     end)
 
     :ok

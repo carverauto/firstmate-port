@@ -113,7 +113,7 @@ if config_env() == :prod do
 
   config :firstmate_port,
     public_url: public_url,
-    discord_interactions_hosts: System.get_env("DISCORD_INTERACTIONS_HOSTS", "")
+    discord_interactions_host: System.get_env("DISCORD_INTERACTIONS_HOST", "")
 
   # Behind a gateway the socket peer is the gateway, so without this every
   # client shares one rate-limit bucket. Set CLIENT_IP_HEADER to the header the
