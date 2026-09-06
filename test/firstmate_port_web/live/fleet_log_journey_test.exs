@@ -19,8 +19,9 @@ defmodule FirstmatePortWeb.FleetLogJourneyTest do
 
     Req.default_options(plug: fn request ->
       assert Plug.Conn.get_req_header(request, "authorization") == ["Bearer fixture-token"]
-      assert request.query_string =~ "org:example"
-      kind = if request.query_string =~ "is:pr", do: "pull", else: "issues"
+      query = URI.decode_query(request.query_string)["q"]
+      assert query in ["org:example is:pr is:open", "org:example is:issue is:open"]
+      kind = if query == "org:example is:pr is:open", do: "pull", else: "issues"
       Req.Test.json(request, %{"items" => [%{
         "html_url" => "https://github.com/example/portal/#{kind}/42",
         "title" => "Fleet #{kind} fixture"
@@ -55,7 +56,7 @@ defmodule FirstmatePortWeb.FleetLogJourneyTest do
     assert html =~ "sha-fleet"
     assert html =~ "Fleet ingestion diagram"
     assert html =~ "fm/fleet-journey"
-    assert has_element?(view, "h2", "Rolls")
+    assert has_element?(view, "a[href^='/rolls/']", "sha-fleet")
 
     if evidence = System.get_env("FLEET_TEST_EVIDENCE") do
       File.write!(Path.join(evidence, "fleet-log.html"), html)

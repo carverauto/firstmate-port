@@ -127,7 +127,7 @@ func noMistakesPost(args []string) {
 // An agent API token in FIRSTMATE_AGENT_TOKEN wins (ingest writes require an
 // agent role); otherwise the device-code login credentials are used.
 func endpointAuth(instance string) (string, string) {
-	if t := strings.TrimSpace(os.GetEnv(AgentTokenEnv)); t != "" {
+	if t := strings.TrimSpace(os.Getenv(AgentTokenEnv)); t != "" {
 		base := strings.TrimRight(instance, "/")
 		if base == "" {
 			if c, err := ReadCreds(); err == nil && c.Instance != "" {
