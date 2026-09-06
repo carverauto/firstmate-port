@@ -147,25 +147,6 @@ func TestBuildFlagsFallBackToEnv(t *testing.T) {
 	}
 }
 
-func TestDeployAliasReachesBuildIngest(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	t.Setenv(AgentTokenEnv, "agent-tok")
-	var got map[string]any
-	var path string
-	srv := buildServer(t, &got, &path)
-	defer srv.Close()
-
-	if code := Run([]string{"deploy", "start", "--kind", "k8s", "--instance", srv.URL}); code != 0 {
-		t.Fatalf("exit %d", code)
-	}
-	if path != "/api/build-events" {
-		t.Fatalf("path %q", path)
-	}
-	if got["kind"] != "k8s" {
-		t.Fatalf("kind = %v", got["kind"])
-	}
-}
-
 func TestBuildRejectsUnknownSubcommand(t *testing.T) {
 	if code := Run([]string{"build", "bogus"}); code != 2 {
 		t.Fatalf("exit %d", code)
@@ -205,5 +186,43 @@ func TestTimestampEchoesExplicitValue(t *testing.T) {
 	}
 	if _, err := time.Parse(time.RFC3339, timestamp("")); err != nil {
 		t.Fatalf("default timestamp: %v", err)
+	}
+}
+
+func TestBuildAttributionDefaultsOnlyOnStart(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv(AgentTokenEnv, "agent-tok")
+	t.Setenv(AgentIDEnv, "crew-env")
+	t.Setenv(ModelEnv, "model-env")
+	t.Setenv(EffortEnv, "effort-env")
+	for _, tc := range []struct {
+		name    string
+		command []string
+		want    map[string]string
+	}{
+		{"start defaults", []string{"start", "--kind", "docker"}, map[string]string{"agent_id": "crew-env", "model": "model-env", "effort": "effort-env"}},
+		{"start overrides", []string{"start", "--kind", "docker", "--agent-id", "crew-flag", "--model", "model-flag", "--effort", "high"}, map[string]string{"agent_id": "crew-flag", "model": "model-flag", "effort": "high"}},
+		{"finish omits defaults", []string{"finish", "--run-id", "run-abc"}, nil},
+		{"finish explicit model", []string{"finish", "--run-id", "run-abc", "--model", "model-flag"}, map[string]string{"model": "model-flag"}},
+		{"finish explicit attribution", []string{"finish", "--run-id", "run-abc", "--agent-id", "crew-flag", "--model", "model-flag", "--effort", "high"}, map[string]string{"agent_id": "crew-flag", "model": "model-flag", "effort": "high"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got map[string]any
+			var path string
+			srv := buildServer(t, &got, &path)
+			defer srv.Close()
+			args := append([]string{"build"}, tc.command...)
+			args = append(args, "--instance", srv.URL)
+			if code := Run(args); code != 0 {
+				t.Fatalf("exit %d", code)
+			}
+			for _, field := range []string{"agent_id", "model", "effort"} {
+				value, present := got[field]
+				want, expected := tc.want[field]
+				if present != expected || (expected && value != want) {
+					t.Fatalf("%s = %v (present %t), want %q (present %t)", field, value, present, want, expected)
+				}
+			}
+		})
 	}
 }

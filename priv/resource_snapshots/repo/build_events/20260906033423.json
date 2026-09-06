@@ -193,18 +193,6 @@
       "type": "text"
     },
     {
-      "allow_nil?": true,
-      "default": "\"\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "pr_url",
-      "type": "text"
-    },
-    {
       "allow_nil?": false,
       "default": "nil",
       "generated?": false,

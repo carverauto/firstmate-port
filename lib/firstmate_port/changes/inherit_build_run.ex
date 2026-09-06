@@ -21,7 +21,6 @@ defmodule FirstmatePort.Changes.InheritBuildRun do
     :image_tag,
     :cluster,
     :namespace,
-    :pr_url,
     :started_at
   ]
 

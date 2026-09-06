@@ -71,9 +71,8 @@ fm-steer build start --kind docker --target firstmate-port --agent-id crew-7
 fm-steer build finish --run-id run-3f9a1c7e5b2d4a08 --status success --tokens 48210
 ```
 
-`fm-steer deploy ...` is the same command spelled for a deployment.
 `FIRSTMATE_AGENT_ID`, `FIRSTMATE_MODEL`, and `FIRSTMATE_EFFORT` supply the
-defaults. The log is append-only and a dashboard row is a projection over one
+defaults on `start`. The log is append-only and a dashboard row is a projection over one
 `run_id`; see [docs/build-events.md](docs/build-events.md).
 
 Crew make these calls themselves. The installable

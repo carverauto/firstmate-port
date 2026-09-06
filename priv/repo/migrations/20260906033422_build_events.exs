@@ -25,7 +25,6 @@ defmodule FirstmatePort.Repo.Migrations.BuildEvents do
       add :cluster, :text, default: ""
       add :namespace, :text, default: ""
       add :outcome, :text, default: ""
-      add :pr_url, :text, default: ""
       add :tenant_slug, :text, null: false
 
       add :inserted_at, :utc_datetime_usec,
@@ -51,8 +50,7 @@ defmodule FirstmatePort.Repo.Migrations.BuildEvents do
             name: "build_events_versions_version_source_id_fkey",
             type: :text,
             prefix: "public"
-          ),
-          null: false
+          ), null: false
 
       add :changes, :map
 

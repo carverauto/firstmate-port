@@ -55,14 +55,10 @@ including when the build fails - `--status failure` with the reason in
 | `--tokens` | tokens the run cost you, **cumulative for the whole run**, on the finish call. Omit it when you cannot count them; never guess. |
 | `--image` / `--image-tag` | for container work: repository and tag. |
 | `--cluster` / `--namespace` | for cluster work. |
-| `--pr-url` | the full `https://` PR URL, copied - never assembled. |
 
 `finish` needs only `--run-id` and `--status`: the API carries the rest of the
 run's context forward from the start event, so repeat a field only to correct
 or add to it.
-
-`fm-steer deploy ...` is the same command under a name that reads better for a
-deployment. Both write the same log.
 
 ## Setup
 
@@ -77,8 +73,8 @@ export FIRSTMATE_EFFORT=high
 ```
 
 `FIRSTMATE_AGENT_ID`, `FIRSTMATE_MODEL`, and `FIRSTMATE_EFFORT` become the
-defaults for `--agent-id`, `--model`, and `--effort`, so the two calls shrink
-to `--kind` plus the outcome. Without `FIRSTMATE_INSTANCE` the CLI uses the
+defaults for `--agent-id`, `--model`, and `--effort` on `start`. On `finish`,
+these fields are sent only when explicitly supplied as flags. Without `FIRSTMATE_INSTANCE` the CLI uses the
 host from `fm-steer auth login`, then `http://localhost:4000`.
 
 Install the CLI with `go install

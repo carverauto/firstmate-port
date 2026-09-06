@@ -25,8 +25,7 @@ defmodule FirstmatePort.BuildEvents do
     :image_tag,
     :cluster,
     :namespace,
-    :outcome,
-    :pr_url
+    :outcome
   ]
 
   @doc """

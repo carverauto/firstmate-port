@@ -34,8 +34,7 @@ defmodule FirstmatePortWeb.Api.BuildEventsController do
       image_tag: params["image_tag"] || "",
       cluster: params["cluster"] || "",
       namespace: params["namespace"] || "",
-      outcome: params["outcome"] || "",
-      pr_url: params["pr_url"] || ""
+      outcome: params["outcome"] || ""
     }
 
     case BuildEvent.record(attrs, Tenancy.opts(actor)) do
@@ -98,7 +97,6 @@ defmodule FirstmatePortWeb.Api.BuildEventsController do
       cluster: event.cluster,
       namespace: event.namespace,
       outcome: event.outcome,
-      pr_url: event.pr_url,
       recorded_at: event.inserted_at
     }
   end

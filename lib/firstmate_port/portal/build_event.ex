@@ -91,13 +91,11 @@ defmodule FirstmatePort.Portal.BuildEvent do
         :image_tag,
         :cluster,
         :namespace,
-        :outcome,
-        :pr_url
+        :outcome
       ]
 
       change FirstmatePort.Changes.AssignPublicId
       change FirstmatePort.Changes.InheritBuildRun
-      validate {FirstmatePort.Validations.HttpsUrl, attribute: :pr_url, required?: false}
     end
   end
 
@@ -193,11 +191,6 @@ defmodule FirstmatePort.Portal.BuildEvent do
     end
 
     attribute :outcome, :string do
-      default ""
-      public? true
-    end
-
-    attribute :pr_url, :string do
       default ""
       public? true
     end

@@ -124,7 +124,7 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "E24C0F98B3FEB1B93A60A70D0D8F73FB877E9034CF52A6CA86D48459A6B8363C",
+  "hash": "96E0D57FC9043910748ABB4F26BBC3CCFC171A8A2A47B741909A70645A4C5603",
   "identities": [],
   "multitenancy": {
     "attribute": "tenant_slug",

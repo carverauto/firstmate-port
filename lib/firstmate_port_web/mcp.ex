@@ -14,8 +14,6 @@ defmodule FirstmatePortWeb.Mcp do
       :list_docker_builds,
       :post_buildbuddy_invocation,
       :list_buildbuddy_invocations,
-      :post_build_event,
-      :list_build_events,
       :post_no_mistakes,
       :list_no_mistakes,
       :list_open_prs,
@@ -29,10 +27,8 @@ defmodule FirstmatePortWeb.Mcp do
   def instructions do
     """
     Firstmate hub MCP. Upload Archify HTML, record progress (full https GitHub URLs only),
-    Kubernetes rolls, Docker builds, BuildBuddy invocations, build/deploy events,
-    and no-mistakes run events. Build events are
-    append-only: post one when a build or deployment starts and another when it finishes,
-    both carrying the same run_id. Do not assemble GitHub URLs.
+    Kubernetes rolls, Docker builds, BuildBuddy invocations, and no-mistakes
+    run events. Do not assemble GitHub URLs.
     List diagrams without html/png/svg payloads. no-mistakes findings stay on the LAN
     portal; Discord fan-out is generic (no snippets, no customer names).
     search_fleet searches everything already recorded here - PRs, issues, progress,

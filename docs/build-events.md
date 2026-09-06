@@ -58,14 +58,10 @@ self-describing without anything being rewritten.
   "image_tag": "sha-deadbeef",
   "cluster": "prod",
   "namespace": "firstmate",
-  "outcome": "pushed",
-  "pr_url": "https://github.com/OWNER/REPO/pull/1"
+  "outcome": "pushed"
 }
 ```
 
-`status` is one of `started`, `success`, `failure`, `cancelled`. `pr_url` must
-be a full `https://` URL. `GET /api/build-runs` returns the same fields folded,
+`status` is one of `started`, `success`, `failure`, `cancelled`.
+`GET /api/build-runs` returns the same fields folded,
 plus `duration_ms`, `events`, `finished?`, and `updated_at`.
-
-The same writes are available over MCP as `post_build_event` and
-`list_build_events`, for agents that speak MCP instead of shelling out.
