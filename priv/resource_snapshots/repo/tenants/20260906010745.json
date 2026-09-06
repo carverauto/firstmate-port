@@ -49,6 +49,18 @@
       "type": "text"
     },
     {
+      "allow_nil?": true,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "discord_application_id",
+      "type": "text"
+    },
+    {
       "allow_nil?": false,
       "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
       "generated?": false,
@@ -92,6 +104,20 @@
         }
       ],
       "name": "unique_slug",
+      "nils_distinct?": true,
+      "where": null
+    },
+    {
+      "all_tenants?": false,
+      "base_filter": null,
+      "index_name": "tenants_unique_discord_application_id_index",
+      "keys": [
+        {
+          "type": "atom",
+          "value": "discord_application_id"
+        }
+      ],
+      "name": "unique_discord_application_id",
       "nils_distinct?": true,
       "where": null
     }

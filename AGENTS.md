@@ -12,7 +12,7 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 
 ## Boundaries
 
-- One Discord interactions URL serves every tenant. The payload's `application_id` picks the tenant that claimed it (`Tenant.discord_application_id`, public routing data), and only that tenant's stored key verifies it; unclaimed falls to the default tenant until it claims one of its own. `DISCORD_INTERACTIONS_HOST` serves `POST /interactions` and nothing else, and gets no HTTP-to-HTTPS redirect route (behind a proxy that fetches the origin over port 80 it loops). See `docs/credentials.md`, "Discord inbound".
+- One Discord interactions URL serves every tenant. The payload's `application_id` picks the tenant that claimed it (`Tenant.discord_application_id`, public routing data), and only that tenant's stored key verifies it; unclaimed applications always fall to the default tenant. `DISCORD_INTERACTIONS_HOST` serves `POST /interactions` and nothing else, and gets no HTTP-to-HTTPS redirect route (behind a proxy that fetches the origin over port 80 it loops). See `docs/credentials.md`, "Discord inbound".
 
 - `fm-steer` is the captain CLI. Device-code against this API. It must not import or dial NATS. New CLI surface is thin HTTP only: no ranking, quota math, or provider keys in Go. Its default instance is localhost; deployments pass `--instance` or `FIRSTMATE_INSTANCE`. Captain-facing usage, including the standing prompt that makes stock firstmate mirror steers here without a fork, is `docs/fm-steer.md`.
 - Go CLIs keep `cmd/` thin (dispatch + `os.Exit`) over `internal/` (see `internal/fmsteer`). `cmd/nats-tail`, `cmd/discord-inbound` and `cmd/discord-interactions` belong to the extract worker; do not extend them here.

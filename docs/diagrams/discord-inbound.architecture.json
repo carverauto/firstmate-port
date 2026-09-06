@@ -289,7 +289,7 @@
       "title": "Tenant seam",
       "items": [
         "One URL; the payload's application_id names the tenant",
-        "Unclaimed falls to the default tenant until it claims one",
+        "Unclaimed applications always fall to the default tenant",
         "Unknown application and unknown key both return a bare 401"
       ]
     },

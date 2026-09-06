@@ -202,7 +202,7 @@ Once per deployment, in the
    Information** page, as **Public Key**.
 2. Optionally paste the application id from the same page into **Discord
    application** on that screen. Do it when more than one tenant answers
-   interactions here, or to stop answering for anything else. A claim requires
+   interactions here. A claim requires
    a human belonging to that tenant. An application already claimed by another
    tenant cannot be claimed. Once the default tenant stores its public key,
    other tenants cannot make new claims through their own accounts, protecting
