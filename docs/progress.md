@@ -163,7 +163,10 @@ Reads:
   is capped at `ProgressItem.max_page_size/0`. Each row carries its projection
   (`status`, `assignee`, `workers`, `duration_ms`, `tokens`, `interrupted`).
   Response is `{"data": [...], "meta": {"total", "limit", "offset"}}`.
-- `GET /api/progress/:id` — one item plus its event log, oldest first.
+- `GET /api/progress/:id?limit=&offset=` — one item plus an event-log page, oldest
+  first. Limit defaults to 100 and is capped at 100. `event_count` is the full
+  count; `meta` contains `total`, `limit`, `offset`, and `next_offset` (null at
+  the end). Follow `next_offset` to retrieve the complete log.
 
 The same actions are exposed over MCP as `post_progress_event` and
 `list_progress_events`.
@@ -171,7 +174,7 @@ The same actions are exposed over MCP as `post_progress_event` and
 ## The portal surfaces
 
 - `/` — the newest `ProgressItem.preview_size/0` rows only, fetched with a
-  server-side limit. Below them, a "see all" link once there are more. The full
+  server-side limit. Below them, an always-visible "see all" link. The full
   list is never rendered and hidden.
 - `/progress` — charts over the tenant, then the archive a page at a time
   (prev/next, page numbers, `?page=`).

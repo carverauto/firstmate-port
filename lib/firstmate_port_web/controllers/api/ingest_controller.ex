@@ -67,7 +67,8 @@ defmodule FirstmatePortWeb.Api.IngestController do
           title: params["title"],
           url: params["url"] || "",
           body: params["body"] || "",
-          worker: worker
+          worker: worker,
+          assigned_at: params["assigned_at"]
         })
 
       _ ->
@@ -172,18 +173,20 @@ defmodule FirstmatePortWeb.Api.IngestController do
   end
 
   @doc """
-  One progress item with its full event log, oldest first.
+  One progress item with an event-log page, oldest first.
 
-  The log is what the details view renders; it is capped at
-  `ProgressItem.max_page_size/0` events so a pathological row cannot become an
-  unbounded response.
+  `limit` defaults to 100 and is capped at `ProgressItem.max_page_size/0`.
+  `offset` defaults to zero; `meta` supplies the total and next offset.
   """
-  def show_progress(conn, %{"id" => id}) do
+  def show_progress(conn, %{"id" => id} = params) do
+    limit = clamp_int(params["limit"], 100, 1, ProgressItem.max_page_size())
+    offset = clamp_int(params["offset"], 0, 0, nil)
     opts = FirstmatePort.Tenancy.opts(conn.assigns.current_user)
 
     with {:ok, item} when not is_nil(item) <- ProgressItem.get_by_id(id, opts),
          {:ok, projection} <- ProgressProjection.load_one(item, opts) do
-      events = Enum.take(projection.events, ProgressItem.max_page_size())
+      total = length(projection.events)
+      events = Enum.slice(projection.events, offset, limit)
 
       json(
         conn,
@@ -192,7 +195,13 @@ defmodule FirstmatePortWeb.Api.IngestController do
         |> Map.merge(%{
           body: item.body,
           events: Enum.map(events, &summarize_event/1),
-          event_count: length(projection.events)
+          event_count: total,
+          meta: %{
+            total: total,
+            limit: limit,
+            offset: offset,
+            next_offset: if(offset + limit < total, do: offset + limit, else: nil)
+          }
         })
       )
     else

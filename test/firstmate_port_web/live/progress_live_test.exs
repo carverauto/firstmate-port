@@ -25,7 +25,33 @@ defmodule FirstmatePortWeb.ProgressLiveTest do
     |> Plug.Conn.put_session(:guardian_token, token)
   end
 
+  test "assignment configuration appears in both detail sections", %{conn: conn, opts: opts} do
+    item = seed_item(opts, title: "assigned work")
+    append(item, %{type: :assignment, worker: "crew-config", runtime: "codex",
+                   model: "gpt-test", effort: "high"}, opts)
+
+    {:ok, _view, html} = live(conn, ~p"/progress?item=#{item.id}")
+    assert html =~ "crew-config codex gpt-test high"
+  end
+
+  test "zero token contributions remain distinct from missing telemetry" do
+    alias FirstmatePortWeb.ProgressComponents
+
+    bars = ProgressComponents.contributor_bars(%{contributions: [
+      %{worker: "measured", tokens: 0, role: :implement},
+      %{worker: "unknown", tokens: nil, role: :implement}
+    ]})
+
+    assert Enum.find(bars, &(&1.label == "measured")).display == "0"
+    assert Enum.find(bars, &(&1.label == "unknown")).display == "—"
+  end
+
   describe "home preview" do
+    test "links to progress even when there are no rows", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+      assert has_element?(view, "a[href='/progress']")
+    end
+
     test "shows the newest 10 with a see-all link", %{conn: conn, opts: opts} do
       seed_items(opts, 25)
 

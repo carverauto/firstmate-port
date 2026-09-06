@@ -15,6 +15,22 @@ defmodule FirstmatePort.Portal.ProgressPaginationTest do
     {:ok, agent_context("progress-pager")}
   end
 
+  test "all reads exclude legacy imports without deleting them", %{opts: opts} do
+    legacy = seed_legacy_item(opts, kind: :pr, title: "org import")
+    crew = seed_item(opts, title: "crew work")
+
+    assert {:ok, [item]} = ProgressItem.list(opts)
+    assert item.id == crew.id
+    assert {:ok, [_]} = ProgressItem.list_recent(opts)
+    assert {:ok, [_]} = ProgressItem.list_paged(20, 0, opts)
+    assert {:ok, [_]} = ProgressItem.list_for_stats(opts)
+    assert {:ok, 1} = Ash.count(ProgressItem, opts)
+    assert {:ok, nil} = ProgressItem.get_by_url(legacy.url, opts)
+    assert %{rows: [[1]]} = FirstmatePort.Repo.query!(
+             "SELECT count(*) FROM progress_items WHERE id = $1", [legacy.id]
+           )
+  end
+
   test "list_recent caps at the home preview size, newest first", %{opts: opts} do
     seed_items(opts, 25)
 

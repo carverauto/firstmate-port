@@ -13,10 +13,9 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   That is deliberate, and it is what keeps `/progress` from filling with every
   dependency bump in the organisation.
 
-  Two passes over the search API. The open pass keeps the `GithubItem` board
-  current, because that board *is* a mirror of open org work. The closed pass
-  exists only to move the status of fleet-log rows onto merged or complete.
-  Neither pass grows `progress_items`.
+  The search API keeps the open `GithubItem` board current. Fleet-log
+  enrichment queries tracked crew URLs directly in bounded pages. Neither
+  pass grows `progress_items`.
   """
 
   require Logger
@@ -38,10 +37,9 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
         :ok
 
       true ->
-        poll_search(org, token, actor, :pr, "is:pr+is:open", :board)
-        poll_search(org, token, actor, :issue, "is:issue+is:open", :board)
-        poll_search(org, token, actor, :pr, "is:pr+is:closed", :enrich)
-        poll_search(org, token, actor, :issue, "is:issue+is:closed", :enrich)
+        poll_search(org, token, actor, :pr, "is:pr+is:open")
+        poll_search(org, token, actor, :issue, "is:issue+is:open")
+        poll_tracked(token, actor, 0)
         :ok
     end
   end
@@ -55,24 +53,64 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   def trim_credential(""), do: ""
   def trim_credential(value) when is_binary(value), do: String.trim(value)
 
-  defp poll_search(org, token, actor, kind, extra, mode) do
+  defp poll_search(org, token, actor, kind, extra) do
     url =
       "https://api.github.com/search/issues?q=org:#{org}+#{extra}" <>
         "&per_page=50&sort=updated&order=desc"
 
     case get_json(url, token) do
       {:ok, %{"items" => items}} ->
-        Enum.each(items, &handle_item(&1, kind, token, actor, mode))
+        Enum.each(items, &upsert_item(&1, kind, token, actor))
 
       {:error, reason} ->
-        Logger.warning("GitHub #{kind} #{mode} poll failed: #{inspect(reason)}")
+        Logger.warning("GitHub #{kind} board poll failed: #{inspect(reason)}")
     end
   end
 
-  defp handle_item(item, kind, token, actor, :board), do: upsert_item(item, kind, token, actor)
+  defp poll_tracked(token, actor, offset) do
+    opts = FirstmatePort.Tenancy.opts(actor || agent_actor())
+    limit = ProgressItem.max_page_size()
 
-  defp handle_item(item, kind, _token, actor, :enrich),
-    do: enrich_progress(item, kind, actor)
+    case ProgressItem.list_paged(limit, offset, opts) do
+      {:ok, items} ->
+        Enum.each(items, fn item ->
+          case tracked_api_url(item.url) do
+            {url, kind} ->
+              case get_json(url, token) do
+                {:ok, raw} ->
+                  raw = if kind == :pr, do: Map.put(raw, "pull_request", raw), else: raw
+                  enrich_progress(raw, kind, actor)
+
+                {:error, reason} ->
+                  Logger.warning("GitHub enrichment failed for #{item.id}: #{inspect(reason)}")
+              end
+
+            nil ->
+              :ok
+          end
+        end)
+
+        if length(items) == limit, do: poll_tracked(token, actor, offset + limit)
+
+      {:error, reason} ->
+        Logger.warning("GitHub tracked progress read failed: #{inspect(reason)}")
+    end
+  end
+
+  defp tracked_api_url(url) when is_binary(url) do
+    case Regex.run(~r{\Ahttps://github\.com/([^/]+)/([^/]+)/(pull|issues)/(\d+)\z}, url) do
+      [_, owner, repo, "pull", number] ->
+        {"https://api.github.com/repos/#{owner}/#{repo}/pulls/#{number}", :pr}
+
+      [_, owner, repo, "issues", number] ->
+        {"https://api.github.com/repos/#{owner}/#{repo}/issues/#{number}", :issue}
+
+      _ ->
+        nil
+    end
+  end
+
+  defp tracked_api_url(_), do: nil
 
   defp upsert_item(%{"html_url" => html_url, "title" => title} = item, kind, token, actor)
        when is_binary(html_url) do
@@ -204,7 +242,16 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   defp append_status(item, kind, raw, opts) do
     status = ProgressStatus.from_github(kind, raw)
 
-    case ProgressLog.record_observed_status(item, status, %{detail: "github poll"}, opts) do
+    occurred_at =
+      case status do
+        :merged -> parse_time(get_in(raw, ["pull_request", "merged_at"]))
+        :complete -> parse_time(raw["closed_at"])
+        _ -> nil
+      end
+
+    extra = %{detail: "github poll", occurred_at: occurred_at}
+
+    case ProgressLog.record_observed_status(item, status, extra, opts) do
       {:ok, _outcome, _} ->
         :ok
 

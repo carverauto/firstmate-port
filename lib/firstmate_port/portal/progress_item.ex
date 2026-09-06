@@ -26,6 +26,10 @@ defmodule FirstmatePort.Portal.ProgressItem do
     authorizers: [Ash.Policy.Authorizer],
     extensions: [AshPaperTrail.Resource, AshEvents.Events]
 
+  resource do
+    base_filter expr(exists(events, type == :assignment))
+  end
+
   postgres do
     table "progress_items"
     repo FirstmatePort.Repo

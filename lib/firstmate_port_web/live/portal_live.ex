@@ -136,7 +136,7 @@ defmodule FirstmatePortWeb.PortalLive do
           projections={@progress}
           detail_path={&detail_path(@filter, &1)}
         />
-        <p :if={@progress_total > @preview_size} class="see-all">
+        <p class="see-all">
           <.link navigate={~p"/progress"}>
             See all {@progress_total} PRs, issues, and achievements
           </.link>

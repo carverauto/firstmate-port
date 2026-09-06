@@ -29,6 +29,46 @@ defmodule FirstmatePortWeb.Api.ProgressEventControllerTest do
     |> post(~p"/api/progress/events", params)
   end
 
+  test "preserves backfilled assignment timestamps", ctx do
+    conn =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{ctx.api_key}")
+      |> post(~p"/api/progress", %{
+        "kind" => "note",
+        "title" => "backfilled work",
+        "worker" => "crew-a",
+        "assigned_at" => "2026-09-01T12:00:00Z"
+      })
+
+    %{"id" => id} = json_response(conn, 200)
+    assert {:ok, [%{occurred_at: at}]} = ProgressEvent.list_for_item(id, ctx.opts)
+    assert at == ~U[2026-09-01 12:00:00.000000Z]
+  end
+
+  test "event pagination reaches the newest event beyond the first hundred", ctx do
+    for n <- 1..101 do
+      append(ctx.item, %{type: :note, detail: "entry #{n}"}, ctx.opts)
+    end
+
+    first =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{ctx.api_key}")
+      |> get(~p"/api/progress/#{ctx.item.id}")
+      |> json_response(200)
+
+    assert first["meta"] == %{"total" => 102, "limit" => 100, "offset" => 0, "next_offset" => 100}
+    assert length(first["events"]) == 100
+
+    last =
+      build_conn()
+      |> put_req_header("authorization", "Bearer #{ctx.api_key}")
+      |> get(~p"/api/progress/#{ctx.item.id}?offset=100")
+      |> json_response(200)
+
+    assert [%{"detail" => "entry 100"}, %{"detail" => "entry 101"}] = last["events"]
+    assert last["meta"]["next_offset"] == nil
+  end
+
   test "accepts a rich contribution and echoes it back", ctx do
     conn =
       post_event(ctx.api_key, %{

@@ -101,7 +101,7 @@ defmodule FirstmatePort.ProgressFixtures do
   Inserts a row the way the GitHub poll used to: no worker, no events at all.
 
   Rows like this exist in the wild from before Progress required crew
-  attribution, so the projection and the UI still have to render them honestly.
+  attribution, so shared reads must exclude them without deleting history.
   `Ash.Seed` is the only way to make one now — `:record` will not.
   """
   def seed_legacy_item(opts, attrs) do

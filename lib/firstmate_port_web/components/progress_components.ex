@@ -253,7 +253,7 @@ defmodule FirstmatePortWeb.ProgressComponents do
             <ol class="rows">
               <li :for={a <- @projection.assignments}>
                 <span>
-                  {a.worker}
+                  {event_summary(a)}
                   <span :if={present?(a.detail)} class="meta">{a.detail}</span>
                 </span>
                 <span class="meta">{format_at(a.occurred_at)}</span>
@@ -557,14 +557,15 @@ defmodule FirstmatePortWeb.ProgressComponents do
     projection.contributions
     |> Enum.group_by(& &1.worker)
     |> Enum.map(fn {worker, events} ->
-      tokens = events |> Enum.map(&(&1.tokens || 0)) |> Enum.sum()
+      reported = for event <- events, is_integer(event.tokens), do: event.tokens
+      tokens = Enum.sum(reported)
       review? = Enum.any?(events, &(&1.role == :review))
 
       %{
         slot: if(review?, do: 4, else: 1),
         label: if(review?, do: worker <> " (review)", else: worker),
         count: tokens,
-        display: format_tokens(if(tokens == 0, do: nil, else: tokens))
+        display: format_tokens(if(reported == [], do: nil, else: tokens))
       }
     end)
     |> Enum.sort_by(& &1.count, :desc)
@@ -638,7 +639,7 @@ defmodule FirstmatePortWeb.ProgressComponents do
   defp hands_heuristic(_projection), do: []
 
   defp interrupt_heuristic(%{interrupted: :yes}) do
-    [{"interrupt", "Interrupted at least once; the work was picked back up."}]
+    [{"interrupt", "Interrupted at least once."}]
   end
 
   defp interrupt_heuristic(_projection), do: []
@@ -698,7 +699,7 @@ defmodule FirstmatePortWeb.ProgressComponents do
 
   defp event_summary(%{type: :status} = e), do: ProgressStatus.label(e.status)
 
-  defp event_summary(%{type: :contribution} = e) do
+  defp event_summary(%{type: type} = e) when type in [:assignment, :contribution] do
     [
       e.worker,
       e.role && "(#{e.role})",
@@ -710,7 +711,6 @@ defmodule FirstmatePortWeb.ProgressComponents do
     |> Enum.join(" ")
   end
 
-  defp event_summary(%{type: :assignment} = e), do: e.worker
   defp event_summary(%{type: :interruption} = e), do: "interrupted: #{e.interrupted}"
   defp event_summary(e), do: blank(e.detail)
 
