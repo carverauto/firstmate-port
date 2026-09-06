@@ -49,7 +49,14 @@ defmodule FirstmatePort.BootstrapSecretsTest do
     bootstrap_with(tmp_dir, output, base, exists, [])
   end
 
-  defp bootstrap_with(tmp_dir, output, base, exists, extra_env, script \\ "deploy/bootstrap-secrets.sh") do
+  defp bootstrap_with(
+         tmp_dir,
+         output,
+         base,
+         exists,
+         extra_env,
+         script \\ "deploy/bootstrap-secrets.sh"
+       ) do
     extra_keys = Enum.map(extra_env, &elem(&1, 0))
 
     env =
@@ -91,9 +98,9 @@ defmodule FirstmatePort.BootstrapSecretsTest do
 
   test "a password-only admin secret gets its email backfilled, password untouched", context do
     assert {_, 0} =
-             bootstrap_with(context.tmp_dir, context.output, "base", true,
-               [{"ADMIN_STATE", "password-only"}]
-             )
+             bootstrap_with(context.tmp_dir, context.output, "base", true, [
+               {"ADMIN_STATE", "password-only"}
+             ])
 
     calls = File.read!(context.calls)
     assert calls =~ "patch secret firstmate-admin"
@@ -105,10 +112,10 @@ defmodule FirstmatePort.BootstrapSecretsTest do
 
   test "backfill honours ADMIN_EMAIL and leaves an existing email alone", context do
     assert {_, 0} =
-             bootstrap_with(context.tmp_dir, context.output, "base", true,
-               [{"ADMIN_STATE", "password-only"},
-                {"ADMIN_EMAIL", "ops@example.test"}]
-             )
+             bootstrap_with(context.tmp_dir, context.output, "base", true, [
+               {"ADMIN_STATE", "password-only"},
+               {"ADMIN_EMAIL", "ops@example.test"}
+             ])
 
     calls = File.read!(context.calls)
     assert [_, payload] = Regex.run(~r{/data/email","value":"([^"]+)"}, calls)
@@ -117,10 +124,10 @@ defmodule FirstmatePort.BootstrapSecretsTest do
     File.rm!(context.calls)
 
     assert {out, 0} =
-             bootstrap_with(context.tmp_dir, context.output, "base", true,
-               [{"ADMIN_STATE", "complete"},
-                {"ADMIN_EMAIL_EXISTING", "keeper@example.test"}]
-             )
+             bootstrap_with(context.tmp_dir, context.output, "base", true, [
+               {"ADMIN_STATE", "complete"},
+               {"ADMIN_EMAIL_EXISTING", "keeper@example.test"}
+             ])
 
     assert out =~ "reusing firstmate-admin"
     # Only the pg-app dry-run create is logged; firstmate-admin is untouched.

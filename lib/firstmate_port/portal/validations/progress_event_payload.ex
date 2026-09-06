@@ -9,8 +9,14 @@ defmodule FirstmatePort.Portal.Validations.ProgressEventPayload do
   use Ash.Resource.Validation
 
   @impl true
-  def validate(changeset, _opts, _context) do
+  def validate(changeset, _opts, context) do
     case Ash.Changeset.get_attribute(changeset, :type) do
+      :subject ->
+        with :ok <- require_field(changeset, :title, "is required on a :subject event"),
+             :ok <- require_field(changeset, :kind, "is required on a :subject event") do
+          validate_subject(changeset, context)
+        end
+
       :status ->
         require_field(changeset, :status, "is required on a :status event")
 
@@ -28,6 +34,20 @@ defmodule FirstmatePort.Portal.Validations.ProgressEventPayload do
 
       _ ->
         :ok
+    end
+  end
+
+  defp validate_subject(changeset, context) do
+    opts = [actor: context.actor, tenant: changeset.tenant]
+    item_id = Ash.Changeset.get_attribute(changeset, :item_id)
+    kind = Ash.Changeset.get_attribute(changeset, :kind)
+
+    with {:ok, item} when not is_nil(item) <-
+           FirstmatePort.Portal.ProgressItem.get_by_id(item_id, opts),
+         {:ok, _} <- FirstmatePort.Links.progress_url(to_string(kind), item.url) do
+      :ok
+    else
+      _ -> {:error, field: :item_id, message: "invalid progress item or kind"}
     end
   end
 

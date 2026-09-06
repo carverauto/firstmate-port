@@ -46,7 +46,7 @@ defmodule FirstmatePort.Portal.ProgressItem do
 
   events do
     event_log(FirstmatePort.Events.EventLog)
-    only_actions([:record, :touch])
+    only_actions([:record])
   end
 
   @preview_size 10
@@ -77,7 +77,6 @@ defmodule FirstmatePort.Portal.ProgressItem do
   code_interface do
     define :list, action: :read
     define :record, action: :record
-    define :touch, action: :touch
     define :get_by_url, action: :by_url, args: [:url]
     define :get_by_id, action: :read, get_by: [:id]
     define :list_recent, action: :recent
@@ -151,10 +150,6 @@ defmodule FirstmatePort.Portal.ProgressItem do
       change FirstmatePort.Changes.NormalizeProgressUrl
       change FirstmatePort.Portal.Changes.SeedAssignmentEvent
     end
-
-    update :touch do
-      accept [:kind, :title]
-    end
   end
 
   policies do
@@ -162,9 +157,13 @@ defmodule FirstmatePort.Portal.ProgressItem do
       authorize_if actor_present()
     end
 
-    policy action([:record, :touch]) do
+    policy action(:record) do
       authorize_if expr(^actor(:role) == :agent)
     end
+  end
+
+  preparations do
+    prepare FirstmatePort.Portal.ProjectProgressSubject
   end
 
   multitenancy do

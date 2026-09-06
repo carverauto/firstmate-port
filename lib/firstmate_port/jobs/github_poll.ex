@@ -16,24 +16,45 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   The search API keeps the open `GithubItem` board current. Fleet-log
   enrichment queries tracked crew URLs directly in bounded pages. Neither
   pass grows `progress_items`.
+
+  The token and organisation come from the tenant's own credential slots -
+  `github/token` and `github/org`, which the captain fills in on the portal's
+  credentials page - so pulling PRs needs no redeploy and no cluster secret. The
+  `GITHUB_TOKEN` and `GITHUB_ORG` environment variables remain as a fallback for
+  a tenant that has not filled the slots yet.
   """
 
   require Logger
 
   alias FirstmatePort.Portal.{ProgressItem, ProgressLog, ProgressStatus}
+  alias FirstmatePort.Credentials
+  alias FirstmatePort.Tenancy
 
-  @spec run(term()) :: :ok
+  @spec run(term()) :: :ok | {:error, term()}
+  def run(nil) do
+    with {:ok, tenants} <- FirstmatePort.Accounts.Tenant.list(authorize?: false) do
+      Enum.each(tenants, fn tenant -> run(agent_actor(tenant.slug)) end)
+    end
+  end
+
   def run(actor) do
-    token = trim_credential(System.get_env("GITHUB_TOKEN"))
-    org = String.trim(System.get_env("GITHUB_ORG") || "")
+    tenant = Tenancy.slug(actor)
+    token = configured(tenant, "token", "GITHUB_TOKEN")
+    org = configured(tenant, "org", "GITHUB_ORG")
 
     cond do
-      is_nil(token) or token == "" ->
-        Logger.info("GitHub poll skipped: GITHUB_TOKEN unset")
+      token == "" ->
+        Logger.info(
+          "GitHub poll skipped for #{tenant}: no github/token credential, GITHUB_TOKEN unset"
+        )
+
         :ok
 
       org == "" ->
-        Logger.info("GitHub poll skipped: GITHUB_ORG unset")
+        Logger.info(
+          "GitHub poll skipped for #{tenant}: no github/org credential, GITHUB_ORG unset"
+        )
+
         :ok
 
       true ->
@@ -53,6 +74,20 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   def trim_credential(""), do: ""
   def trim_credential(value) when is_binary(value), do: String.trim(value)
 
+  @doc """
+  The value for one GitHub setting: the tenant's stored credential, else the
+  environment variable, else `""`.
+
+  Reading a stored value decrypts it, so this is server-side only and takes a
+  tenant slug the caller has already established.
+  """
+  def configured(tenant, key, env_var) do
+    case Credentials.secret(tenant, "github", key) do
+      {:ok, value} -> value
+      :error -> env_var |> System.get_env() |> to_string() |> trim_credential()
+    end
+  end
+
   defp poll_search(org, token, actor, kind, extra) do
     url =
       "https://api.github.com/search/issues?q=org:#{org}+#{extra}" <>
@@ -68,7 +103,7 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   end
 
   defp poll_tracked(token, actor, offset) do
-    opts = FirstmatePort.Tenancy.opts(actor || agent_actor())
+    opts = FirstmatePort.Tenancy.opts(actor)
     limit = ProgressItem.max_page_size()
 
     case ProgressItem.list_paged(limit, offset, opts) do
@@ -126,7 +161,7 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
         buildbuddy_url: buildbuddy_url || "",
         github_updated_at: parse_time(item["updated_at"])
       },
-      FirstmatePort.Tenancy.opts(actor || agent_actor())
+      FirstmatePort.Tenancy.opts(actor)
     )
 
     enrich_progress(item, kind, actor)
@@ -211,12 +246,12 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
   @spec enrich_progress(map(), :pr | :issue, term()) :: :ok
   def enrich_progress(%{"html_url" => html_url, "title" => title} = raw, kind, actor)
       when is_binary(html_url) do
-    opts = FirstmatePort.Tenancy.opts(actor || agent_actor())
+    opts = FirstmatePort.Tenancy.opts(actor)
 
     case ProgressItem.get_by_url(html_url, opts) do
       {:ok, item} when not is_nil(item) ->
         item
-        |> touch_if_changed(kind, title, opts)
+        |> append_subject_if_changed(kind, title, opts)
         |> append_status(kind, raw, opts)
 
       _ ->
@@ -226,10 +261,13 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
 
   def enrich_progress(_raw, _kind, _actor), do: :ok
 
-  defp touch_if_changed(existing, kind, title, opts) do
+  defp append_subject_if_changed(existing, kind, title, opts) do
     if progress_changed?(existing, kind, title) do
-      case ProgressItem.touch(existing, %{kind: kind, title: title}, opts) do
-        {:ok, touched} -> touched
+      case ProgressLog.append(
+             %{item_id: existing.id, type: :subject, kind: kind, title: title},
+             opts
+           ) do
+        {:ok, _event} -> %{existing | kind: kind, title: title}
         _ -> existing
       end
     else
@@ -269,12 +307,12 @@ defmodule FirstmatePort.Jobs.GitHubPoll do
     existing.kind != kind or existing.title != title
   end
 
-  defp agent_actor do
+  defp agent_actor(tenant) do
     %{
       role: :agent,
       email: "agent@localhost",
       id: "github-poll",
-      tenant_slug: FirstmatePort.Tenancy.default_slug()
+      tenant_slug: tenant
     }
   end
 

@@ -15,5 +15,6 @@ defmodule FirstmatePort.Accounts do
     resource FirstmatePort.Accounts.Tenant
     resource FirstmatePort.Accounts.User
     resource FirstmatePort.Auth.DeviceCode
+    resource FirstmatePort.Auth.CliSession
   end
 end

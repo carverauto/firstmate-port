@@ -1,6 +1,6 @@
 # firstmate-port
 
-Phoenix/Ash companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, opt-in build tracking (Kubernetes, Docker, BuildBuddy), NATS queues, token usage, and no-mistakes runs in one LiveView UI. Discord inbound is served by Phoenix at POST `/interactions`.
+Phoenix/Ash companion portal for firstmate. Crew reviews Archify diagrams, PRs, issues, crew inbox messages, opt-in build tracking (Kubernetes, Docker, BuildBuddy), NATS queues, token usage, and no-mistakes runs in one LiveView UI. Discord inbound is served by Phoenix at POST `/interactions`.
 
 Each tenant stores its own credentials - Discord keys, GitHub tokens, provider API keys - in the portal, encrypted with AshCloak before they reach Postgres. No per-tenant `kubectl create secret`.
 
@@ -27,6 +27,8 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`,
 ## Docs
 
 - [docs/fm-steer.md](docs/fm-steer.md) `fm-steer` for stock firstmate captains: login, commands, and the standing prompt that makes firstmate mirror steers to the portal (no fork required)
+- [docs/inbox.md](docs/inbox.md) CLI messaging, task routing, and portal history
+- [docs/fleet-log.md](docs/fleet-log.md) diagrams and append-only progress
 - [docs/credentials.md](docs/credentials.md) how a tenant stores Discord and other secrets
 - [docs/fleet-search.md](docs/fleet-search.md) searching the fleet log, and the optional embeddings
 - [docs/security.md](docs/security.md) running the portal on a public hostname: client-IP config, rate limits, lockout, CSP
@@ -53,10 +55,11 @@ Prefix every `npm` invocation with `sfw`.
 
 Fleet log ingest (`rolls|diagrams|no-mistakes post`, e.g.
 `fm-steer rolls post --cluster c1 --namespace n1 --status success --image-tag sha-abc`)
-sends `POST /api/rolls|diagrams|no-mistakes`. Writes require an agent role,
+sends `POST /api/rolls|diagrams|no-mistakes`. Rolls and no-mistakes writes require an agent role,
 so set `FIRSTMATE_AGENT_TOKEN` to an agent API token (env only, never printed
 or stored). Without it, the CLI falls back to stored login credentials; a
-regular device-code user JWT cannot authorize ingest writes. When neither
+regular device-code user JWT cannot authorize those two kinds of writes.
+For diagram upload authentication and viewing, see [Diagrams](docs/fleet-log.md#diagrams). When neither
 `--instance`, `FIRSTMATE_INSTANCE`, nor stored credentials name a host, the CLI
 targets `http://localhost:4000`. Set `FIRSTMATE_INSTANCE` for your deployment.
 

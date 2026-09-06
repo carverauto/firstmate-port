@@ -39,7 +39,16 @@ defmodule FirstmatePort.Credentials.Slots do
       key: "token",
       label: "GitHub token",
       format: :opaque,
-      about: "Personal access token or app installation token used to poll issues and PRs."
+      about:
+        "Personal access token used to poll issues, PRs, and their checks. A fine-grained token needs Checks: Read alongside read access to the repositories you want on the Fleet log; a classic token needs `repo`. Stored here, it takes precedence over the GITHUB_TOKEN environment variable."
+    },
+    %{
+      provider: "github",
+      key: "org",
+      label: "GitHub organisation",
+      format: :slug,
+      about:
+        "The organisation the poll searches for open PRs and issues, e.g. `carverauto`. Takes precedence over the GITHUB_ORG environment variable."
     },
     %{
       provider: "github",
@@ -110,6 +119,14 @@ defmodule FirstmatePort.Credentials.Slots do
       :ok
     else
       {:error, "must be 64 hex characters"}
+    end
+  end
+
+  defp validate_format(:slug, value) do
+    if Regex.match?(~r/^[A-Za-z0-9][A-Za-z0-9._-]{0,98}$/, value) do
+      :ok
+    else
+      {:error, "must be a GitHub name"}
     end
   end
 

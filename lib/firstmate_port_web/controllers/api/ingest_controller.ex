@@ -247,6 +247,8 @@ defmodule FirstmatePortWeb.Api.IngestController do
        %{
          item_id: item.id,
          type: type,
+         title: params["title"],
+         kind: params["kind"],
          status: status,
          role: role,
          worker: to_string(params["worker"] || ""),
@@ -424,6 +426,8 @@ defmodule FirstmatePortWeb.Api.IngestController do
       tokens: e.tokens,
       interrupted: e.interrupted,
       detail: e.detail,
+      title: e.title,
+      kind: e.kind,
       occurred_at: e.occurred_at
     }
   end

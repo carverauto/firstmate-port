@@ -162,6 +162,19 @@ defmodule FirstmatePort.Jobs.GitHubPollTest do
       assert {:ok, 1} = Ash.count(ProgressItem, ctx.opts)
       assert {:ok, reloaded} = ProgressItem.get_by_id(item.id, ctx.opts)
       assert reloaded.title == "new title"
+
+      assert %{rows: [["old title", "pr"]]} =
+               FirstmatePort.Repo.query!("SELECT title, kind FROM progress_items WHERE id = $1", [
+                 item.id
+               ])
+
+      assert :ok = GitHubPoll.enrich_progress(raw, :pr, ctx.agent)
+
+      assert {:ok, [%{type: :assignment}, %{type: :subject, title: "new title", kind: :pr}]} =
+               ProgressEvent.list_for_item(item.id, ctx.opts)
+
+      assert {:ok, projection} = ProgressProjection.load_one(item, ctx.opts)
+      assert projection.item.title == "new title"
     end
 
     test "an observed open state never overwrites a crew judgement", ctx do

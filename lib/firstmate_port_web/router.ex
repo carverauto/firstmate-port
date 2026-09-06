@@ -86,12 +86,15 @@ defmodule FirstmatePortWeb.Router do
     plug FirstmatePortWeb.Plugs.RequireActor
   end
 
+  # Signed in is the bar here, agent or human: the resource policies decide what
+  # each may actually do, and the captain uploading an Archify diagram from
+  # `fm-steer` should not need a second, agent-shaped credential.
   pipeline :mcp do
     plug :accepts, ["json"]
     plug SecurityHeaders, csp: :api
     plug FirstmatePortWeb.Plugs.LoadActor
     plug RateLimit, bucket: :mcp, subject: :ip_and_actor, response_mode: :json
-    plug FirstmatePortWeb.Plugs.RequireAgent
+    plug FirstmatePortWeb.Plugs.RequireUser
     plug :put_mcp_actor
   end
 
@@ -174,9 +177,14 @@ defmodule FirstmatePortWeb.Router do
   end
 
   scope "/api", FirstmatePortWeb.Api do
-    pipe_through :api_write
+    pipe_through :cli
 
     post "/diagrams", IngestController, :create_diagram
+  end
+
+  scope "/api", FirstmatePortWeb.Api do
+    pipe_through :api_write
+
     post "/progress", IngestController, :create_progress
     post "/progress/events", IngestController, :create_progress_event
     post "/rolls", IngestController, :create_roll
@@ -232,6 +240,7 @@ defmodule FirstmatePortWeb.Router do
     live "/", PortalLive
     live "/search", SearchLive
     live "/progress", ProgressLive
+    live "/inbox", InboxLive
     live "/queues", QueuesLive
     live "/usage", UsageLive
     live "/prs", BoardLive
@@ -241,6 +250,7 @@ defmodule FirstmatePortWeb.Router do
     live "/buildbuddy-invocations/:id", BuildBuddyLive
     live "/no-mistakes", NoMistakesLive
     live "/settings/credentials", CredentialsLive
+    live "/settings/sessions", SessionsLive
   end
 
   if Application.compile_env(:firstmate_port, :dev_routes) do

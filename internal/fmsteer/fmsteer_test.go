@@ -3,6 +3,7 @@ package fmsteer
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -306,5 +307,42 @@ func TestProgressPostSendsEvents(t *testing.T) {
 		if _, ok := second[key]; ok {
 			t.Errorf("omitted telemetry %s was sent", key)
 		}
+	}
+}
+
+func TestRequestsCarryTheUserAgent(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get("user-agent")
+		_ = json.NewEncoder(w).Encode(map[string]any{"seq": 1})
+	}))
+	defer srv.Close()
+	if err := WriteCreds(srv.URL, "jwt", "local"); err != nil {
+		t.Fatal(err)
+	}
+	InboxPut([]string{"--body", "hello", "--instance", srv.URL})
+	if got != UserAgent {
+		t.Fatalf("user-agent %q, want %q", got, UserAgent)
+	}
+}
+
+func TestRevokedTokenSaysToSignInAgain(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"error":"unauthorized"}`))
+	}))
+	defer srv.Close()
+
+	if _, err := PostJSONStatus(srv.URL, "revoked-jwt", map[string]string{}, nil); !errors.Is(err, ErrSignedOut) {
+		t.Fatalf("post error %v, want ErrSignedOut", err)
+	}
+	if err := GetJSON(srv.URL, "revoked-jwt", nil); !errors.Is(err, ErrSignedOut) {
+		t.Fatalf("get error %v, want ErrSignedOut", err)
+	}
+	// The device-code poll is unauthenticated by design and must keep working.
+	if _, err := PostJSONStatus(srv.URL, "", map[string]string{}, nil); err != nil {
+		t.Fatalf("unauthenticated poll errored: %v", err)
 	}
 }

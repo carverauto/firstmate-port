@@ -2,6 +2,7 @@ defmodule FirstmatePortWeb.RouteControllerTest do
   use FirstmatePortWeb.ConnCase, async: true
 
   alias FirstmatePort.Accounts.User
+  alias FirstmatePort.Auth.DeviceCode
 
   setup do
     token = "fmh_test_" <> Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
@@ -37,8 +38,21 @@ defmodule FirstmatePortWeb.RouteControllerTest do
     assert body["axes"]["kind"] == "code"
   end
 
-  test "human user JWT routes too", %{conn: conn, human: human} do
-    {:ok, jwt, _} = FirstmatePort.Auth.Guardian.encode_and_sign(human, %{"typ" => "cli"})
+  test "human user device-code JWT routes too", %{conn: conn, human: human} do
+    {:ok, code} = DeviceCode.issue(%{}, authorize?: false)
+
+    {:ok, _} =
+      DeviceCode.approve(code, %{user_id: human.id, tenant_slug: human.tenant_slug},
+        authorize?: false
+      )
+
+    %{"access_token" => jwt} =
+      build_conn()
+      |> post(~p"/api/cli/auth/token", %{
+        "grant_type" => "urn:ietf:params:oauth:grant-type:device_code",
+        "device_code" => code.device_code
+      })
+      |> json_response(200)
 
     conn =
       conn

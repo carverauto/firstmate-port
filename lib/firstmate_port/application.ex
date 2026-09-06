@@ -28,7 +28,9 @@ defmodule FirstmatePort.Application do
          Application.fetch_env!(:firstmate_port, Oban)
        )},
       {Phoenix.PubSub, name: FirstmatePort.PubSub},
-      FirstmatePort.Inbox,
+      # Best-effort work that must never hold up the request that triggered it,
+      # such as the inbox's JetStream fan-out.
+      {Task.Supervisor, name: FirstmatePort.TaskSupervisor},
       FirstmatePort.NATS.Supervisor,
       FirstmatePort.Auth.OIDC.Supervisor,
       FirstmatePortWeb.Endpoint

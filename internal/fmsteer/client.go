@@ -3,10 +3,14 @@ package fmsteer
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 )
+
+// ErrSignedOut indicates an expired or revoked authenticated session.
+var ErrSignedOut = errors.New("not signed in (token expired or revoked); run fm-steer auth login")
 
 // PostJSON POSTs a JSON body and decodes a JSON response, returning an
 // error for any non-2xx status so a failed write is never mistaken for a
@@ -62,6 +66,7 @@ func requestJSON(method, url, token string, body any, out any) (int, []byte, err
 	if body != nil {
 		req.Header.Set("content-type", "application/json")
 	}
+	req.Header.Set("user-agent", UserAgent)
 	if token != "" {
 		req.Header.Set("authorization", "Bearer "+token)
 	}
@@ -70,6 +75,9 @@ func requestJSON(method, url, token string, body any, out any) (int, []byte, err
 		return 0, nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized && token != "" {
+		return resp.StatusCode, nil, ErrSignedOut
+	}
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return resp.StatusCode, nil, err
