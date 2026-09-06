@@ -1,32 +1,30 @@
 # Public-edge security — operator notes
 
-`firstmate.carverauto.dev` is on the public shared Envoy Gateway, so the portal
-is reachable from the internet rather than only from the LAN. This page is what
-an operator needs in order to run it there: what was added, what has to be set,
-and what to do when it fires.
+`firstmate.carverauto.dev` is on the LAN shared Envoy Gateway (`lan-edge`,
+VIP `192.168.6.87`). `discord-firstmate.carverauto.dev` stays on the public
+shared Gateway. This page is what an operator needs for that split: what was
+added, what has to be set, and what to do when it fires.
 
 The design follows serviceradar's `docs/PLATFORM_SECURITY_HARDENING.md` and the
 web-ng plugs it describes. Where the portal is smaller, it is smaller
 deliberately — the differences are called out below rather than left as
 surprises.
 
-## Why the hostname is public
+## Hostname split
 
-Discord's Developer Portal will not accept an application without a reachable
-Interactions endpoint, Terms of Service URL and Privacy Policy URL. The
-interactions endpoint has its own hostname
-(`discord-firstmate.carverauto.dev`, path-only `/interactions`, owned by the
-Discord lane). The two legal URLs have to be on the portal itself, because they
-describe the portal. A LAN-only hostname cannot serve either.
+Discord's Developer Portal needs a reachable Interactions endpoint. That
+hostname stays public. The portal UI, including `/terms` and `/privacy`, is
+LAN-only, so Discord cannot fetch those legal URLs until the portal is public
+again.
 
 | Hostname | Gateway section | Serves |
 | --- | --- | --- |
-| `firstmate.carverauto.dev` | `serviceradar-system/serviceradar-shared-gateway`, `https-carverauto` | the whole portal, including public `/terms` and `/privacy` |
-| `discord-firstmate.carverauto.dev` | same Gateway, `https-carverauto` | `/interactions` only |
+| `firstmate.carverauto.dev` | `lan-edge/lan-shared-gateway`, `https-carverauto` | the whole portal, VIP `192.168.6.87` |
+| `discord-firstmate.carverauto.dev` | `serviceradar-system/serviceradar-shared-gateway`, `https-carverauto` | `/interactions` only |
 
-Both are Cloudflare-proxied. MCP and NATS gain no hostname of their own: `/mcp`
-stays an authenticated path on the portal, and NATS stays inside the
-cluster.
+Only the Discord hostname is Cloudflare-proxied. MCP and NATS gain no hostname
+of their own: `/mcp` stays an authenticated path on the portal, and NATS stays
+inside the cluster.
 
 [`docs/diagrams/public-vs-discord-hostnames.html`](diagrams/public-vs-discord-hostnames.html)
 draws the split, including which plugs each hostname's traffic passes through.
@@ -79,8 +77,8 @@ address it actually saw.
 | Deployment | Setting |
 | --- | --- |
 | `mix phx.server`, Docker Compose | unset — nothing is in front |
-| Gateway only | `x-forwarded-for`, hops `0` |
-| Cloudflare → Gateway | `cf-connecting-ip` |
+| Gateway only (LAN portal) | `x-forwarded-for`, hops `0` |
+| Cloudflare → Gateway (Discord hostname) | `cf-connecting-ip` |
 | Cloudflare → Gateway, XFF instead | `x-forwarded-for`, hops `1` |
 
 Only name a single-value header such as `cf-connecting-ip` when that edge is

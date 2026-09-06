@@ -33,14 +33,13 @@ spec:
               value: "3"
             - name: GITHUB_ORG
               value: carverauto
-            # Cloudflare proxies this hostname and sets cf-connecting-ip to the
-            # real client. Reading x-forwarded-for instead would mean trusting a
-            # list a client can prepend entries to. Only correct because nothing
-            # reaches the Gateway except through Cloudflare.
+            # LAN Envoy terminates TLS and overwrites x-forwarded-for. Hop 0 is
+            # the address the Gateway saw. Do not use cf-connecting-ip here: the
+            # portal is not behind Cloudflare.
             - name: TRUST_FORWARDED_PROTO
               value: "true"
             - name: CLIENT_IP_HEADER
-              value: cf-connecting-ip
+              value: x-forwarded-for
             # Shown on the public /terms and /privacy pages that Discord's
             # Developer Portal links to. Point LEGAL_CONTACT_EMAIL at a mailbox
             # someone actually reads before submitting those URLs to Discord.

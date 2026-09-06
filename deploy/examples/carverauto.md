@@ -1,12 +1,13 @@
 # Example overlay: carverauto
 
-These values are an example of a public deployment. They are not compiled into
-the portal. Copy them into GitOps overlays, `.env`, or `docker-compose.override.yml`.
+These values are an example of a LAN portal plus a public Discord interactions
+hostname. They are not compiled into the portal. Copy them into GitOps overlays,
+`.env`, or `docker-compose.override.yml`.
 
 | Setting | Example |
 | --- | --- |
-| Portal hostname | `firstmate.carverauto.dev` (public, Cloudflare-proxied) |
-| LAN VIP (previous gateway) | `192.168.6.87` |
+| Portal hostname | `firstmate.carverauto.dev` (LAN, `lan-edge/lan-shared-gateway`, VIP `192.168.6.87`) |
+| LAN VIP | `192.168.6.87` |
 | OIDC issuer (Authentik) | `https://auth.carverauto.dev/application/o/firstmate/` |
 | Image | `ghcr.io/carverauto/firstmate-port` |
 | Discord interactions | `discord-firstmate.carverauto.dev` (`DISCORD_INTERACTIONS_HOST`) |
@@ -20,19 +21,18 @@ Gateways in this cluster:
 
 | Route | Gateway | Section | Hostname |
 | --- | --- | --- | --- |
-| Portal | `serviceradar-system/serviceradar-shared-gateway` | `https-carverauto` / `http-carverauto` | `firstmate.carverauto.dev`, whole app |
-| Discord interactions | same Gateway | `https-carverauto` | `discord-firstmate.carverauto.dev`, path-only `/interactions` |
+| Portal | `lan-edge/lan-shared-gateway` | `https-carverauto` / `http-carverauto` | `firstmate.carverauto.dev`, whole app, VIP `192.168.6.87` |
+| Discord interactions | `serviceradar-system/serviceradar-shared-gateway` | `https-carverauto` | `discord-firstmate.carverauto.dev`, path-only `/interactions` |
 
-The portal was LAN-only (`lan-edge/lan-shared-gateway`, VIP `192.168.6.87`) until
-Discord needed reachable Terms of Service and Privacy Policy URLs. Both hostnames
-now sit on the public Gateway, so the namespace needs one selector label,
-`serviceradar.com/gateway-access=true`; the LAN label went with the LAN route.
+The portal is LAN-only. Discord's Developer Portal cannot fetch `/terms` and
+`/privacy` on a LAN hostname; those URLs stay off Discord until the portal is
+public again. The namespace keeps both selector labels:
+`carverauto.com/lan-gateway-access=true` for the LAN Gateway, and
+`serviceradar.com/gateway-access=true` for the Discord route.
 
-Being public is why this overlay carries `portal-rate-limit-policy.yaml` and why
-the portal container sets `CLIENT_IP_HEADER=cf-connecting-ip`. See
-[docs/security.md](../../docs/security.md) — including the note that
-`LEGAL_CONTACT_EMAIL` has to point at a real mailbox before those URLs go into
-Discord's Developer Portal.
+The portal container sets `CLIENT_IP_HEADER=x-forwarded-for` (Envoy hop 0).
+Do not set `cf-connecting-ip` while the portal is off Cloudflare. See
+[docs/security.md](../../docs/security.md).
 
 MCP and NATS gain no hostname of their own: `/mcp` stays a path on the portal
 behind the agent token, and NATS stays inside the cluster.

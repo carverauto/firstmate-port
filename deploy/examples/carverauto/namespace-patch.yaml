@@ -1,10 +1,9 @@
-# The public shared Gateway selects namespaces by label. The LAN Gateway label
-# went away with the portal's move to the public hostname: nothing in this
-# namespace routes through lan-edge any more, and a selector label that grants
-# access no route uses is a door left open for no reason.
+# LAN routes need carverauto.com/lan-gateway-access. Discord interactions stay
+# on the public shared Gateway, which selects serviceradar.com/gateway-access.
 apiVersion: v1
 kind: Namespace
 metadata:
   name: firstmate
   labels:
+    carverauto.com/lan-gateway-access: "true"
     serviceradar.com/gateway-access: "true"
