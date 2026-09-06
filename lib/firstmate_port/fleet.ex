@@ -23,7 +23,7 @@ defmodule FirstmatePort.Fleet do
     extensions: [AshAi]
 
   tools do
-    tool :search_fleet, FirstmatePort.Fleet.Document, :search
+    tool :search_fleet, FirstmatePort.Fleet.Document, :search_fleet
   end
 
   resources do

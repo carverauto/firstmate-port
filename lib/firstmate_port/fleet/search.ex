@@ -76,6 +76,37 @@ defmodule FirstmatePort.Fleet.Search do
     end
   end
 
+  @doc "The JSON-ready search response shared by API and MCP callers."
+  def response(result) do
+    %{
+      query: result.query,
+      semantic: semantic(result.semantic),
+      data: Enum.map(result.results, &summarize/1)
+    }
+  end
+
+  defp summarize(%{document: document} = result) do
+    %{
+      id: document.id,
+      source: document.source,
+      source_id: document.source_id,
+      title: document.title,
+      url: document.url,
+      body: document.body,
+      document: document.document,
+      occurred_at: document.occurred_at,
+      score: result.score,
+      lexical_rank: result.lexical_rank,
+      semantic_rank: result.semantic_rank
+    }
+  end
+
+  # The model is named so an operator can see which one answered. The key it was
+  # used with is never in a response.
+  defp semantic({:ready, model}), do: %{state: "ready", model: model}
+  defp semantic({:error, reason}), do: %{state: "error", reason: inspect(reason)}
+  defp semantic(state) when is_atom(state), do: %{state: to_string(state)}
+
   defp lexical(query, candidates, ash_opts) do
     Document.search(query, %{limit: candidates}, ash_opts)
   end

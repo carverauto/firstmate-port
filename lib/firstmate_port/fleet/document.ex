@@ -101,6 +101,22 @@ defmodule FirstmatePort.Fleet.Document do
       filter expr(source == ^arg(:source) and source_id == ^arg(:source_id))
     end
 
+    action :search_fleet, :map do
+      description "Search the fleet log by words and optional embeddings, with ranking and semantic status."
+
+      argument :query, :string, allow_nil?: false
+      argument :limit, :integer, default: 25, constraints: [min: 1, max: 100]
+
+      run fn input, context ->
+        with {:ok, result} <-
+               FirstmatePort.Fleet.Search.run(input.arguments.query, context.actor,
+                 limit: input.arguments.limit
+               ) do
+          {:ok, FirstmatePort.Fleet.Search.response(result)}
+        end
+      end
+    end
+
     read :search do
       description """
       Full-text search over the fleet log, best match first.
@@ -182,6 +198,10 @@ defmodule FirstmatePort.Fleet.Document do
   end
 
   policies do
+    policy action(:search_fleet) do
+      authorize_if actor_present()
+    end
+
     policy action_type(:read) do
       authorize_if actor_present()
     end

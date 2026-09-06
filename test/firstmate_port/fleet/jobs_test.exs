@@ -1,5 +1,5 @@
 defmodule FirstmatePort.Fleet.JobsTest do
-  use FirstmatePort.DataCase, async: true
+  use FirstmatePort.DataCase, async: false
 
   import FirstmatePort.FleetFixtures
 
@@ -15,16 +15,16 @@ defmodule FirstmatePort.Fleet.JobsTest do
   test "the scheduled sync action projects the log", %{actor: actor} do
     progress_item(actor, %{title: "scheduled work"})
 
-    assert {:ok, _tick} = Ash.create(Tick, %{}, action: :fleet_sync, authorize?: false)
+    assert :ok = scheduled(:fleet_sync)
 
     assert {:ok, [%Document{title: "scheduled work"}]} = Document.list(Tenancy.opts(actor))
   end
 
   test "the scheduled embed action is a no-op when nothing is configured", %{actor: actor} do
     progress_item(actor, %{title: "unconfigured"})
-    {:ok, _} = Ash.create(Tick, %{}, action: :fleet_sync, authorize?: false)
+    :ok = scheduled(:fleet_sync)
 
-    assert {:ok, _tick} = Ash.create(Tick, %{}, action: :fleet_embed, authorize?: false)
+    assert :ok = scheduled(:fleet_embed)
 
     assert {:ok, [%Document{embedded_at: nil}]} = Document.list(Tenancy.opts(actor))
   end
@@ -34,8 +34,15 @@ defmodule FirstmatePort.Fleet.JobsTest do
     other = agent("other")
     progress_item(other, %{title: "other tenant work"})
 
-    assert {:ok, _tick} = Ash.create(Tick, %{}, action: :fleet_sync, authorize?: false)
+    assert :ok = scheduled(:fleet_sync)
 
     assert {:ok, [%Document{title: "other tenant work"}]} = Document.list(Tenancy.opts(other))
   end
+  defp scheduled(action) do
+    Tick
+    |> Ash.ActionInput.new()
+    |> Ash.ActionInput.for_action(action, %{}, authorize?: false)
+    |> Ash.run_action!()
+  end
+
 end

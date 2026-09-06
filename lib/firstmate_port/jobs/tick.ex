@@ -64,16 +64,22 @@ defmodule FirstmatePort.Jobs.Tick do
       end
     end
 
-    create :fleet_sync do
-      accept []
-      change set_attribute(:kind, :fleet_sync)
-      change FirstmatePort.Jobs.FleetSyncChange
+    action :fleet_sync, :atom do
+      run fn _input, _context ->
+        case FirstmatePort.Jobs.FleetIndex.sync() do
+          :ok -> {:ok, :ok}
+          {:error, reason} -> {:error, reason}
+        end
+      end
     end
 
-    create :fleet_embed do
-      accept []
-      change set_attribute(:kind, :fleet_embed)
-      change FirstmatePort.Jobs.FleetEmbedChange
+    action :fleet_embed, :atom do
+      run fn _input, _context ->
+        case FirstmatePort.Jobs.FleetIndex.embed() do
+          :ok -> {:ok, :ok}
+          {:error, reason} -> {:error, reason}
+        end
+      end
     end
   end
 
