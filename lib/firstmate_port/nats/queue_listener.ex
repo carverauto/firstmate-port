@@ -2,11 +2,16 @@ defmodule FirstmatePort.NATS.QueueListener do
   @moduledoc """
   Durable JetStream consumers for `<tenant>.steer.>` and `<tenant>.discord.inbound`.
   Broadcasts to tenant-scoped PubSub. Resubscribes when the Gnat pid dies.
+
+  Messages on `<tenant>.steer.queue` are queue facts and go to
+  `FirstmatePort.Queues`; the rest of the steer traffic still carries fleet log
+  assignment.
   """
 
   use GenServer
 
   alias FirstmatePort.NATS.JetstreamConsumer
+  alias FirstmatePort.Queues
 
   require Logger
 
@@ -75,7 +80,7 @@ defmodule FirstmatePort.NATS.QueueListener do
 
     tenant = subject_tenant(subject)
     Phoenix.PubSub.broadcast(@pubsub, topic(tenant), {:nats_event, event})
-    _ = maybe_assign(subject, body)
+    _ = route(tenant, subject, body)
     _ = ack(msg)
     recent = Enum.take([event | state.recent], 100)
     {:noreply, %{state | recent: recent}}
@@ -106,6 +111,26 @@ defmodule FirstmatePort.NATS.QueueListener do
     do: binary_part(body, 0, 500)
 
   defp truncate(body), do: body
+
+  # Queue facts feed the live look-in; every other steer message still carries
+  # assignment for the fleet log. Keeping them apart means a queue heartbeat can
+  # never rewrite a GithubItem row.
+  defp route(tenant, subject, body) do
+    if Queues.subject?(subject) do
+      absorb_queue(tenant, body)
+    else
+      maybe_assign(subject, body)
+    end
+  end
+
+  defp absorb_queue(tenant, body) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, map} when is_map(map) -> Queues.absorb(tenant, map)
+      _ -> :ok
+    end
+  end
+
+  defp absorb_queue(_tenant, _body), do: :ok
 
   defp maybe_assign(subject, body) when is_binary(subject) and is_binary(body) do
     if String.contains?(subject, ".steer.") do

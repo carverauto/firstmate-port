@@ -1,7 +1,7 @@
 defmodule FirstmatePort.Tenancy do
   @moduledoc """
   Attribute-based tenancy. Postgres is shared; NATS is one account.
-  Streams are named `<tenant>.steer` and `<tenant>.inbound`.
+  Streams are named `<tenant>_steer` and `<tenant>_inbound`.
   The Phoenix API is the tenant wall and the only JetStream client.
   """
 
@@ -23,8 +23,8 @@ defmodule FirstmatePort.Tenancy do
     Keyword.merge([actor: actor, tenant: slug(actor)], extra)
   end
 
-  def steer_stream(tenant), do: "#{slug(tenant)}.steer"
-  def inbound_stream(tenant), do: "#{slug(tenant)}.inbound"
+  def steer_stream(tenant), do: "#{slug(tenant)}_steer"
+  def inbound_stream(tenant), do: "#{slug(tenant)}_inbound"
   def steer_subjects(tenant), do: ["#{slug(tenant)}.steer.>"]
   def inbound_subjects(tenant), do: ["#{slug(tenant)}.discord.inbound"]
 

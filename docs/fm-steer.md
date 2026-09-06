@@ -179,6 +179,9 @@ to. Do not treat the portal inbox as a pager.
 - `fm-steer inbox list --task <id>` from any machine holding a token.
 - Open the portal's **Inbox** page (`/inbox`); see the
   [inbox guide](inbox.md#from-the-portal) for live traffic and history.
+- The portal's **Queues** page shows inbox fanout in its traffic section; each
+  `put` publishes to `<tenant>.steer.inbox`. Worker tracking requires separate
+  reports; see [Queues](queues.md) for reporting and stream ownership.
 
 Persistence and tenant routing are described in [the inbox guide](inbox.md).
 

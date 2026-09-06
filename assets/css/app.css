@@ -1622,6 +1622,51 @@ table.data-table .num {
 }
 
 .site-footer a {
+/* Queues look-in: a wide row of facts per worker, scrollable rather than
+   wrapped so a long task name never squeezes the token and timing columns. */
+.queue-scroll {
+  overflow-x: auto;
+}
+
+.queue-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 1px solid var(--line);
+}
+
+.queue-table th,
+.queue-table td {
+  text-align: left;
+  padding: 0.55rem 1rem 0.55rem 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.queue-table th {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: lowercase;
+}
+
+.queue-table .num {
+  text-align: right;
+  padding-right: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.queue-task {
+  font-weight: 500;
+}
+
+.queue-summary {
+  display: block;
+  /* Bounded so the task column never fills a phone on its own; the table
+     scrolls sideways, the summary does not stretch it. */
+  max-width: min(28rem, 60vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--muted);
   font-size: 0.8rem;
 }
@@ -1690,4 +1735,46 @@ table.data-table .num {
 .legal-lede {
   font-size: 1rem;
   color: var(--muted);
+}
+.queue-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.queue-status::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.queue-status[data-status="working"] {
+  color: var(--accent);
+}
+
+.queue-status[data-status="done"] {
+  color: var(--ink);
+}
+
+.queue-status[data-status="failed"],
+.queue-status[data-status="blocked"],
+.queue-status[data-status="needs_decision"] {
+  color: var(--danger);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .queue-status[data-status="working"]::before {
+    animation: queue-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes queue-pulse {
+  50% {
+    opacity: 0.35;
+  }
 }

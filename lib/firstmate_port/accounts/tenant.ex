@@ -1,5 +1,5 @@
 defmodule FirstmatePort.Accounts.Tenant do
-  @moduledoc "A tenant. Rows are attribute-scoped; JetStream streams are <slug>.steer and <slug>.inbound."
+  @moduledoc "A tenant. Rows are attribute-scoped; JetStream streams are <slug>_steer and <slug>_inbound."
 
   import Ash.Expr
 

@@ -49,7 +49,7 @@ stops its token on the next request, and the CLI holding it says so:
 not signed in (token expired or revoked); run fm-steer auth login
 ```
 
-Postgres and NATS JetStream (single node, one account) are in the compose file. Streams are named `<tenant>.steer` and `<tenant>.inbound`. The Kubernetes NATS shape is a 3-node cluster (headless service, port 6222, PVCs, durable streams).
+Postgres and NATS JetStream (single node, one account) are in the compose file. Streams are named `<tenant>_steer` and `<tenant>_inbound`. The Kubernetes NATS shape is a 3-node cluster (headless service, port 6222, PVCs, durable streams).
 
 To run Mix against compose Postgres/NATS only:
 

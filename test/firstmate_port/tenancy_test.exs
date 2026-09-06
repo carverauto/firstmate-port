@@ -24,9 +24,9 @@ defmodule FirstmatePort.TenancyTest do
              )
   end
 
-  test "streams are named <tenant>.steer and <tenant>.inbound" do
-    assert Tenancy.steer_stream("acme") == "acme.steer"
-    assert Tenancy.inbound_stream("acme") == "acme.inbound"
+  test "streams are named <tenant>_steer and <tenant>_inbound" do
+    assert Tenancy.steer_stream("acme") == "acme_steer"
+    assert Tenancy.inbound_stream("acme") == "acme_inbound"
     assert Tenancy.steer_subjects("acme") == ["acme.steer.>"]
     assert Tenancy.inbound_subjects("acme") == ["acme.discord.inbound"]
     refute "acme.>" in Tenancy.steer_subjects("acme")
