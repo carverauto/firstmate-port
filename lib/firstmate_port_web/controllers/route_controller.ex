@@ -6,8 +6,9 @@ defmodule FirstmatePortWeb.RouteController do
 
   The caller may override any classification axis (the rater-agent path:
   another agent ranks difficulty and the router still owns the lane pick).
-  Pass `"intel": true` to fold in live OpenRouter / Artificial Analysis
-  inputs; without it routing is fully offline on fleet matrix + evals.
+  Pass `"intel": true` to fold in live Artificial Analysis input, which
+  only annotates the reasons; without it routing is fully offline on fleet
+  matrix + evals. The matrix names the model either way.
   """
   use FirstmatePortWeb, :controller
 

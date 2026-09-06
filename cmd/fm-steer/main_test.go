@@ -109,8 +109,8 @@ func TestRoutePostsDescriptionToPortal(t *testing.T) {
 		gotDesc, _ = body["description"].(string)
 		gotIntel, _ = body["intel"].(bool)
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"tenant": "local", "harness": "codex", "model": "harness-default",
-			"model_source": "harness_default", "effort": "medium",
+			"tenant": "local", "harness": "codex", "model": "gpt-6-astra",
+			"model_display": "GPT-6-Astra", "model_source": "fleet_matrix", "effort": "medium",
 			"reasons":       []string{"kind=code matches codex lane"},
 			"intel_sources": []string{"fleet_matrix", "fleet_evals"},
 		})

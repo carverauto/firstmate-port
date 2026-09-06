@@ -27,18 +27,20 @@ defmodule FirstmatePort.Router.ProviderIntel do
   def sources(_), do: []
 
   @doc """
-  Name the model for the chosen harness lane.
+  Name the model for the chosen harness lane at `effort`.
 
-  Returns `{model, model_source, reasons}`. The harness always resolves its
-  own default; the matrix and the eval set own the lane, and no provider
-  catalog narrows the model. AA benchmarks only annotate the reason.
+  Returns `{model, model_source, reasons}`. The id comes from the fleet
+  matrix, which names a concrete model per lane and effort — never a
+  placeholder. AA benchmarks only annotate the reason; no provider catalog
+  narrows the pick.
   """
-  def select_model(harness, intel) do
+  def select_model(harness, effort, intel) do
     benchmarks = if is_map(intel), do: Map.get(intel, :benchmarks, []), else: []
+    model = FirstmatePort.Router.Matrix.model(harness, effort)
 
-    {"harness-default", "harness_default",
+    {model, "fleet_matrix",
      [
-       "model=harness-default: #{harness} resolves its own default model" <>
+       "model=#{model}: the #{harness} lane runs it at #{effort} effort" <>
          quality_note(harness, benchmarks)
      ]}
   end

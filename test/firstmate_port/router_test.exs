@@ -99,7 +99,7 @@ defmodule FirstmatePort.RouterTest do
     got = Router.route("implement a preview pane for the diagram html")
 
     assert got.harness == "codex"
-    assert got.model == "harness-default"
+    assert got.model == "gpt-6-astra"
     refute got.model_source == "fleet_hard_route"
   end
 
@@ -151,8 +151,9 @@ defmodule FirstmatePort.RouterTest do
 
     assert got.harness == "codex"
     assert got.effort == "medium"
-    assert got.model == "harness-default"
-    assert got.model_source == "harness_default"
+    assert got.model == "gpt-6-astra"
+    assert got.model_display == "GPT-6-Astra"
+    assert got.model_source == "fleet_matrix"
     assert got.checkpoint == nil
     assert got.intel_sources == ["fleet_matrix", "fleet_evals"]
     assert length(got.reasons) > 0
@@ -211,10 +212,40 @@ defmodule FirstmatePort.RouterTest do
     plain = Router.route("fix the failing test")
 
     assert got.harness == plain.harness
-    assert got.model == "harness-default"
-    assert got.model_source == "harness_default"
+    assert got.model == "gpt-6-astra"
+    assert got.model_source == "fleet_matrix"
     assert "artificial-analysis" in got.intel_sources
     assert Enum.any?(got.reasons, &String.contains?(&1, "Artificial Analysis"))
+  end
+
+  test "every lane names a real model, scaled by effort" do
+    assert Router.route("what does the fm-steer status command print?").model == "grok-4-fast"
+    assert Router.route("write user docs for the inbox list command").model == "qwen3-coder"
+    assert Router.route("fix the failing test in the ingest controller").model == "gpt-6-astra"
+    assert Router.route("deploy the portal to production").model == "claude-opus-5"
+
+    claude_medium = Router.route("write user docs for inbox list", axes: %{ambiguity: :medium})
+    assert claude_medium.model == "claude-sonnet-5"
+
+    for description <- ["fix the failing test", "deploy the portal to production", "hi there"] do
+      got = Router.route(description)
+      refute got.model == "harness-default"
+      assert got.model_display != got.model or got.model == got.model_display
+    end
+  end
+
+  test "an eval case that names no model cannot pass" do
+    assert ["nameless: expected codex/medium/-" <> _] =
+             Router.check_evals(
+               cases: [
+                 %{
+                   name: "nameless",
+                   description: "fix the failing test in the ingest controller",
+                   expect_harness: "codex",
+                   expect_effort: "medium"
+                 }
+               ]
+             )
   end
 
   test "bundled eval set stays green" do

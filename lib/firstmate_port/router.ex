@@ -13,7 +13,8 @@ defmodule FirstmatePort.Router do
 
   1. `Matrix` lanes (fleet capability) filter on hard constraints.
   2. Cheapest surviving lane wins; ties break on latency, then quality.
-  3. Provider intel (`ProviderIntel`, Artificial Analysis) only annotates
+  3. The lane names its model for the chosen effort — always a real id.
+     Provider intel (`ProviderIntel`, Artificial Analysis) only annotates
      the reasons; it never changes the lane or the model.
   4. `Evals` pins known tasks to lanes so regressions fail tests.
   """
@@ -98,11 +99,12 @@ defmodule FirstmatePort.Router do
     answer(
       pinned.harness,
       pinned.model,
-      pinned.model_display,
+      Matrix.model_display(pinned.model),
       "fleet_hard_route",
       effort,
       [
-        "kind=#{axes.kind} is hard-routed to #{pinned.harness} with #{pinned.model_display}: " <>
+        "kind=#{axes.kind} is hard-routed to #{pinned.harness} with " <>
+          "#{Matrix.model_display(pinned.model)}: " <>
           "code review never goes to a chat or docs lane"
       ],
       axes,
@@ -115,12 +117,12 @@ defmodule FirstmatePort.Router do
     lanes = Matrix.lanes()
     {lane, reasons} = pick_lane(lanes, axes)
     effort = effort_for(lane, axes)
-    {model, model_source, model_reasons} = ProviderIntel.select_model(lane.harness, intel)
+    {model, model_source, model_reasons} = ProviderIntel.select_model(lane.harness, effort, intel)
 
     answer(
       lane.harness,
       model,
-      display_for(lane.harness, model),
+      Matrix.model_display(model),
       model_source,
       effort,
       reasons ++ model_reasons,
@@ -129,9 +131,6 @@ defmodule FirstmatePort.Router do
       checkpoint_for(axes)
     )
   end
-
-  defp display_for(_harness, "harness-default"), do: "harness default"
-  defp display_for(_harness, model), do: model
 
   @doc "Effort levels, cheapest first."
   def efforts, do: @efforts
@@ -225,7 +224,7 @@ defmodule FirstmatePort.Router do
   defp checkpoint_for(_), do: nil
 
   defp model_ok?(%{expect_model: want}, %{model: got}), do: want == got
-  defp model_ok?(_case, _got), do: true
+  defp model_ok?(_case, _got), do: false
 
   defp checkpoint_reasons(nil), do: []
 
@@ -522,12 +521,16 @@ defmodule FirstmatePort.Router do
 
   @doc """
   Run the bundled eval set through `route/2` and report mismatches.
-  Used by tests and by operators extending the set in `Evals`.
+  Used by tests and by operators extending the set in `Evals`. Pass
+  `:cases` to check a set other than the bundled one; every remaining
+  option goes to `route/2`.
   """
   def check_evals(opts \\ []) do
-    Evals.cases()
+    {cases, route_opts} = Keyword.pop(opts, :cases, Evals.cases())
+
+    cases
     |> Enum.map(fn c ->
-      got = route(c.description, opts)
+      got = route(c.description, route_opts)
       {c, got}
     end)
     |> Enum.reject(fn {c, got} ->
