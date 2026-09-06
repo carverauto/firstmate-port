@@ -9,9 +9,9 @@ import (
 	"os"
 )
 
-// DefaultInstance is the live portal. Local compose needs an explicit
-// --instance http://localhost:4000 (or FIRSTMATE_INSTANCE).
-const DefaultInstance = "https://firstmate.carverauto.dev"
+// DefaultInstance is the local API; set --instance or FIRSTMATE_INSTANCE
+// to use a deployed portal.
+const DefaultInstance = "http://localhost:4000"
 
 // DefaultTask is the task a bare `inbox put` files under: a message for
 // firstmate, not a crew item.
@@ -28,13 +28,22 @@ func Run(args []string) int {
 		return CmdAuth(args[1:])
 	case "inbox":
 		return CmdInbox(args[1:])
+	case "rolls":
+		cmdRolls(args[1:])
+	case "diagrams":
+		cmdDiagrams(args[1:])
+	case "no-mistakes":
+		cmdNoMistakes(args[1:])
 	default:
 		return Usage()
 	}
+	return 0
 }
 
 // Usage prints the CLI synopsis and returns the conventional exit code 2.
 func Usage() int {
 	fmt.Fprintf(os.Stderr, "usage: fm-steer auth login|status|logout | inbox put|next|ack|list\n")
+	fmt.Fprintf(os.Stderr, "       fm-steer rolls|diagrams|no-mistakes post\n")
+	fmt.Fprintf(os.Stderr, "ingest writes require an agent role: set %s to an agent API token.\n", AgentTokenEnv)
 	return 2
 }

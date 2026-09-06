@@ -1,30 +1,40 @@
 defmodule FirstmatePort.Jobs.GitHubPoll do
   @moduledoc """
-  Copies GitHub PR and closed-issue html_url values as given by the API.
+  Copies open GitHub PR and issue html_url values as given by the API.
   """
 
   require Logger
 
   @spec run(term()) :: :ok
   def run(actor) do
-    token = System.get_env("GITHUB_TOKEN")
-    org = System.get_env("GITHUB_ORG")
+    token = trim_credential(System.get_env("GITHUB_TOKEN"))
+    org = String.trim(System.get_env("GITHUB_ORG") || "")
 
     cond do
       is_nil(token) or token == "" ->
         Logger.info("GitHub poll skipped: GITHUB_TOKEN unset")
         :ok
 
-      is_nil(org) or org == "" ->
+      org == "" ->
         Logger.info("GitHub poll skipped: GITHUB_ORG unset")
         :ok
 
       true ->
         poll_search(org, token, actor, :pr, "is:pr+is:open")
         poll_search(org, token, actor, :issue, "is:issue+is:open")
+
         :ok
     end
   end
+
+  @doc """
+  Trims a credential env value. Secret stores routinely append a trailing
+  newline, which makes the value invalid as an HTTP header character-for-character.
+  """
+  @spec trim_credential(String.t() | nil) :: String.t() | nil
+  def trim_credential(nil), do: nil
+  def trim_credential(""), do: ""
+  def trim_credential(value) when is_binary(value), do: String.trim(value)
 
   defp poll_search(org, token, actor, kind, extra) do
     url = "https://api.github.com/search/issues?q=org:#{org}+#{extra}&per_page=50"

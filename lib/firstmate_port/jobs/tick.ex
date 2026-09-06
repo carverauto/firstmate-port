@@ -34,16 +34,22 @@ defmodule FirstmatePort.Jobs.Tick do
   actions do
     defaults [:read]
 
-    create :github_poll do
-      accept []
-      change set_attribute(:kind, :github_poll)
-      change FirstmatePort.Jobs.GitHubPollChange
+    # AshOban scheduled workers run their target through Ash.ActionInput,
+    # which only resolves generic actions. Pointing a schedule at a
+    # create/update/destroy action discards every tick with NoSuchAction,
+    # so these stay generic and call the job modules directly.
+    action :github_poll, :atom do
+      run fn _input, context ->
+        :ok = FirstmatePort.Jobs.GitHubPoll.run(context.actor)
+        {:ok, :ok}
+      end
     end
 
-    create :retention do
-      accept []
-      change set_attribute(:kind, :retention)
-      change FirstmatePort.Jobs.RetentionChange
+    action :retention, :atom do
+      run fn _input, _ ->
+        :ok = FirstmatePort.Jobs.Retention.run()
+        {:ok, :ok}
+      end
     end
   end
 

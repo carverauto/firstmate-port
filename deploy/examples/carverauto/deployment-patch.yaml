@@ -24,3 +24,5 @@ spec:
               value: https://firstmate.carverauto.dev
             - name: NATS_REPLICAS
               value: "3"
+            - name: GITHUB_ORG
+              value: carverauto

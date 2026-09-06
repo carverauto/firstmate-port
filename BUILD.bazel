@@ -1,6 +1,8 @@
+load("@aspect_bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_cross_binary", "go_library", "go_test")
 load("@rules_elixir//:mix_app.bzl", "mix_app")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_push")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load(
     "//build:elixir_release.bzl",
@@ -8,8 +10,6 @@ load(
     "SHIPPED_ERTS_ROOT_MARKER",
     "elixir_release",
 )
-load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
-load("@aspect_bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("//build:phoenix_digest.bzl", "phoenix_digest")
 
 package(default_visibility = ["//visibility:public"])
@@ -185,7 +185,6 @@ genrule(
         ":heroicons_opt",
     ],
     outs = ["static_build/assets/css/app.css"],
-    tools = [":tailwind_bin"],
     # The heroicons shim resolves `../../deps/heroicons` from its own path
     # (assets/vendor/), so recreate the Mix deps/ layout beside the sources.
     cmd = """
@@ -196,6 +195,7 @@ genrule(
         ln -s "$$ROOT/$(location :heroicons_opt)" "$$ROOT/deps/heroicons"
         "$(location :tailwind_bin)" --input=assets/css/app.css --output=$(OUTS) --minify
     """,
+    tools = [":tailwind_bin"],
 )
 
 # One directory per Hex package so esbuild sees the same deps/ layout Mix
@@ -228,7 +228,6 @@ genrule(
         "//build:phoenix-colocated-index.js",
     ],
     outs = ["static_build/assets/js/app.js"],
-    tools = [":esbuild_bin"],
     cmd = """
         set -euo pipefail
         ROOT=$$PWD
@@ -244,6 +243,7 @@ genrule(
         cd assets
         NODE_PATH="$$W/deps:$$W/bp" "$$ESBUILD" js/app.js --bundle --target=es2022 --outfile="$$OUT" --external:'/fonts/*' --external:'/images/*' --alias:@=. --minify
     """,
+    tools = [":esbuild_bin"],
 )
 
 # The undigested static tree: generated bundles plus the committed files.
@@ -277,6 +277,7 @@ go_library(
         "internal/fmsteer/client.go",
         "internal/fmsteer/creds.go",
         "internal/fmsteer/inbox.go",
+        "internal/fmsteer/ingest.go",
     ],
     importpath = "github.com/mfreeman451/firstmate-port/internal/fmsteer",
 )
@@ -284,8 +285,8 @@ go_library(
 go_library(
     name = "fm-steer_lib",
     srcs = ["cmd/fm-steer/main.go"],
-    deps = [":fmsteer_lib"],
     importpath = "github.com/mfreeman451/firstmate-port/cmd/fm-steer",
+    deps = [":fmsteer_lib"],
 )
 
 go_binary(
