@@ -10,7 +10,7 @@ the portal. Copy them into GitOps overlays, `.env`, or `docker-compose.override.
 | OIDC issuer (Authentik) | `https://auth.carverauto.dev/application/o/firstmate/` |
 | Image | `ghcr.io/carverauto/firstmate-port` |
 | Discord interactions | `discord-firstmate.carverauto.dev` |
-| Local sign-in | `LOCAL_AUTH=true`, with `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` from the `firstmate-admin` secret's `email` and `password` keys; email is `captain@localhost` |
+| Local sign-in | `LOCAL_AUTH=true`; provision credentials with the command below (see [Sign-in](../../docs/deploy.md#sign-in)) |
 | BuildBuddy | `carverauto.buildbuddy.io` |
 
 ghcr.io is the registry for this product; Harbor is not used. The namespace pulls
@@ -36,10 +36,10 @@ from the repository root:
 bash deploy/examples/carverauto/bootstrap-secrets.sh
 ```
 
-This sets a missing `firstmate-admin.email` to `captain@localhost` and preserves
-the existing password without printing it. An existing email is left unchanged.
-Only the configured bootstrap email and password sign in; arbitrary `@localhost`
-or `@example.com` addresses are not admitted.
+The wrapper sets `ADMIN_EMAIL=captain@localhost`. See
+[Sign-in](../../docs/deploy.md#sign-in) for secret creation, password-preserving
+email backfill, and account authentication. The command does not print secret
+values.
 
 Authentik is this site's identity provider, not the portal's. The portal speaks
 generic OpenID Connect and reads its endpoints from the issuer's discovery
