@@ -120,7 +120,7 @@ waiting, run `fm-steer inbox next --task <task-id>`. Exit 1 with no output means
 nothing is pending; that is the normal empty case.
 When it prints an item, act on its `body`, then acknowledge it with
 `fm-steer inbox ack --ack <the item's ack>`. The ack IS the acknowledgement:
-without it firstmate rings again and eventually treats you as stuck.
+without it the portal item remains unacked.
 Never ack an item you have not acted on. `fm-steer inbox ack` prints `acked` even
 when the portal rejected the token, so confirm with
 `fm-steer inbox list --task <task-id>` that the item is gone.
@@ -145,8 +145,8 @@ fm-steer inbox list --task <task-id>   # everything pending or delivered-but-una
 ```
 
 `next` marks an item delivered-but-unacked. It stays in `list` until acked, but `next`
-will not hand it out twice - so record the `ack` token when you take one, or you
-cannot close it.
+will not hand it out twice. Retain the item and its `ack` token; if needed, recover
+them from `list` before acknowledging confirmed work.
 
 Always pass `--task` on `next`. Without it the portal hands back the oldest item
 across every key, and taking an item is what removes it from the queue: a steer meant
@@ -233,7 +233,7 @@ outright, so installing twice is the same as installing once:
   re-run replaces what is between the markers in place. It never appends a second
   block, and it never touches a line outside them.
 - `data/portal-steering/` is owned by the installer, and its files are overwritten by
-  name. Install deletes nothing at all; uninstall deletes only the files it wrote and
+  name. Uninstall deletes only the files it wrote and
   leaves anything you added there in place.
 - Nothing is written inside firstmate's git checkout outside gitignored `data/`.
   This matters: firstmate's fast-forward self-update skips a home whose checkout is
@@ -274,7 +274,7 @@ Then, by hand:
 - Optionally `fm-steer auth logout` and remove `~/.config/fm-steer/credentials.json`.
   Leaving the login in place is harmless; nothing reads it unless asked.
 
-Nothing has to be put back for stock operation to resume. `bin/fm-send.sh`,
+After completing those steps, resume stock delivery. `bin/fm-send.sh`,
 `bin/fm-inbox.sh`, `state/<id>.inbox/`, and the `handled/` move were never modified,
 disabled, or moved - they simply stopped being used while the block was present.
 Portal items still sitting unacked stay on the portal; `fm-steer inbox list` shows

@@ -18,15 +18,15 @@
 # second mate.
 #
 # REMOVAL SAFETY. This script contains no recursive delete and no wildcard
-# delete. Install removes nothing at all. Uninstall deletes only:
+# delete. Install removes only its rendered temporary block. Uninstall deletes only:
 #   - named files, one at a time, through remove_owned_file, which refuses an
 #     empty directory, an empty filename, a filename carrying / or .., a
-#     non-absolute directory, and anything that is not a regular file; and
-#   - the directory itself with rmdir, which fails loudly rather than erasing a
-#     directory that still holds something this installer did not write.
-# Both are gated by assert_owned_skill_dir: non-empty, absolute, a real
+#     symlink, and anything that is not a regular file; and
+#   - the skill directory with rmdir, preserving unmanaged files with a notice.
+# Skill removal is gated by assert_owned_skill_dir: non-empty, absolute, a real
 # directory rather than a symlink, named exactly portal-steering, and holding a
-# SKILL.md this installer wrote.
+# SKILL.md identifying this skill. An already-uninstalled directory holding only
+# unmanaged files is left untouched. Captain-block removal uses its marker guards.
 #
 # Nothing is written inside the firstmate checkout outside gitignored data/.
 # Firstmate's fast-forward self-update skips a home whose checkout is dirty, so

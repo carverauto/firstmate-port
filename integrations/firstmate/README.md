@@ -14,7 +14,7 @@ laptop, or from anything else holding a token.
 
 Nothing else about firstmate changes. Spawning, supervision, status files,
 worktrees, briefs, and merges are untouched. This is a transport swap, and it is
-reversible in one command.
+reversible using the uninstall procedure below.
 
 It augments stock firstmate; it does not replace or fork it. No patched
 `fm-send`, no forked firstmate, no NATS credentials on the fleet host. The
@@ -203,7 +203,7 @@ Then, by hand:
 - Tell any running crewmate, once, that the on-disk inbox is live again.
 - Optionally `fm-steer auth logout`.
 
-**Nothing has to be put back for stock operation to resume.** `bin/fm-send.sh`,
+**Complete the manual steps above before resuming stock delivery to running workers.** `bin/fm-send.sh`,
 `bin/fm-inbox.sh`, `state/<id>.inbox/`, and the `handled/` move were never
 modified, disabled, or moved - they simply went unused while the block was
 present. Portal items still sitting unacked stay on the portal;
@@ -216,4 +216,4 @@ integrations/firstmate/install_test.sh
 ```
 
 Runs in a temporary directory against throwaway homes and touches no real
-firstmate home. CI runs it on every push.
+firstmate home. See the [CI workflow](../../.github/workflows/ci.yml) for automated runs.

@@ -105,12 +105,9 @@ Install the [portal-steering package](../integrations/firstmate/README.md#instal
 for the standing prompt, worker brief instructions, optional liaison, idempotent
 enable, and uninstall back to stock operation.
 
-If you imported this page's old `## Portal mirror (fm-steer)` prompt, remove that
-whole section from `$FM_HOME/data/captain.md`, including its nested example. Also
-remove the optional companion block beginning "When I ask you to check the
-portal" through its last ack confirmation bullet. Preserve unrelated preferences,
-then install the new package. The old unmarked blocks are not removed by the
-installer and must not coexist with the new delivery instructions.
+If you imported this page's old mirror prompt, follow the package's
+[migration instructions](../integrations/firstmate/README.md#migrate-from-the-old-mirror-prompt)
+before installing.
 
 Nothing polls on its own: firstmate checks when a session runs and you ask it.
 Do not treat the portal inbox as a pager.

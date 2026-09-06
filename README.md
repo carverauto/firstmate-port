@@ -23,7 +23,7 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`,
 
 ## Docs
 
-- [docs/fm-steer.md](docs/fm-steer.md) `fm-steer` for stock firstmate captains: login, commands, and the standing prompt that makes firstmate mirror steers to the portal (no fork required)
+- [docs/fm-steer.md](docs/fm-steer.md) `fm-steer` for stock firstmate captains: login, commands, and the portal-steering integration (no fork required)
 - [docs/credentials.md](docs/credentials.md) how a tenant stores Discord and other secrets
 - [docs/fleet-search.md](docs/fleet-search.md) searching the fleet log, and the optional embeddings
 - [docs/deploy.md](docs/deploy.md) image publishing, compose, Kubernetes
@@ -107,8 +107,8 @@ package that points a stock [firstmate](https://github.com/kunchenguid/firstmate
 fleet at a portal: a standing captain prompt plus an installable skill that move
 first mate ↔ crew messages off `state/<id>.inbox/` files and onto `fm-steer`, so
 steers and completion notices are visible on the portal instead of only on the
-fleet host. Installing is idempotent, and one command puts the fleet back on
-stock on-disk steering.
+fleet host. Installing is idempotent; the package documents uninstall and the manual
+steps for returning running workers to stock on-disk steering.
 
 ```sh
 integrations/firstmate/install.sh install --fm-home "$FM_HOME" --instance https://portal.example.com
