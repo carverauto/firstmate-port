@@ -422,3 +422,20 @@ func TestQueuePostOmitsCountersNeverGiven(t *testing.T) {
 		}
 	}
 }
+
+func TestGetJSONRejectsMalformedErrorResponse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte("<html>Bad Gateway</html>"))
+	}))
+	defer srv.Close()
+
+	var out map[string]any
+	if err := GetJSON(srv.URL, "", &out); err == nil {
+		t.Fatal("GetJSON accepted a malformed error response")
+	}
+	status, err := GetJSONStatus(srv.URL, "", &out)
+	if status != http.StatusBadGateway || err == nil {
+		t.Fatalf("GetJSONStatus returned status %d, error %v", status, err)
+	}
+}

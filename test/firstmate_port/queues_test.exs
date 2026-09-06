@@ -111,6 +111,85 @@ defmodule FirstmatePort.QueuesTest do
     end
   end
 
+  test "stale snapshots cannot replace newer state", ctx do
+    {:ok, working} =
+      Tracker.track(ctx.name, ctx.tenant, %{
+        "task" => "t1",
+        "status" => "working",
+        "worker" => "old",
+        "updated_at" => "2026-09-05T10:00:00Z"
+      })
+
+    {:ok, done} =
+      Tracker.track(ctx.name, ctx.tenant, %{
+        "task" => "t1",
+        "status" => "done",
+        "worker" => "new",
+        "tokens_in" => 100,
+        "updated_at" => "2026-09-05T10:01:00Z"
+      })
+
+    Phoenix.PubSub.subscribe(FirstmatePort.PubSub, Tracker.topic(ctx.tenant))
+    assert {:ok, ^done} = Tracker.track(ctx.name, ctx.tenant, Entry.to_map(working))
+    assert [^done] = Tracker.list(ctx.name, ctx.tenant)
+    refute_receive {:queue_entry, _}, 50
+  end
+
+  test "wrong field types return errors without losing tenant entries", ctx do
+    {:ok, prior} = Tracker.track(ctx.name, ctx.tenant, %{"task" => "saved"})
+    other = ctx.tenant <> "-other"
+    {:ok, theirs} = Tracker.track(ctx.name, other, %{"task" => "saved"})
+
+    for field <-
+          ~w(task worker agent_id model effort summary status tokens_in tokens_out started_at stopped_at updated_at),
+        value <- [false, [], %{}, 1.5] do
+      params = Map.put(%{"task" => "bad"}, field, value)
+      assert {:error, _} = Entry.new(ctx.tenant, params)
+      assert {:error, _} = Tracker.track(ctx.name, ctx.tenant, params)
+    end
+
+    assert {:error, :invalid_status} =
+             Tracker.track(ctx.name, ctx.tenant, %{"task" => "bad", "status" => 1})
+
+    assert [^prior] = Tracker.list(ctx.name, ctx.tenant)
+    assert [^theirs] = Tracker.list(ctx.name, other)
+  end
+
+  test "only canonical field names populate entries", ctx do
+    for alias <- ~w(task_id id) do
+      assert {:error, :missing_task} = Entry.new(ctx.tenant, %{alias => "t1"})
+    end
+
+    assert {:ok, entry} =
+             Entry.new(ctx.tenant, %{
+               "task" => "t1",
+               "input_tokens" => 10,
+               "output_tokens" => 20,
+               "agent" => "alias-agent",
+               "at" => "2026-09-05T10:00:00Z"
+             })
+
+    assert entry.tokens_in == nil
+    assert entry.tokens_out == nil
+    assert entry.agent_id == nil
+    assert entry.updated_at == nil
+  end
+
+  test "a capped terminal entry cannot reappear through PubSub", ctx do
+    for i <- 1..200 do
+      assert {:ok, _} = Tracker.track(ctx.name, ctx.tenant, %{"task" => "active-#{i}"})
+    end
+
+    Phoenix.PubSub.subscribe(FirstmatePort.PubSub, Tracker.topic(ctx.tenant))
+
+    assert {:ok, _} =
+             Tracker.track(ctx.name, ctx.tenant, %{"task" => "discarded", "status" => "done"})
+
+    assert_receive {:queue_removed, "discarded"}
+    refute_receive {:queue_entry, %Entry{task: "discarded"}}, 50
+    refute Enum.any?(Tracker.list(ctx.name, ctx.tenant), &(&1.task == "discarded"))
+  end
+
   describe "tenancy" do
     test "one tenant never sees another tenant's workers", ctx do
       other = ctx.tenant <> "-other"

@@ -54,22 +54,27 @@ defmodule FirstmatePort.Queues.Entry do
   def new(tenant_slug, params) when is_map(params) do
     params = stringify(params)
 
-    with {:ok, task} <- required(params, ["task", "task_id", "id"], :missing_task),
-         {:ok, status} <- status(get(params, ["status"])),
-         {:ok, tokens_in} <- tokens(get(params, ["tokens_in", "input_tokens"])),
-         {:ok, tokens_out} <- tokens(get(params, ["tokens_out", "output_tokens"])),
-         {:ok, started_at} <- timestamp(get(params, ["started_at"])),
-         {:ok, stopped_at} <- timestamp(get(params, ["stopped_at"])),
-         {:ok, updated_at} <- timestamp(get(params, ["updated_at", "at"])) do
+    with {:ok, task} <- required(params, "task", :missing_task),
+         {:ok, worker} <- text(params["worker"]),
+         {:ok, agent_id} <- text(params["agent_id"]),
+         {:ok, model} <- text(params["model"]),
+         {:ok, effort} <- text(params["effort"]),
+         {:ok, summary} <- text(params["summary"]),
+         {:ok, status} <- status(params["status"]),
+         {:ok, tokens_in} <- tokens(params["tokens_in"]),
+         {:ok, tokens_out} <- tokens(params["tokens_out"]),
+         {:ok, started_at} <- timestamp(params["started_at"]),
+         {:ok, stopped_at} <- timestamp(params["stopped_at"]),
+         {:ok, updated_at} <- timestamp(params["updated_at"]) do
       {:ok,
        %__MODULE__{
          task: task,
          tenant_slug: FirstmatePort.Tenancy.slug(tenant_slug),
-         worker: get(params, ["worker"]),
-         agent_id: get(params, ["agent_id", "agent"]),
-         model: get(params, ["model"]),
-         effort: get(params, ["effort"]),
-         summary: get(params, ["summary"]),
+         worker: worker,
+         agent_id: agent_id,
+         model: model,
+         effort: effort,
+         summary: summary,
          status: status,
          tokens_in: tokens_in,
          tokens_out: tokens_out,
@@ -79,6 +84,8 @@ defmodule FirstmatePort.Queues.Entry do
        }}
     end
   end
+
+  def new(_tenant_slug, _params), do: {:error, :invalid_report}
 
   @doc """
   Folds a report onto the tracked entry. Passing `nil` seeds a new one, which is
@@ -99,20 +106,26 @@ defmodule FirstmatePort.Queues.Entry do
   end
 
   def merge(%__MODULE__{} = prior, %__MODULE__{} = update) do
-    settle(%__MODULE__{
+    at = update.updated_at || DateTime.utc_now()
+
+    if DateTime.compare(at, prior.updated_at) == :lt do
       prior
-      | worker: update.worker || prior.worker,
-        agent_id: update.agent_id || prior.agent_id,
-        model: update.model || prior.model,
-        effort: update.effort || prior.effort,
-        summary: update.summary || prior.summary,
-        status: update.status || prior.status,
-        tokens_in: high_water(prior.tokens_in, update.tokens_in),
-        tokens_out: high_water(prior.tokens_out, update.tokens_out),
-        started_at: update.started_at || prior.started_at,
-        stopped_at: update.stopped_at || prior.stopped_at,
-        updated_at: latest(prior.updated_at, update.updated_at || DateTime.utc_now())
-    })
+    else
+      settle(%__MODULE__{
+        prior
+        | worker: update.worker || prior.worker,
+          agent_id: update.agent_id || prior.agent_id,
+          model: update.model || prior.model,
+          effort: update.effort || prior.effort,
+          summary: update.summary || prior.summary,
+          status: update.status || prior.status,
+          tokens_in: high_water(prior.tokens_in, update.tokens_in),
+          tokens_out: high_water(prior.tokens_out, update.tokens_out),
+          started_at: update.started_at || prior.started_at,
+          stopped_at: update.stopped_at || prior.stopped_at,
+          updated_at: at
+      })
+    end
   end
 
   @doc "Input plus output tokens, the number the look-in shows per row."
@@ -173,25 +186,12 @@ defmodule FirstmatePort.Queues.Entry do
   defp high_water(nil, update), do: update
   defp high_water(prior, update), do: max(prior, update)
 
-  defp latest(nil, other), do: other
-  defp latest(other, nil), do: other
-
-  defp latest(a, b), do: if(DateTime.compare(a, b) == :gt, do: a, else: b)
-
-  defp required(params, keys, error) do
-    case get(params, keys) do
-      nil -> {:error, error}
-      value -> {:ok, value}
+  defp required(params, key, error) do
+    with {:ok, value} <- text(Map.get(params, key)) do
+      if is_nil(value), do: {:error, error}, else: {:ok, value}
     end
   end
 
-  defp get(params, keys) do
-    Enum.find_value(keys, fn key -> params |> Map.get(key) |> clean() end)
-  end
-
-  # Reports arrive as JSON from the API and as keyword-ish maps from tests, and
-  # `String.to_existing_atom/1` on an alias we never allocated would raise, so
-  # the atom keys are folded to strings before anything reads them.
   defp stringify(params) do
     Map.new(params, fn
       {key, value} when is_atom(key) -> {Atom.to_string(key), value}
@@ -199,22 +199,21 @@ defmodule FirstmatePort.Queues.Entry do
     end)
   end
 
-  defp clean(value) when is_binary(value) do
+  defp text(nil), do: {:ok, nil}
+
+  defp text(value) when is_binary(value) do
     case String.trim(value) do
-      "" -> nil
-      trimmed -> trimmed
+      "" -> {:ok, nil}
+      trimmed -> {:ok, trimmed}
     end
   end
 
-  defp clean(value) when is_atom(value) and not is_nil(value), do: Atom.to_string(value)
-  defp clean(value) when is_integer(value), do: value
-  defp clean(%DateTime{} = value), do: value
-  defp clean(_), do: nil
+  defp text(_), do: {:error, :invalid_text}
 
   defp status(nil), do: {:ok, nil}
 
   defp status(value) when is_binary(value) do
-    normalized = value |> String.downcase() |> String.replace("-", "_")
+    normalized = value |> String.trim() |> String.downcase() |> String.replace("-", "_")
 
     case Enum.find(@statuses, &(Atom.to_string(&1) == normalized)) do
       nil -> {:error, :invalid_status}
@@ -222,17 +221,10 @@ defmodule FirstmatePort.Queues.Entry do
     end
   end
 
+  defp status(_), do: {:error, :invalid_status}
+
   defp tokens(nil), do: {:ok, nil}
   defp tokens(value) when is_integer(value) and value >= 0, do: {:ok, value}
-  defp tokens(value) when is_integer(value), do: {:error, :invalid_tokens}
-
-  defp tokens(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {count, ""} when count >= 0 -> {:ok, count}
-      _ -> {:error, :invalid_tokens}
-    end
-  end
-
   defp tokens(_), do: {:error, :invalid_tokens}
 
   defp timestamp(nil), do: {:ok, nil}

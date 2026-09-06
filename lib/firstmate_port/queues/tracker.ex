@@ -61,7 +61,7 @@ defmodule FirstmatePort.Queues.Tracker do
         merged = Entry.merge(prior, update)
         entries = state.entries |> Map.put(key, merged) |> cap(tenant)
 
-        if merged != prior do
+        if merged != prior and Map.has_key?(entries, key) do
           Phoenix.PubSub.broadcast(@pubsub, topic(tenant), {:queue_entry, merged})
         end
 
