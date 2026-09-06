@@ -30,8 +30,10 @@ cp .env.example .env   # SECRET_KEY_BASE=$(mix phx.gen.secret)
 docker compose up --build
 ```
 
-http://localhost:4000/login. With `DEV_AUTH=true`, sign in as
-`captain@localhost`. [docs/deploy.md](deploy.md) covers compose, Kubernetes, and
+Open http://localhost:4000/login. With `LOCAL_AUTH=true` (the Compose default),
+sign in with the bootstrap account, `admin@localhost` by default, and the
+generated password printed once in `docker compose logs portal` on first boot.
+[docs/deploy.md](deploy.md) covers compose, Kubernetes, and
 `PUBLIC_URL` (the base the device-approval link is built from — set it whenever
 the instance is not on localhost).
 
@@ -111,8 +113,10 @@ Replace `<INSTANCE_URL>` with your portal:
 ## Portal mirror (fm-steer)
 
 - My firstmate-port portal is <INSTANCE_URL>. `fm-steer` is on PATH and logged in.
-- After a steer to a task succeeds through `bin/fm-send.sh`, mirror the same text
-  to the portal by piping the body in on stdin with a quoted heredoc:
+- After a steer originating locally from me succeeds through `bin/fm-send.sh`,
+  mirror the same text to the portal by piping the body in on stdin with a
+  quoted heredoc. Never mirror portal-origin deliveries: a body obtained from
+  `fm-steer inbox next` must not be put back with `fm-steer inbox put`.
 
   ```sh
   fm-steer inbox put --task <task-id> <<'FMSTEER'
@@ -123,6 +127,10 @@ Replace `<INSTANCE_URL>` with your portal:
   Never pass the text with `--body "..."`. Steers are routinely multi-line and
   contain quotes, backticks, and `$`, all of which the shell would mangle or
   expand; the quoted heredoc sends exactly what I sent.
+- Keep the returned mirror item's `ack` and `task` associated with the successful
+  local send in the captain's notes. This copy enters the portal's pending queue
+  even though it was already delivered locally; a later portal check must not
+  send it again.
 - Mirror after the on-disk enqueue, never instead of it. `state/<id>.inbox/` is
   the delivery record; fm-steer is only a copy for the portal. Never delete,
   move, or edit anything under `state/<id>.inbox/` because of fm-steer.
@@ -139,18 +147,24 @@ Add this second block if you also want firstmate to pick up steers you filed
 from another machine (from a phone, from a laptop away from the fleet):
 
 ```markdown
-- When I ask you to check the portal, run
-  `fm-steer inbox next --task <task-id>` for the task this session is working.
-  Always pass `--task`: without it the portal hands back the oldest item across
-  every task, and taking an item is what removes it from the queue, so a steer
-  meant for another task would be consumed here and never delivered there.
-  Exit 1 with no output means nothing is pending.
-- Otherwise deliver that item's `body` with `bin/fm-send.sh` to the task named in
-  the item's own `task` field, and only after that send succeeds run
+- When I ask you to check the portal, discover the items with
+  `fm-steer inbox list` (optionally `--task <id>` for a task I name). Use each
+  item's `task` field to identify its destination. For explicitly named tasks,
+  or each task in the fleet, call `fm-steer inbox next --task <id>` to take a
+  pending item. Always pass `--task`; never take an item across all tasks.
+  Exit 1 with no output means nothing is pending for that task, not the fleet.
+- If an item is a confirmed mirror of a successful local send, acknowledge it
+  without sending it again. Use the saved mirror `ack` and `task` and the local
+  delivery record to confirm this; identical body text alone is not proof.
+  If prior delivery is uncertain, report the item for me to resolve instead of
+  guessing, resending, or acknowledging it.
+- For a new portal steer, deliver the returned item's `body` with
+  `bin/fm-send.sh` to the task named in the item's own `task` field, and only
+  after that send succeeds run
   `fm-steer inbox ack --ack <the item's ack>`. Never ack something you have not
-  delivered.
+  delivered. Never mirror this portal-origin delivery back with `inbox put`.
 - `fm-steer inbox ack` prints `acked` even when the portal rejected the token, so
-  confirm with `fm-steer inbox list --task <task-id>` that the item is gone.
+  confirm with `fm-steer inbox list --task <the item's task>` that the item is gone.
 ```
 
 Nothing polls on its own — firstmate checks when a session runs and you ask it
