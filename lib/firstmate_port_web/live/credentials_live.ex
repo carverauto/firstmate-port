@@ -14,7 +14,8 @@ defmodule FirstmatePortWeb.CredentialsLive do
   alias FirstmatePort.Credentials
   # `Errors.describe/1`, never `Exception.message/1` or `inspect/1`: Ash's own
   # error messages end in the rejected value, which here is the secret.
-  alias FirstmatePort.Credentials.{Credential, Errors, Slots}
+  alias FirstmatePort.Credentials.{Credential, Discord, Errors, Slots}
+  alias FirstmatePort.Discord.Attempts
   alias FirstmatePort.Fleet.Embeddings
   alias FirstmatePort.Tenancy
   alias FirstmatePortWeb.DiscordHosts
@@ -40,8 +41,35 @@ defmodule FirstmatePortWeb.CredentialsLive do
      |> assign(:error, nil)
      |> load_application_id()
      |> load_credentials()
-     |> load_embeddings()}
+     |> load_embeddings()
+     |> watch_endpoint()}
   end
+
+  # A refusal arrives while the operator is looking at the page - that is the
+  # whole point of it - so the panel follows the tenant's own topic rather than
+  # making them reload to find out what Discord just got.
+  defp watch_endpoint(socket) do
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(FirstmatePort.PubSub, Attempts.topic(socket.assigns.tenant))
+    end
+
+    load_endpoint(socket)
+  end
+
+  defp load_endpoint(socket) do
+    tenant = socket.assigns.tenant
+
+    socket
+    |> assign(:key_state, Discord.public_key(tenant))
+    |> assign(:attempts, Attempts.list(tenant))
+  end
+
+  @impl true
+  def handle_info({:discord_attempt, _attempt}, socket) do
+    {:noreply, load_endpoint(socket)}
+  end
+
+  def handle_info(_message, socket), do: {:noreply, socket}
 
   @impl true
   def handle_event("select_slot", %{"slot" => slot}, socket) do
@@ -128,7 +156,8 @@ defmodule FirstmatePortWeb.CredentialsLive do
          |> put_flash(:info, success)
          |> load_application_id()
          |> load_credentials()
-         |> load_embeddings()}
+         |> load_embeddings()
+         |> load_endpoint()}
     end
   end
 
@@ -157,6 +186,52 @@ defmodule FirstmatePortWeb.CredentialsLive do
   end
 
   defp embedding_summary({:ready, model}), do: "On, using #{model}."
+
+  defp key_summary({:ok, _key}), do: "Stored. Interactions for this tenant verify against it."
+
+  defp key_summary({:error, :no_key}) do
+    "Not stored. Paste the application's Public Key below as discord/public_key - " <>
+      "until you do, every signed interaction for this tenant is refused."
+  end
+
+  defp key_summary({:error, :unreadable_key}) do
+    "Stored, but the vault would not decrypt it. That is a CLOAK_KEY problem, " <>
+      "not a Discord one - see docs/credentials.md, 'Rotating the vault key'."
+  end
+
+  defp key_summary({:error, :unusable_key}) do
+    "Stored, but it is not 64 hex characters. Rotate it below with the value from " <>
+      "the developer portal's General Information page."
+  end
+
+  defp claim_summary(nil),
+    do: "Unclaimed - this tenant answers for any application no one claimed."
+
+  defp claim_summary(""),
+    do: "Unclaimed - this tenant answers for any application no one claimed."
+
+  defp claim_summary(application_id) do
+    "Claimed: #{application_id}. Only interactions naming it are verified with this tenant's key."
+  end
+
+  # Discord's interaction types, named so the row says what arrived rather than
+  # a bare number.
+  defp interaction_name(1), do: "PING"
+  defp interaction_name(2), do: "COMMAND"
+  defp interaction_name(3), do: "COMPONENT"
+  defp interaction_name(4), do: "AUTOCOMPLETE"
+  defp interaction_name(5), do: "MODAL"
+  defp interaction_name(nil), do: "unknown"
+  defp interaction_name(type), do: "type #{type}"
+
+  defp path_note(nil), do: ""
+  defp path_note(path), do: ": #{path}"
+
+  defp skew_note(nil), do: ""
+
+  defp skew_note(seconds) do
+    " (this node's clock is #{abs(seconds)}s #{if seconds > 0, do: "ahead of", else: "behind"} the signed timestamp)"
+  end
 
   defp claim_message(""), do: "Discord application released"
   defp claim_message(_claim), do: "Discord application claimed"
@@ -222,12 +297,63 @@ defmodule FirstmatePortWeb.CredentialsLive do
           Tenant <span class="kind">{@tenant}</span>. Encrypted before it reaches Postgres, and
           never shown again.
         </p>
-        <p :if={@interactions_url} class="meta">
-          Discord interactions URL: <span class="kind">{@interactions_url}</span>. Paste it into the Discord developer portal; only a key stored here verifies requests to it.
-        </p>
       </header>
 
       <p :if={@error} class="empty-copy" role="alert">{@error}</p>
+
+      <section class="plate">
+        <h2>Discord interactions endpoint</h2>
+        <p class="hint">
+          Discord verifies this URL by sending it a signed PING, and reports any failure
+          only as "the specified interactions endpoint url could not be verified". The
+          endpoint answers every refusal with the same bare 401, so the reason is here
+          instead.
+        </p>
+
+        <dl class="facts">
+          <dt>endpoint URL</dt>
+          <dd :if={@interactions_url}>
+            <span class="kind">{@interactions_url}</span>
+            - paste this into <strong>Interactions Endpoint URL</strong>, with no trailing slash.
+          </dd>
+          <dd :if={is_nil(@interactions_url)}>
+            Not published. Set <span class="kind">DISCORD_INTERACTIONS_HOST</span>
+            to serve interactions on their own hostname; without it the portal's own
+            origin answers <span class="kind">/interactions</span>.
+          </dd>
+          <dt>public key</dt>
+          <dd>{key_summary(@key_state)}</dd>
+          <dt>application</dt>
+          <dd>{claim_summary(@application_id)}</dd>
+        </dl>
+
+        <h3>Recent inbound interactions</h3>
+        <p :if={@attempts == []} class="empty-copy">
+          Nothing has reached <span class="kind">/interactions</span>
+          for this tenant in the last hour. If Discord says it could not verify the URL and
+          nothing appears here when you save it, the request never reached this app at all -
+          check DNS and the route. A request that arrived at the wrong path shows up here as
+          one, naming the path, which is usually a trailing slash on the URL above.
+        </p>
+        <table :if={@attempts != []} class="data-table">
+          <thead>
+            <tr>
+              <th>when</th>
+              <th>type</th>
+              <th>outcome</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={attempt <- @attempts}>
+              <td><time>{Calendar.strftime(attempt.at, "%Y-%m-%d %H:%M:%SZ")}</time></td>
+              <td><span class="kind">{interaction_name(attempt.type)}</span></td>
+              <td>
+                {attempt.description}{skew_note(attempt.skew_seconds)}{path_note(attempt.path)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
 
       <section class="plate">
         <h2>Discord application</h2>

@@ -25,7 +25,8 @@ defmodule FirstmatePort.Credentials.Slots do
       key: "bot_token",
       label: "Discord bot token",
       format: :opaque,
-      about: "Used for outbound Discord calls. Never sent to the browser once stored."
+      about:
+        "Read per message when the portal posts a captain call to Discord, so rotating it here takes effect immediately. Never sent to the browser once stored."
     },
     %{
       provider: "github",

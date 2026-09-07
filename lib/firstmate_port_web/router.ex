@@ -177,6 +177,17 @@ defmodule FirstmatePortWeb.Router do
     post "/route", RouteController, :create
   end
 
+  # Asking the captain a question is a write by whoever is signed in - firstmate
+  # as an agent, or the captain's own device token. The answer never comes back
+  # here; it arrives on POST /interactions, signed by Discord.
+  scope "/api/captain", FirstmatePortWeb.Api do
+    pipe_through :authed
+
+    get "/calls", CaptainCallController, :index
+    get "/calls/:id", CaptainCallController, :show
+    post "/calls", CaptainCallController, :create
+  end
+
   scope "/api", FirstmatePortWeb.Api do
     pipe_through :cli
 

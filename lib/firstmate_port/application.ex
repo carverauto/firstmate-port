@@ -34,6 +34,9 @@ defmodule FirstmatePort.Application do
       # Before the NATS supervisor: its listener folds queue facts into the
       # tracker as soon as it subscribes.
       FirstmatePort.Queues.Tracker,
+      # Why the Discord interactions endpoint refused the last few requests.
+      # Before the Endpoint, which is what records into it.
+      FirstmatePort.Discord.Attempts,
       FirstmatePort.NATS.Supervisor,
       FirstmatePort.Auth.OIDC.Supervisor,
       FirstmatePortWeb.Endpoint

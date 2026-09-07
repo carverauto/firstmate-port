@@ -5,21 +5,35 @@ defmodule FirstmatePort.Credentials.Errors do
 
   This exists because Ash's own error messages embed the rejected value -
   `Ash.Error.Changes.InvalidArgument.message/1` ends in `inspect(error.value)` -
-  and for this resource that value is the secret. So nothing here ever touches
+  and for credentials that value is the secret. So nothing here ever touches
   `:value`: only the field name and the message template, with the template's
   own variables filled in and the result length-capped.
+
+  Written for credentials and safe for anything: a caller whose rejected values
+  are not secret loses nothing by scrubbing them anyway, so other resources use
+  it too, passing their own `fallback` for the case where Ash gives no message
+  at all.
   """
 
   @max_length 300
 
-  @doc "A short, secret-free description of why a credential write failed."
-  def describe(%Ash.Error.Forbidden{}) do
+  @default_fallback "the credential could not be saved"
+
+  @doc """
+  A short, secret-free description of why a write failed.
+
+  `fallback` is what to say when Ash reported nothing quotable, which is the one
+  sentence that has to name the caller's own subject rather than a credential.
+  """
+  def describe(error, fallback \\ @default_fallback)
+
+  def describe(%Ash.Error.Forbidden{}, _fallback) do
     "forbidden: credential writes need a human account in this tenant"
   end
 
-  def describe(message) when is_binary(message), do: truncate(message)
+  def describe(message, _fallback) when is_binary(message), do: truncate(message)
 
-  def describe(error) do
+  def describe(error, fallback) do
     error
     |> Ash.Error.to_error_class()
     |> Map.get(:errors, [])
@@ -27,7 +41,7 @@ defmodule FirstmatePort.Credentials.Errors do
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
     |> case do
-      [] -> "the credential could not be saved"
+      [] -> fallback
       sentences -> sentences |> Enum.join("; ") |> truncate()
     end
   end

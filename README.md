@@ -28,6 +28,7 @@ Stack: Phoenix 1.8, Ash, AshOban, AshEvents, AshPaperTrail, AshAi MCP at `/mcp`,
 
 - [docs/fm-steer.md](docs/fm-steer.md) `fm-steer` for stock firstmate captains: login, commands, and the standing prompt that makes firstmate mirror steers to the portal (no fork required)
 - [docs/inbox.md](docs/inbox.md) CLI messaging, task routing, and portal history
+- [docs/captain-calls.md](docs/captain-calls.md) asking the captain a bounded question as a Discord select or modal, and reading the answer back from the inbox
 - [docs/fleet-log.md](docs/fleet-log.md) diagrams and append-only progress
 - [docs/credentials.md](docs/credentials.md) how a tenant stores Discord and other secrets
 - [docs/fleet-search.md](docs/fleet-search.md) searching the fleet log, and the optional embeddings

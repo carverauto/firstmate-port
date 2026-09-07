@@ -131,8 +131,7 @@ defmodule FirstmatePort.Queues.Entry do
           started_at: update.started_at || prior.started_at,
           stopped_at: update.stopped_at || prior.stopped_at,
           updated_at: at,
-          defaulted_fields:
-            Enum.filter(prior.defaulted_fields, &is_nil(Map.fetch!(update, &1)))
+          defaulted_fields: Enum.filter(prior.defaulted_fields, &is_nil(Map.fetch!(update, &1)))
       })
     end
   end

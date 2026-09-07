@@ -20,10 +20,12 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 - When routing misfires, add the scrubbed task to `FirstmatePort.Router.Evals` first; `mix test` keeps the set green.
 - The Lighthouse scheduler (usage ledger, task difficulty, model ranking, fair scheduling) is specified in `openspec/changes/add-lighthouse-scheduler/`. Read its proposal and design before extending the router or the ledger. OpenRouter is deferred (captain, 2026-09-05): the ledger is posted usage only.
 - One inbox per tenant carries every direction; `task` routes within it and there is no second broker. It is a Postgres table, never in-process state: a queue the mates rely on has to survive a restart and more than one node. See `docs/inbox.md`.
+- A question for the captain is an interactive Discord message, not a text dump: `POST /api/captain/calls` posts a select (plus an optional modal), the pick returns through the same signed `/interactions` endpoint, and the answer is filed as an ordinary inbox order on the asking task. The options on the row are the whole of what an answer may be. See `docs/captain-calls.md`.
+- `/interactions` answers every refusal with the same bare 401 - saying more would report on a tenant to a stranger. The reason goes to `FirstmatePort.Discord.Attempts` and the `/settings/credentials` panel instead. Add a refusal path and you add its outcome there too, or the next operator gets the silent 401 that made issue #42.
 - Never do a JetStream round trip on a request path or inside a GenServer that serves one. `Stream.info`/`Stream.create` have no deadline of their own, and a call that never returns wedges everything behind it. Publish from `FirstmatePort.TaskSupervisor` after the row is committed; the fan-out is decoration, the row is the truth.
 - A `fm-steer` token is only good while its `FirstmatePort.Auth.CliSession` row is. `Guardian.verify_claims/2` is the one gate; revoking at `/settings/sessions` stops the token on its next request.
 - Attribute tenancy on shared Postgres and one NATS account. Streams are `<tenant>_steer` / `<tenant>_inbound`. Seed tenant `local` as an example. The API is the tenant wall and the only JetStream client.
-- Tenant credentials belong in portal UI/API and AshCloak-encrypted CNPG rows, never per-tenant Kubernetes secrets or plaintext HTTP/MCP responses. See `docs/credentials.md` for storage, GitHub and Discord routing, and vault-key operations. An integration reads its slot first and the matching environment variable only as a fallback, so a portal paste always beats a redeploy.
+- Tenant credentials belong in portal UI/API and AshCloak-encrypted CNPG rows, never per-tenant Kubernetes secrets or plaintext HTTP/MCP responses. See `docs/credentials.md` for storage, GitHub and Discord routing, and vault-key operations. An integration reads its slot first and the matching environment variable only as a fallback, so a portal paste always beats a redeploy. `Credentials.fetch_secret/3` tells an empty slot (`:missing`) from one the vault will not decrypt (`:unreadable`); prefer it wherever an operator has to be told which.
 - The fleet log is append-only: an agent that "edits" progress POSTs a new event and never `UPDATE`s a historical row, and the UI is a projection over those events. Contract and scope in `docs/fleet-log.md`.
 - Queues (`/queues`) is a live look-in at in-flight crew work, not a store of record: entries live in
   `FirstmatePort.Queues.Tracker` memory and age out. Queue facts ride `<tenant>.steer.queue` inside the
@@ -46,6 +48,7 @@ Companion portal for firstmate. Phoenix/Ash LiveView, NATS JetStream, Bazel, Doc
 
 ## Gotchas
 
+- `mix ash.codegen` cannot snapshot this project: `Portal.ProgressItem` has a `base_filter` without `base_filter_sql`, so the generator raises before writing anything. Migrations are hand-written in `priv/repo/migrations`, matching the generated style.
 - Ash casts `""` to `nil` on string attributes, so an attribute whose default is `""` reads back as `nil` when unset. Guard with `is_binary(v) and v != ""`, not `v != ""`, or a `:if` renders an empty `<a>`.
 - Tailwind v4 scans `lib/firstmate_port_web`, so a hand-rolled CSS class that collides with a utility name loses. `.grid` was one; the tables use `.data-table`.
 

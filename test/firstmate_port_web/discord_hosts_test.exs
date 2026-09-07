@@ -74,6 +74,5 @@ defmodule FirstmatePortWeb.DiscordHostsTest do
         refute DiscordHosts.interactions_host?(host), "#{inspect(host)} matched"
       end
     end
-
   end
 end
