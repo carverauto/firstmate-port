@@ -74,6 +74,11 @@ defmodule FirstmatePort.Portal.CaptainCall do
 
       accept([:delivery_error])
       require_atomic?(false)
+
+      change(fn changeset, _context ->
+        Ash.Changeset.filter(changeset, expr(status == :open))
+      end)
+
       change(set_attribute(:status, :failed))
     end
 

@@ -152,6 +152,62 @@ defmodule FirstmatePortWeb.Api.CaptainCallControllerTest do
                Enum.map(1..24, &"v#{&1}") ++ [Ask.other_value()]
     end
 
+    test "a delivery failure cannot overwrite an answer committed during the post", %{
+      conn: conn,
+      local: local
+    } do
+      store_bot_token("local")
+
+      {:ok, _} =
+        Credential.create(
+          %{provider: "discord", key: "captain_user_id", value: "123456789012345678"},
+          authorize?: false,
+          tenant: "local"
+        )
+
+      stub_discord(fn discord_conn ->
+        assert_received {:discord, "POST", _path,
+                         %{
+                           "components" => [
+                             %{"components" => [%{"custom_id" => "fm:ask:" <> id}]}
+                           ]
+                         }}
+
+        {:ok, answered} =
+          FirstmatePort.CaptainCalls.answer("local", %{
+            call_id: id,
+            kind: :select,
+            value: "hold",
+            text: nil,
+            by: "Captain",
+            user_id: "123456789012345678"
+          })
+
+        assert answered.status == :answered
+        send(self(), {:committed, answered})
+
+        discord_conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(504, Jason.encode!(%{"message" => "Gateway timeout"}))
+      end)
+
+      body = conn |> as(local) |> post("/api/captain/calls", @question) |> json_response(201)
+      assert_received {:committed, answered}
+      assert body["id"] == answered.id
+      assert body["status"] == "answered"
+      assert body["answer"] == "hold"
+      assert body["delivery_error"] == answered.delivery_error
+
+      {:ok, stored} =
+        FirstmatePort.Portal.CaptainCall.get(answered.id, actor: local, tenant: "local")
+
+      assert stored.status == :answered
+      assert stored.answer == "hold"
+      assert stored.delivery_error == answered.delivery_error
+      {:ok, [order]} = FirstmatePort.Inbox.list(local, "fm-port")
+      assert order["body"] =~ "Value: hold"
+    end
+
     test "a tenant with no bot token is told so, without calling Discord",
          %{conn: conn, local: local} do
       body = conn |> as(local) |> post("/api/captain/calls", @question) |> json_response(502)

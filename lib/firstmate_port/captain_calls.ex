@@ -65,12 +65,17 @@ defmodule FirstmatePort.CaptainCalls do
         CaptainCall.delivered(call, %{message_id: message_id}, ash)
 
       {:error, reason} ->
-        Logger.warning("captain call #{call.id} for #{tenant} not posted: #{inspect(reason)}")
+        case CaptainCall.undeliverable(call, %{delivery_error: Client.describe(reason)}, ash) do
+          {:ok, failed} ->
+            Logger.warning("captain call #{call.id} for #{tenant} not posted: #{inspect(reason)}")
+            {:error, {:undeliverable, failed}}
 
-        {:ok, failed} =
-          CaptainCall.undeliverable(call, %{delivery_error: Client.describe(reason)}, ash)
-
-        {:error, {:undeliverable, failed}}
+          {:error, error} ->
+            case CaptainCall.get(call.id, ash) do
+              {:ok, %CaptainCall{status: :answered} = answered} -> {:ok, answered}
+              _ -> {:error, error}
+            end
+        end
     end
   end
 
