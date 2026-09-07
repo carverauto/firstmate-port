@@ -134,6 +134,24 @@ defmodule FirstmatePortWeb.Api.CaptainCallControllerTest do
                ["ship", "hold", Ask.other_value()]
     end
 
+    test "24 choices plus Something else fit the menu", %{conn: conn, local: local} do
+      store_bot_token("local")
+      accepts()
+
+      attrs =
+        Map.merge(@question, %{
+          "allow_other" => true,
+          "options" => Enum.map(1..24, &%{"value" => "v#{&1}", "label" => "L#{&1}"})
+        })
+
+      conn |> as(local) |> post("/api/captain/calls", attrs) |> json_response(201)
+      assert_received {:discord, _method, _path, sent}
+      assert [%{"components" => [select]}] = sent["components"]
+
+      assert Enum.map(select["options"], & &1["value"]) ==
+               Enum.map(1..24, &"v#{&1}") ++ [Ask.other_value()]
+    end
+
     test "a tenant with no bot token is told so, without calling Discord",
          %{conn: conn, local: local} do
       body = conn |> as(local) |> post("/api/captain/calls", @question) |> json_response(502)
@@ -166,6 +184,10 @@ defmodule FirstmatePortWeb.Api.CaptainCallControllerTest do
       accepts()
 
       for {attrs, expected} <- [
+            {%{
+               "allow_other" => true,
+               "options" => Enum.map(1..25, &%{"value" => "v#{&1}", "label" => "L#{&1}"})
+             }, "at most 24"},
             {%{"options" => []}, "non-empty"},
             {%{
                "options" => [%{"value" => "a", "label" => "A"}, %{"value" => "a", "label" => "B"}]
@@ -214,41 +236,6 @@ defmodule FirstmatePortWeb.Api.CaptainCallControllerTest do
 
     test "signing in is the bar", %{conn: conn} do
       assert conn |> post("/api/captain/calls", @question) |> Map.get(:status) == 401
-    end
-  end
-
-  describe "GET /api/captain/calls" do
-    setup do
-      store_bot_token("local")
-      accepts()
-      :ok
-    end
-
-    test "lists this tenant's calls and reads one back", %{conn: conn, local: local} do
-      created = conn |> as(local) |> post("/api/captain/calls", @question) |> json_response(201)
-
-      listed = conn |> as(local) |> get("/api/captain/calls") |> json_response(200)
-      assert Enum.map(listed["data"], & &1["id"]) == [created["id"]]
-
-      open = conn |> as(local) |> get("/api/captain/calls?status=open") |> json_response(200)
-      assert Enum.map(open["data"], & &1["id"]) == [created["id"]]
-
-      shown =
-        conn |> as(local) |> get("/api/captain/calls/#{created["id"]}") |> json_response(200)
-
-      assert shown["question"] == "Ship the release?"
-    end
-
-    test "another tenant's call is simply not there", %{conn: conn, local: local} do
-      created = conn |> as(local) |> post("/api/captain/calls", @question) |> json_response(201)
-
-      other = human("other")
-
-      assert conn |> as(other) |> get("/api/captain/calls/#{created["id"]}") |> Map.get(:status) ==
-               404
-
-      listed = conn |> as(other) |> get("/api/captain/calls") |> json_response(200)
-      assert listed["data"] == []
     end
   end
 end

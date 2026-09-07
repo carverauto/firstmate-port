@@ -64,6 +64,8 @@ defmodule FirstmatePortWeb.DiscordEndpointPanelTest do
     assert html =~ "Not stored"
     assert html =~ "every signed interaction for this tenant is refused"
     assert html =~ "Nothing has reached"
+    assert html =~ "claim your Discord application ID"
+    refute html =~ "this tenant answers for any application"
   end
 
   test "storing the key flips the panel without a reload", %{conn: conn} do

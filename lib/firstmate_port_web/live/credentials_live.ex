@@ -20,7 +20,7 @@ defmodule FirstmatePortWeb.CredentialsLive do
   alias FirstmatePort.Tenancy
   alias FirstmatePortWeb.DiscordHosts
 
-  on_mount {FirstmatePortWeb.LiveUser, :require_user}
+  on_mount({FirstmatePortWeb.LiveUser, :require_user})
 
   @custom "custom"
 
@@ -204,13 +204,15 @@ defmodule FirstmatePortWeb.CredentialsLive do
       "the developer portal's General Information page."
   end
 
-  defp claim_summary(nil),
-    do: "Unclaimed - this tenant answers for any application no one claimed."
+  defp claim_summary(application_id, tenant) when application_id in [nil, ""] do
+    if tenant == Tenancy.default_slug() do
+      "Unclaimed - this default tenant answers for any application no one claimed."
+    else
+      "Unclaimed - claim your Discord application ID below to route interactions to this tenant."
+    end
+  end
 
-  defp claim_summary(""),
-    do: "Unclaimed - this tenant answers for any application no one claimed."
-
-  defp claim_summary(application_id) do
+  defp claim_summary(application_id, _tenant) do
     "Claimed: #{application_id}. Only interactions naming it are verified with this tenant's key."
   end
 
@@ -324,16 +326,18 @@ defmodule FirstmatePortWeb.CredentialsLive do
           <dt>public key</dt>
           <dd>{key_summary(@key_state)}</dd>
           <dt>application</dt>
-          <dd>{claim_summary(@application_id)}</dd>
+          <dd>{claim_summary(@application_id, @tenant)}</dd>
         </dl>
 
         <h3>Recent inbound interactions</h3>
         <p :if={@attempts == []} class="empty-copy">
           Nothing has reached <span class="kind">/interactions</span>
-          for this tenant in the last hour. If Discord says it could not verify the URL and
-          nothing appears here when you save it, the request never reached this app at all -
-          check DNS and the route. A request that arrived at the wrong path shows up here as
-          one, naming the path, which is usually a trailing slash on the URL above.
+          for this tenant in the last hour. Unclaimed applications route to the default tenant.
+          {if @tenant != Tenancy.default_slug(),
+            do: "Claim your Discord application ID below and confirm Discord is sending that application's ID."}
+          Confirm the application routing before checking DNS and the HTTP route. Requests
+          rejected before an application can be identified may appear only for the default tenant.
+
         </p>
         <table :if={@attempts != []} class="data-table">
           <thead>

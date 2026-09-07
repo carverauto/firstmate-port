@@ -60,7 +60,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H 'content-type: application/jso
 | --- | --- | --- |
 | `question` | yes | The message body. At most 2000 characters, which is Discord's own limit. |
 | `channel_id` | yes | The Discord channel to post in. Public routing data, not a credential - the caller supplies it. |
-| `options` | yes | 1-25 choices of `value`, `label`, and optional `description`. Values must be unique. |
+| `options` | yes | 1-25 choices (at most 24 with `allow_other`) of `value`, `label`, and optional `description`. Values must be unique. |
 | `task` | no | The inbox task the answer is filed under. Defaults to `firstmate`. |
 | `allow_other` | no | Adds a "Something else..." choice that opens a modal. Default false. |
 
@@ -69,10 +69,6 @@ the question was refused before anything was posted - the choices did not fit
 what Discord will render, or what an answer can be matched against. `502` means
 Discord would not take the message; the call comes back with
 `status: "failed"` and a `delivery_error` naming what to fix.
-
-`GET /api/captain/calls` lists this tenant's calls newest first,
-`?status=open` narrows it to the unanswered ones, and
-`GET /api/captain/calls/:id` reads one back.
 
 ### The bot token
 
@@ -86,6 +82,8 @@ The bot has to be in the channel it is posting to. A `502` reading
 token problem.
 
 ## Answering
+
+Store the captain’s Discord user ID in the tenant’s `discord`/`captain_user_id` credential slot. Only that ID may select an answer, open the modal, or submit it. Missing or unreadable credentials refuse everyone with an ephemeral response.
 
 The captain picks in Discord. Nothing else has to happen: the interaction is
 signed by the tenant's Discord application, arrives at the same
@@ -141,3 +139,5 @@ Answering is a one-way door, and what enforces it is a `status == :open` filter
 carried into the UPDATE itself rather than a read followed by a write. Two
 clicks a millisecond apart both read an open call; only one of them updates one,
 and the other is told it was already answered.
+
+The answer transition and inbox order commit in one transaction. A failed insertion leaves the call open for retry. The Discord update shortens the question as needed to preserve the answer within 2000 characters; modal answers are limited to 1000 characters.

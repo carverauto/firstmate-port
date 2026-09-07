@@ -30,96 +30,84 @@ defmodule FirstmatePort.Portal.CaptainCall do
     authorizers: [Ash.Policy.Authorizer]
 
   postgres do
-    table "captain_calls"
-    repo FirstmatePort.Repo
+    table("captain_calls")
+    repo(FirstmatePort.Repo)
 
     custom_indexes do
       # The portal and the API both ask "what is the captain still sitting on",
       # which is a small set beside the history of everything ever asked.
-      index [:tenant_slug, :inserted_at],
+      index([:tenant_slug, :inserted_at],
         name: "captain_calls_open_index",
         where: "status = 'open'"
+      )
     end
   end
 
   code_interface do
-    define :get, action: :by_id, args: [:id], not_found_error?: false
-    define :open, action: :open
-    define :recent, action: :recent
-    define :ask, action: :ask
-    define :delivered, action: :delivered
-    define :undeliverable, action: :undeliverable
-    define :answer, action: :answer
+    define(:get, action: :by_id, args: [:id], not_found_error?: false)
+    define(:ask, action: :ask)
+    define(:delivered, action: :delivered)
+    define(:undeliverable, action: :undeliverable)
+    define(:answer, action: :answer)
   end
 
   actions do
-    defaults [:read]
+    defaults([:read])
 
     read :by_id do
-      get? true
-      argument :id, :uuid, allow_nil?: false
-      filter expr(id == ^arg(:id))
-    end
-
-    read :open do
-      description "Questions the captain has not answered yet, oldest first."
-      filter expr(status == :open)
-      prepare build(sort: [inserted_at: :asc])
-    end
-
-    read :recent do
-      description "Newest first, answered ones included, for the portal."
-      prepare build(sort: [inserted_at: :desc], limit: 100)
+      get?(true)
+      argument(:id, :uuid, allow_nil?: false)
+      filter(expr(id == ^arg(:id)))
     end
 
     create :ask do
-      primary? true
-      accept [:question, :options, :task, :channel_id, :allow_other]
-      validate FirstmatePort.Portal.Validations.CaptainCallOptions
+      primary?(true)
+      accept([:question, :options, :task, :channel_id, :allow_other])
+      validate(FirstmatePort.Portal.Validations.CaptainCallOptions)
     end
 
     update :delivered do
-      description "Discord accepted the message; this is the message it became."
-      accept [:message_id]
-      require_atomic? false
+      description("Discord accepted the message; this is the message it became.")
+      accept([:message_id])
+      require_atomic?(false)
     end
 
     update :undeliverable do
-      description """
+      description("""
       Discord would not take the message.
 
       The row stays rather than being deleted: an operator debugging a bot token
       or a channel id needs to see that the portal tried and what came back, and
       `/api/captain/calls` is where they look.
-      """
+      """)
 
-      accept [:delivery_error]
-      require_atomic? false
-      change set_attribute(:status, :failed)
+      accept([:delivery_error])
+      require_atomic?(false)
+      change(set_attribute(:status, :failed))
     end
 
     update :answer do
-      description """
+      description("""
       Records the captain's pick. Only ever fires once.
 
       Atomic, and the filter is why: two clicks a millisecond apart both read an
       open call, and the write has to be the thing that decides between them. A
       read-then-write here would file the order twice.
-      """
+      """)
 
-      accept [:answer, :answer_label, :answered_by]
-      require_atomic? false
+      accept([:answer, :answer_label, :answered_by])
+      require_atomic?(false)
 
       # `Ash.Changeset.filter/2`, not the action-level `filter`: this updates a
       # record already loaded by id, and only a filter carried into the UPDATE
       # itself makes the write the thing that decides. A second click finds no
       # open row and gets `Ash.Error.Changes.StaleRecord`.
-      change fn changeset, _context ->
+      change(fn changeset, _context ->
         Ash.Changeset.filter(changeset, expr(status == :open))
-      end
+      end)
 
-      change set_attribute(:status, :answered)
-      change set_attribute(:answered_at, &DateTime.utc_now/0)
+      change(set_attribute(:status, :answered))
+      change(set_attribute(:answered_at, &DateTime.utc_now/0))
     end
   end
 
@@ -128,120 +116,120 @@ defmodule FirstmatePort.Portal.CaptainCall do
     # agent, the captain answers through a signed Discord interaction that the
     # endpoint has already resolved to one tenant.
     policy action_type([:read, :create, :update]) do
-      authorize_if expr(tenant_slug == ^actor(:tenant_slug))
+      authorize_if(expr(tenant_slug == ^actor(:tenant_slug)))
     end
   end
 
   multitenancy do
-    strategy :attribute
-    attribute :tenant_slug
+    strategy(:attribute)
+    attribute(:tenant_slug)
   end
 
   attributes do
-    uuid_v7_primary_key :id
+    uuid_v7_primary_key(:id)
 
     attribute :question, :string do
-      allow_nil? false
-      public? true
-      description "What the captain is being asked. Rendered as the Discord message body."
+      allow_nil?(false)
+      public?(true)
+      description("What the captain is being asked. Rendered as the Discord message body.")
       # Discord refuses a message over 2000 characters, so a longer question
       # would be accepted here and then fail at the one place it matters.
-      constraints min_length: 1, max_length: 2000
+      constraints(min_length: 1, max_length: 2000)
     end
 
     attribute :options, {:array, :map} do
-      allow_nil? false
-      public? true
+      allow_nil?(false)
+      public?(true)
 
-      description """
+      description("""
       The bounded choices, as `%{"value" => _, "label" => _, "description" => _}`.
       Validated by `FirstmatePort.Portal.Validations.CaptainCallOptions`;
       Discord allows at most 25 in one select.
-      """
+      """)
     end
 
     attribute :task, :string do
-      allow_nil? false
-      public? true
-      default "firstmate"
+      allow_nil?(false)
+      public?(true)
+      default("firstmate")
 
-      description """
+      description("""
       The inbox task the answer is filed under, so the crew lane that asked is
       the one that reads the order back with `fm-steer inbox next --task`.
-      """
+      """)
 
-      constraints min_length: 1, max_length: 200
+      constraints(min_length: 1, max_length: 200)
     end
 
     attribute :channel_id, :string do
-      allow_nil? false
-      public? true
-      description "Discord channel the question was posted to. Routing data, not a secret."
-      constraints match: ~r/^[0-9]{1,32}$/
+      allow_nil?(false)
+      public?(true)
+      description("Discord channel the question was posted to. Routing data, not a secret.")
+      constraints(match: ~r/^[0-9]{1,32}$/)
     end
 
     attribute :message_id, :string do
-      default ""
-      allow_nil? false
-      public? true
-      description "The Discord message the question became, once it has been posted."
-      constraints max_length: 32, allow_empty?: true
+      default("")
+      allow_nil?(false)
+      public?(true)
+      description("The Discord message the question became, once it has been posted.")
+      constraints(max_length: 32, allow_empty?: true)
     end
 
     attribute :allow_other, :boolean do
-      default false
-      allow_nil? false
-      public? true
-      description "Whether the select carries a 'Something else' choice that opens a modal."
+      default(false)
+      allow_nil?(false)
+      public?(true)
+      description("Whether the select carries a 'Something else' choice that opens a modal.")
     end
 
     attribute :status, :atom do
-      constraints one_of: [:open, :answered, :failed]
-      default :open
-      allow_nil? false
-      public? true
+      constraints(one_of: [:open, :answered, :failed])
+      default(:open)
+      allow_nil?(false)
+      public?(true)
     end
 
     attribute :answer, :string do
-      default ""
-      allow_nil? false
-      public? true
-      description "The chosen option's value, or the captain's typed text on an 'other' answer."
-      constraints max_length: 4000, allow_empty?: true
+      default("")
+      allow_nil?(false)
+      public?(true)
+      description("The chosen option's value, or the captain's typed text on an 'other' answer.")
+      constraints(max_length: 1000, allow_empty?: true)
     end
 
     attribute :answer_label, :string do
-      default ""
-      allow_nil? false
-      public? true
-      description "The label the captain actually saw and clicked."
-      constraints max_length: 100, allow_empty?: true
+      default("")
+      allow_nil?(false)
+      public?(true)
+      description("The label the captain actually saw and clicked.")
+      constraints(max_length: 100, allow_empty?: true)
     end
 
     # Discord's own display name for whoever clicked. Not an identity this app
     # authenticated - it is whatever the verified payload said - so it is shown
     # as provenance and never used to authorize anything.
     attribute :answered_by, :string do
-      default ""
-      allow_nil? false
-      public? true
-      constraints max_length: 100, allow_empty?: true
+      default("")
+      allow_nil?(false)
+      public?(true)
+      constraints(max_length: 100, allow_empty?: true)
     end
 
-    attribute :answered_at, :utc_datetime_usec, public?: true
+    attribute(:answered_at, :utc_datetime_usec, public?: true)
 
     attribute :delivery_error, :string do
-      default ""
-      allow_nil? false
-      public? true
-      description "Why Discord would not take the message. Status and reason, never the token."
-      constraints max_length: 500, allow_empty?: true
+      default("")
+      allow_nil?(false)
+      public?(true)
+      description("Why Discord would not take the message. Status and reason, never the token.")
+      constraints(max_length: 500, allow_empty?: true)
     end
 
     attribute :tenant_slug, :string do
-      allow_nil? false
-      public? true
-      constraints min_length: 1, max_length: 63, match: ~r/^[a-z][a-z0-9-]*$/
+      allow_nil?(false)
+      public?(true)
+      constraints(min_length: 1, max_length: 63, match: ~r/^[a-z][a-z0-9-]*$/)
     end
 
     timestamps()

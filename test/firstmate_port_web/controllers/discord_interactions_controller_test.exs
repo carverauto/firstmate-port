@@ -407,7 +407,13 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
     Jason.encode!(%{
       "type" => 3,
       "application_id" => application_id,
-      "member" => %{"user" => %{"username" => "captain", "global_name" => "Captain"}},
+      "member" => %{
+        "user" => %{
+          "id" => "123456789012345678",
+          "username" => "captain",
+          "global_name" => "Captain"
+        }
+      },
       "data" => %{
         "component_type" => 3,
         "custom_id" => custom_id,
@@ -421,7 +427,13 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
     Jason.encode!(%{
       "type" => 5,
       "application_id" => application_id,
-      "member" => %{"user" => %{"username" => "captain", "global_name" => "Captain"}},
+      "member" => %{
+        "user" => %{
+          "id" => "123456789012345678",
+          "username" => "captain",
+          "global_name" => "Captain"
+        }
+      },
       "data" => %{
         "custom_id" => custom_id,
         "components" => [
@@ -445,6 +457,99 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
   end
 
   describe "interactive captain calls" do
+    setup do
+      {:ok, _} =
+        FirstmatePort.Credentials.Credential.create(
+          %{provider: "discord", key: "captain_user_id", value: "123456789012345678"},
+          authorize?: false,
+          tenant: "local"
+        )
+
+      :ok
+    end
+
+    test "other users and missing captain configuration refuse every answering path", %{
+      conn: conn,
+      local: local
+    } do
+      call = call("local", %{allow_other: true})
+
+      for configured <- [true, false] do
+        unless configured do
+          FirstmatePort.Repo.query!(
+            "DELETE FROM tenant_credentials WHERE tenant_slug = $1 AND provider = $2 AND key = $3",
+            ["local", "discord", "captain_user_id"]
+          )
+        end
+
+        for payload <- [
+              component(@oss_app, Ask.custom_id(call.id), ["hold"]),
+              component(@oss_app, Ask.custom_id(call.id), [Ask.other_value()]),
+              modal(@oss_app, Ask.modal_custom_id(call.id), "hold")
+            ] do
+          params = Jason.decode!(payload)
+
+          params =
+            if configured,
+              do: put_in(params, ["member", "user", "id"], "999999999999999999"),
+              else: params
+
+          response = conn |> signed(local, Jason.encode!(params)) |> json_response(200)
+          assert response["type"] == 4
+          assert response["data"]["flags"] == 64
+          assert response["data"]["content"] =~ "configured captain"
+          assert reload(call, "local").status == :open
+          assert orders("local", "fm-port") == []
+        end
+      end
+    end
+
+    test "an inbox validation failure leaves the answer open for retry", %{
+      conn: conn,
+      local: local
+    } do
+      call = call("local")
+
+      FirstmatePort.Repo.query!(
+        "UPDATE captain_calls SET task = $1 WHERE id = $2",
+        [String.duplicate("x", 201), Ecto.UUID.dump!(call.id)]
+      )
+
+      payload = component(@oss_app, Ask.custom_id(call.id), ["hold"])
+      response = conn |> signed(local, payload) |> json_response(200)
+      assert response["type"] == 4
+      assert response["data"]["flags"] == 64
+      assert reload(call, "local").status == :open
+      assert orders("local", nil) == []
+
+      FirstmatePort.Repo.query!(
+        "UPDATE captain_calls SET task = $1 WHERE id = $2",
+        ["fm-port", Ecto.UUID.dump!(call.id)]
+      )
+
+      assert json_response(signed(conn, local, payload), 200)["type"] == 7
+      assert [%{"body" => body}] = orders("local", "fm-port")
+      assert body =~ "Value: hold"
+    end
+
+    test "a DM captain answer preserves long modal text within the message limit", %{
+      conn: conn,
+      local: local
+    } do
+      call = call("local", %{question: String.duplicate("q", 2000), allow_other: true})
+      text = String.duplicate("a", 1000)
+      params = Jason.decode!(modal(@oss_app, Ask.modal_custom_id(call.id), text))
+      {member, params} = Map.pop(params, "member")
+      payload = params |> Map.put("user", member["user"]) |> Jason.encode!()
+      response = conn |> signed(local, payload) |> json_response(200)
+      assert response["type"] == 7
+      assert response["data"]["components"] == []
+      assert String.length(response["data"]["content"]) <= 2000
+      assert response["data"]["content"] =~ text
+      assert [%{"body" => body}] = orders("local", "fm-port")
+      assert body =~ text
+    end
+
     test "a select answers the call, edits the message, and files a captain order",
          %{conn: conn, local: local} do
       call = call("local")
@@ -494,7 +599,15 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
 
     test "the write, not the read, is what decides a double click" do
       call = call("local")
-      answer = %{call_id: call.id, kind: :select, value: "ship", text: nil, by: "Captain"}
+
+      answer = %{
+        call_id: call.id,
+        kind: :select,
+        value: "ship",
+        text: nil,
+        by: "Captain",
+        user_id: "123456789012345678"
+      }
 
       # Answer the call behind CaptainCalls' back, so the second call reaches
       # the UPDATE holding a record that still says :open - which is what two
@@ -527,6 +640,13 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
       acme = :crypto.generate_key(:eddsa, :ed25519)
       seed_tenant("acme", acme)
       claim("acme", @acme_app)
+
+      {:ok, _} =
+        FirstmatePort.Credentials.Credential.create(
+          %{provider: "discord", key: "captain_user_id", value: "123456789012345678"},
+          authorize?: false,
+          tenant: "acme"
+        )
 
       # The call belongs to local; the interaction is signed by acme's own
       # application, so it verifies - and still finds nothing to answer.
@@ -739,9 +859,9 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
 
       # Correctly signed, and still refused: the cap is applied while the body is
       # being read, so an oversized payload is never buffered or verified.
-      assert_error_sent 413, fn ->
+      assert_error_sent(413, fn ->
         interact(conn, body, signature: sign(local, ts, body), timestamp: ts)
-      end
+      end)
     end
   end
 end

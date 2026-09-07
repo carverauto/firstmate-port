@@ -33,15 +33,35 @@ defmodule FirstmatePort.Inbox do
   "this is done" should not have to know a routing key.
   """
   def put(actor, attrs) when is_map(attrs) do
+    transaction(fn -> notifying(put_in_transaction(actor, attrs)) end)
+    |> case do
+      {:ok, message} -> {:ok, publish(actor, message)}
+      other -> other
+    end
+  end
+
+  def put_in_transaction(actor, attrs) do
+    true = FirstmatePort.Repo.in_transaction?()
     task = attrs |> fetch(:task) |> presence() || @default_task
     body = attrs |> fetch(:body) |> presence()
     delivery = attrs |> fetch(:delivery) |> presence() || ""
 
     if body do
-      insert(actor, %{task: task, body: body, delivery: delivery})
+      tenant = Tenancy.slug(actor)
+      lock_tenant!(tenant)
+
+      InboxMessage.put(
+        %{task: task, body: body, delivery: delivery, seq: next_seq(tenant)},
+        notify(Tenancy.opts(actor))
+      )
     else
       {:error, :invalid}
     end
+  end
+
+  def publish(actor, %InboxMessage{} = message) do
+    _ = fanout(message)
+    published(actor, message)
   end
 
   @doc """
@@ -126,27 +146,6 @@ defmodule FirstmatePort.Inbox do
     |> case do
       {:ok, messages} -> {:ok, Enum.map(messages, &wire/1)}
       {:error, error} -> {:error, error}
-    end
-  end
-
-  defp insert(actor, attrs) do
-    opts = Tenancy.opts(actor)
-    tenant = Tenancy.slug(actor)
-
-    transaction(fn ->
-      # Held to the end of the transaction, so the gap between reading the
-      # highest seq and writing seq + 1 is not one another writer for this
-      # tenant can slip into. Other tenants never wait on it.
-      lock_tenant!(tenant)
-      notifying(InboxMessage.put(Map.put(attrs, :seq, next_seq(tenant)), notify(opts)))
-    end)
-    |> case do
-      {:ok, %InboxMessage{} = message} ->
-        _ = fanout(message)
-        {:ok, published(actor, message)}
-
-      other ->
-        other
     end
   end
 

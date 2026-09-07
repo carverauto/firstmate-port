@@ -31,18 +31,21 @@ defmodule FirstmatePort.Portal.Validations.CaptainCallOptions do
   def validate(changeset, _opts, _context) do
     case Ash.Changeset.get_attribute(changeset, :options) do
       options when is_list(options) and options != [] ->
-        check(options)
+        limit =
+          if Ash.Changeset.get_attribute(changeset, :allow_other), do: 24, else: @max_options
+
+        check(options, limit)
 
       _ ->
         error("must be a non-empty list of choices")
     end
   end
 
-  defp check(options) when length(options) > @max_options do
-    error("must be at most #{@max_options} choices; Discord will not render more")
+  defp check(options, limit) when length(options) > limit do
+    error("must be at most #{limit} choices; Discord will not render more")
   end
 
-  defp check(options) do
+  defp check(options, _limit) do
     with :ok <- Enum.reduce_while(options, :ok, &check_one/2) do
       check_unique(options)
     end

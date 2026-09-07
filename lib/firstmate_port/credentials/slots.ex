@@ -14,6 +14,14 @@ defmodule FirstmatePort.Credentials.Slots do
   @catalog [
     %{
       provider: "discord",
+      key: "captain_user_id",
+      label: "Discord captain user ID",
+      format: :opaque,
+      about:
+        "Only this Discord user may answer captain calls or open their modal. Without a stored ID, nobody may answer."
+    },
+    %{
+      provider: "discord",
       key: "public_key",
       label: "Discord interactions public key",
       format: :hex64,

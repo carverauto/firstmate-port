@@ -1,7 +1,7 @@
 defmodule FirstmatePortWeb.Api.CaptainCallController do
   @moduledoc """
   `POST /api/captain/calls` - firstmate asking the captain a bounded question in
-  Discord, and `GET` for what has come back.
+  Discord.
 
   Posting to Discord happens on this request rather than behind a job, because
   the caller's next move depends on whether the captain can actually see the
@@ -40,29 +40,6 @@ defmodule FirstmatePortWeb.Api.CaptainCallController do
         conn |> put_status(:unprocessable_entity) |> json(%{"error" => describe(error)})
     end
   end
-
-  def index(conn, params) do
-    calls =
-      case params["status"] do
-        "open" -> CaptainCalls.open(conn.assigns.current_user)
-        _ -> CaptainCalls.recent(conn.assigns.current_user)
-      end
-
-    case calls do
-      {:ok, calls} -> json(conn, %{"data" => Enum.map(calls, &CaptainCalls.wire/1)})
-      {:error, error} -> conn |> put_status(:bad_request) |> json(%{"error" => describe(error)})
-    end
-  end
-
-  def show(conn, %{"id" => id}) do
-    case CaptainCalls.get(conn.assigns.current_user, id) do
-      {:ok, nil} -> not_found(conn)
-      {:ok, call} -> json(conn, CaptainCalls.wire(call))
-      _ -> not_found(conn)
-    end
-  end
-
-  defp not_found(conn), do: conn |> put_status(:not_found) |> json(%{"error" => "not found"})
 
   defp describe(error), do: Errors.describe(error, "the question could not be asked")
 end

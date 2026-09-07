@@ -91,6 +91,16 @@ defmodule FirstmatePort.CaptainCalls do
 
     # A custom_id that is not a uuid is an invalid argument rather than a miss,
     # and it is still just someone else's component on a shared application.
+    with {:ok, configured} when is_binary(configured) and configured != "" <-
+           FirstmatePort.Credentials.fetch_secret(tenant, "discord", "captain_user_id"),
+         true <- configured == Map.get(answer, :user_id) do
+      lookup_answer(call_id, answer, ash)
+    else
+      _ -> {:error, :unauthorized}
+    end
+  end
+
+  defp lookup_answer(call_id, answer, ash) do
     case CaptainCall.get(call_id, ash) do
       {:ok, %CaptainCall{status: :open} = call} -> apply_answer(call, answer, ash)
       {:ok, %CaptainCall{} = call} -> {:error, {:already_answered, call}}
@@ -137,9 +147,21 @@ defmodule FirstmatePort.CaptainCalls do
       answered_by: String.slice(Map.get(answer, :by) || "", 0, 100)
     }
 
-    case CaptainCall.answer(call, attrs, ash) do
-      {:ok, answered} ->
-        file_order(answered, ash)
+    result =
+      FirstmatePort.Repo.transaction(fn ->
+        with {:ok, answered, notifications} <-
+               CaptainCall.answer(call, attrs, Keyword.put(ash, :return_notifications?, true)),
+             {:ok, message, inbox_notifications} <- file_order(answered, ash) do
+          {answered, message, notifications ++ inbox_notifications}
+        else
+          {:error, reason} -> FirstmatePort.Repo.rollback(reason)
+        end
+      end)
+
+    case result do
+      {:ok, {answered, message, notifications}} ->
+        _ = Ash.Notifier.notify(notifications)
+        _ = Inbox.publish(answerer(answered, ash), message)
         {:ok, answered}
 
       # The filter carried into the UPDATE is what makes a double click
@@ -169,16 +191,11 @@ defmodule FirstmatePort.CaptainCalls do
     Call: #{call.id}\
     """
 
-    case Inbox.put(answerer(call, ash), %{task: call.task, body: body, delivery: "discord"}) do
-      {:ok, _message} ->
-        :ok
-
-      {:error, reason} ->
-        # The row is the record either way; the order is how the crew hears
-        # about it, and an inbox that refused one is worth saying out loud.
-        Logger.warning("captain call #{call.id} answered but not filed: #{inspect(reason)}")
-        :ok
-    end
+    Inbox.put_in_transaction(answerer(call, ash), %{
+      task: call.task,
+      body: body,
+      delivery: "discord"
+    })
   end
 
   # `Inbox.put` stamps the sender off the actor's email. The captain answered in
@@ -208,15 +225,6 @@ defmodule FirstmatePort.CaptainCalls do
   """
   @spec respond(String.t(), Ask.answer()) :: map()
   def respond(tenant, answer), do: tenant |> answer(answer) |> Ask.response()
-
-  @doc "Questions this tenant's captain has not answered yet."
-  def open(actor), do: CaptainCall.open(Tenancy.opts(actor))
-
-  @doc "Recent questions, answered ones included."
-  def recent(actor), do: CaptainCall.recent(Tenancy.opts(actor))
-
-  @doc "One call by id, scoped to the actor's tenant."
-  def get(actor, id), do: CaptainCall.get(id, Tenancy.opts(actor))
 
   @doc "The `fm-captain-call.v1` payload for one call."
   def wire(%CaptainCall{} = call) do

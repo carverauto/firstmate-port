@@ -54,6 +54,7 @@ defmodule FirstmatePort.Discord.Ask do
           kind: :select | :modal,
           value: String.t() | nil,
           text: String.t() | nil,
+          user_id: String.t() | nil,
           by: String.t()
         }
 
@@ -152,6 +153,7 @@ defmodule FirstmatePort.Discord.Ask do
        kind: :modal,
        value: nil,
        text: modal_text(data),
+       user_id: get_in(params, ["member", "user", "id"]) || get_in(params, ["user", "id"]),
        by: who(params)
      }}
   end
@@ -166,6 +168,7 @@ defmodule FirstmatePort.Discord.Ask do
        kind: :select,
        value: chosen(data),
        text: nil,
+       user_id: get_in(params, ["member", "user", "id"]) || get_in(params, ["user", "id"]),
        by: who(params)
      }}
   end
@@ -252,6 +255,9 @@ defmodule FirstmatePort.Discord.Ask do
     ephemeral("Already answered: #{shown(call)}.")
   end
 
+  def response({:error, :unauthorized}),
+    do: ephemeral("Only the configured captain may answer this question.")
+
   def response({:error, :unknown_option}), do: ephemeral("That is not one of the choices.")
 
   def response({:error, :no_choice}), do: ephemeral("No choice came back with that interaction.")
@@ -262,12 +268,14 @@ defmodule FirstmatePort.Discord.Ask do
   def response({:error, _reason}), do: ephemeral("That answer could not be recorded.")
 
   defp answered_content(%CaptainCall{} = call) do
-    "#{call.question}\n\n**Answered:** #{shown(call)}#{by(call)}"
+    answer = "\n\n**Answered:** #{shown(call)}#{by(call)}"
+    String.slice(call.question, 0, 2000 - String.length(answer)) <> answer
   end
 
   defp by(%CaptainCall{answered_by: ""}), do: ""
   defp by(%CaptainCall{answered_by: name}), do: " - #{name}"
 
+  defp shown(%CaptainCall{answer_label: "Something else", answer: answer}), do: answer
   defp shown(%CaptainCall{answer_label: "", answer: answer}), do: answer
   defp shown(%CaptainCall{answer_label: label}), do: label
 
