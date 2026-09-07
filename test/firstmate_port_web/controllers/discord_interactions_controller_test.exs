@@ -498,6 +498,11 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
           assert response["type"] == 4
           assert response["data"]["flags"] == 64
           assert response["data"]["content"] =~ "configured captain"
+
+          assert %{outcome: :captain_refused, verified?: true, description: description} =
+                   latest("local")
+
+          assert description == "refused: clicker is not the configured captain"
           assert reload(call, "local").status == :open
           assert orders("local", "fm-port") == []
         end
@@ -521,6 +526,11 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
       assert response["data"]["flags"] == 64
       assert reload(call, "local").status == :open
       assert orders("local", nil) == []
+
+      assert %{outcome: :answer_not_recorded, verified?: true, description: description} =
+               latest("local")
+
+      assert description == "verified, but the answer and inbox order could not be recorded"
 
       FirstmatePort.Repo.query!(
         "UPDATE captain_calls SET task = $1 WHERE id = $2",
@@ -564,6 +574,8 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
       assert body["type"] == 7
       assert body["data"]["components"] == []
       assert body["data"]["content"] =~ "Ship the release?"
+      assert %{outcome: :answered, verified?: true, description: description} = latest("local")
+      assert description == "verified - captain answer and inbox order recorded"
       assert body["data"]["content"] =~ "Hold"
       assert body["data"]["content"] =~ "Captain"
 
@@ -671,6 +683,11 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
 
       # 9 is MODAL.
       assert body["type"] == 9
+
+      assert %{outcome: :modal_opened, verified?: true, description: description} =
+               latest("local")
+
+      assert description == "verified - answer modal opened; no answer recorded yet"
       assert body["data"]["custom_id"] == Ask.modal_custom_id(call.id)
       assert [%{"components" => [input]}] = body["data"]["components"]
       assert input["custom_id"] == "answer"

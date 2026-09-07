@@ -37,6 +37,12 @@ defmodule FirstmatePort.Discord.Attempts do
           :pong
           | :published
           | :answered
+          | :modal_opened
+          | :captain_refused
+          | :answer_not_recorded
+          | :already_answered
+          | :call_not_found
+          | :invalid_answer
           | :no_signature
           | :stale_timestamp
           | :unreadable_body
@@ -54,7 +60,13 @@ defmodule FirstmatePort.Discord.Attempts do
   @descriptions %{
     pong: "PING verified - answered PONG",
     published: "verified - published to this tenant's inbound subject",
-    answered: "verified - answered in Discord",
+    answered: "verified - captain answer and inbox order recorded",
+    modal_opened: "verified - answer modal opened; no answer recorded yet",
+    captain_refused: "refused: clicker is not the configured captain",
+    answer_not_recorded: "verified, but the answer and inbox order could not be recorded",
+    already_answered: "verified - call already answered; no new order filed",
+    call_not_found: "refused: question not found for this tenant",
+    invalid_answer: "refused: missing choice or choice not offered by this question",
     no_signature: "refused: no X-Signature-Ed25519 header",
     stale_timestamp: "refused: timestamp missing, unparseable, or too far from now",
     unreadable_body:
@@ -114,7 +126,20 @@ defmodule FirstmatePort.Discord.Attempts do
 
   @doc "Whether an outcome means the signature check passed."
   @spec verified?(outcome()) :: boolean()
-  def verified?(outcome), do: outcome in [:pong, :published, :answered, :upstream_unavailable]
+  def verified?(outcome),
+    do:
+      outcome in [
+        :pong,
+        :published,
+        :answered,
+        :modal_opened,
+        :captain_refused,
+        :answer_not_recorded,
+        :already_answered,
+        :call_not_found,
+        :invalid_answer,
+        :upstream_unavailable
+      ]
 
   @doc "PubSub topic carrying `{:discord_attempt, attempt}`."
   def topic(tenant), do: @topic <> ":" <> Tenancy.slug(tenant)

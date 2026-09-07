@@ -216,16 +216,6 @@ defmodule FirstmatePort.CaptainCalls do
   defp shown(%CaptainCall{answer_label: "", answer: answer}), do: answer
   defp shown(%CaptainCall{answer_label: label}), do: label
 
-  @doc """
-  The interaction response for one answer, ready to be rendered as JSON.
-
-  This is what the endpoint calls: it hands over the tenant the signature
-  resolved to and the answer read off the payload, and gets back the reply
-  Discord should see.
-  """
-  @spec respond(String.t(), Ask.answer()) :: map()
-  def respond(tenant, answer), do: tenant |> answer(answer) |> Ask.response()
-
   @doc "The `fm-captain-call.v1` payload for one call."
   def wire(%CaptainCall{} = call) do
     %{

@@ -32,15 +32,6 @@ defmodule FirstmatePort.Portal.CaptainCall do
   postgres do
     table("captain_calls")
     repo(FirstmatePort.Repo)
-
-    custom_indexes do
-      # The portal and the API both ask "what is the captain still sitting on",
-      # which is a small set beside the history of everything ever asked.
-      index([:tenant_slug, :inserted_at],
-        name: "captain_calls_open_index",
-        where: "status = 'open'"
-      )
-    end
   end
 
   code_interface do

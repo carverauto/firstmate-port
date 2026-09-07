@@ -118,13 +118,26 @@ defmodule FirstmatePortWeb.DiscordInteractionsController do
   defp answer(conn, params, tenant, raw) do
     case Ask.route(params) do
       {:ok, answer} ->
-        record(tenant, params, :answered)
-        json(conn, CaptainCalls.respond(tenant, answer))
+        result = CaptainCalls.answer(tenant, answer)
+        outcome = answer_outcome(result)
+        record(tenant, params, outcome)
+        Logger.info("Discord interaction for #{tenant}: #{Attempts.describe(outcome)}")
+        json(conn, Ask.response(result))
 
       :not_ours ->
         publish_and_defer(conn, params, tenant, raw)
     end
   end
+
+  defp answer_outcome({:ok, _call}), do: :answered
+  defp answer_outcome({:open_modal, _call}), do: :modal_opened
+  defp answer_outcome({:error, :unauthorized}), do: :captain_refused
+  defp answer_outcome({:error, :not_recorded}), do: :answer_not_recorded
+  defp answer_outcome({:error, {:already_answered, _call}}), do: :already_answered
+  defp answer_outcome({:error, :not_found}), do: :call_not_found
+
+  defp answer_outcome({:error, reason}) when reason in [:no_choice, :unknown_option],
+    do: :invalid_answer
 
   defp publish_and_defer(conn, params, tenant, raw) do
     case publish(tenant, raw) do
