@@ -105,10 +105,13 @@ schema change. The ones the portal knows by name are in
 live (a `discord`/`public_key` that is not 64 hex characters is refused at the
 form, not at the next inbound interaction).
 
-`discord`/`public_key`, `embeddings`/`api_key`, and the two GitHub slots are consumed by integrations.
-The rest are storage only: saving a bot token does not wire outbound Discord
-calls, and portal sign-in remains configured from the deployment environment -
-it does not read `oidc`/`client_secret`.
+`discord`/`public_key`, `discord`/`bot_token`, `discord`/`captain_user_id`,
+`embeddings`/`api_key`, and the two GitHub slots are consumed by integrations.
+The rest are storage only, and portal sign-in remains configured from the deployment environment - it does not
+read `oidc`/`client_secret`.
+
+- For outbound Discord credentials and captain authorization, see
+  [captain-calls.md](captain-calls.md).
 
 - `embeddings`/`api_key` is the provider key for optional fleet-log semantic
   search. It is read server-side and passed per request, never written into
@@ -176,12 +179,15 @@ what makes a fresh install work with nothing stored but a public key.
 A missing or unusable selected key and a failed signature return the same bare
 `401 unauthorized`, without identifying the selected tenant. Two tenants may
 hold the same Discord app key without either speaking for the other - the claim,
-not the key, decides.
+not the key, decides. The response says nothing; the reason is on
+`/settings/credentials` instead - see "When Discord will not verify the URL"
+below.
 
 Keys are read fresh on each interaction, so storing, rotating, or deleting one
 takes effect immediately, with no cache to invalidate and no restart. A
-verified interaction is published on that tenant's `<tenant>.discord.inbound`
-subject.
+verified PING receives PONG. Interactive [captain calls](captain-calls.md) are
+handled locally; other verified interactions are published on that tenant's
+`<tenant>.discord.inbound` subject.
 
 Beyond the signature, an interaction must also arrive with a timestamp within
 300 seconds of now, and a body no larger than 64
@@ -220,6 +226,39 @@ which Discord reports as an endpoint that could not be verified.
 
 The key never leaves the portal: it is not a Kubernetes secret, not an
 environment variable, and never appears in a chat message or an HTTP response.
+
+### When Discord will not verify the URL
+
+Discord reports every failure the same way - *"the specified interactions
+endpoint url could not be verified"*. Signature, timestamp, and key failures
+return the same bare `401 unauthorized`, without exposing the selected tenant
+or its key state. An unreadable body returns `400`; an oversized body returns
+`413`. After verification, captain-call refusals return HTTP `200` with an
+ephemeral Discord reply (see [captain-calls.md](captain-calls.md#answering)).
+Diagnostic reasons are published where the tenant's own operators can see them: the **Discord interactions endpoint**
+panel on `/settings/credentials`.
+
+The panel shows the URL to paste, whether a key is stored, whether an
+application is claimed, and the last hour of inbound interactions with what the
+endpoint did with each. Save the URL in the developer portal with the panel
+open and Discord's own PING appears on it, verified or refused, with the check
+that failed named:
+
+| What the panel says | What to do |
+| --- | --- |
+| Nothing has reached `/interactions` | First confirm the application claim selects this tenant. Unclaimed applications and requests rejected before application routing appear under the default tenant. Then check DNS and the HTTPRoute. |
+| reached the interactions hostname at another path | A request did arrive, at the path named beside it. Almost always a trailing slash on the endpoint URL. |
+| no Discord public key stored | Paste the application's **Public Key** into `discord`/`public_key` below. This is the ordinary state of a fresh install and by far the most common cause. |
+| a key is stored but the vault would not decrypt it | `CLOAK_KEY` no longer matches the key that wrote the row. See "Rotating the vault key". |
+| the stored key is not 64 hex characters | Rotate it with the value from the developer portal's **General Information** page. |
+| signature did not verify against the stored key | The key belongs to a different application than the one calling, or another tenant has claimed this application. |
+| timestamp ... too far from now | The node's clock has drifted; the panel names the drift in seconds. |
+| request body was never read | Something posted to `/interactions` without `content-type: application/json`. Discord always sends JSON, so this is a hand-rolled request, not Discord. |
+
+Attempts are held in memory for an hour, capped per tenant, and are not a store
+of record - they age out and do not survive a restart. Controller refusals are
+also logged, with the same wording, by tenant. Wrong-path requests are recorded for
+the default tenant by the host guard and return `404`.
 
 ### Publishing the interactions hostname
 

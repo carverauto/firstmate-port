@@ -98,6 +98,7 @@ defmodule FirstmatePort.Accounts.TenantTest do
       assert {:ok, _} = claim(alpha, application_id, human("alpha"))
       assert {:error, occupied} = claim(beta, application_id, owner)
       assert {:ok, "alpha"} = Discord.tenant_for(%{"application_id" => application_id})
+
       assert {:ok, %{discord_application_id: nil}} =
                Tenant.get_by_slug("beta", authorize?: false)
 
@@ -109,6 +110,7 @@ defmodule FirstmatePort.Accounts.TenantTest do
       assert refusal_messages(fallback) == refusal_messages(occupied)
       assert {:ok, ^default} = Discord.tenant_for(%{"application_id" => unclaimed_id})
       assert {:ok, "alpha"} = Discord.tenant_for(%{"application_id" => application_id})
+
       assert {:ok, %{discord_application_id: nil}} =
                Tenant.get_by_slug("beta", authorize?: false)
     end
@@ -120,8 +122,10 @@ defmodule FirstmatePort.Accounts.TenantTest do
       store_default_key(owner)
 
       assert {:ok, claimed} = claim(record, "100000000000000001", owner)
+
       assert {:ok, ^default} =
                Discord.tenant_for(%{"application_id" => "100000000000000001"})
+
       assert {:ok, %{discord_application_id: nil}} = claim(claimed, nil, owner)
     end
 
@@ -133,10 +137,13 @@ defmodule FirstmatePort.Accounts.TenantTest do
       store_default_key(human(Tenancy.default_slug()))
 
       assert {:error, _} = claim(claimed, "100000000000000002", owner)
+
       assert {:ok, "alpha"} =
                Discord.tenant_for(%{"application_id" => "100000000000000001"})
+
       assert {:ok, %{discord_application_id: "100000000000000001"}} =
                Tenant.get_by_slug("alpha", authorize?: false)
+
       assert {:ok, %{discord_application_id: nil}} = claim(claimed, nil, owner)
     end
   end

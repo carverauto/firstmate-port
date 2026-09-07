@@ -36,6 +36,8 @@ defmodule FirstmatePort.Credentials do
     resource FirstmatePort.Credentials.Credential
   end
 
+  require Logger
+
   alias FirstmatePort.Credentials.Credential
   alias FirstmatePort.Credentials.DecryptGuard
 
@@ -63,23 +65,69 @@ defmodule FirstmatePort.Credentials do
   end
 
   @doc """
-  The plaintext in one tenant's slot, or `:error` when the slot is empty.
+  The plaintext in one tenant's slot, or `:error` when it cannot be read.
 
   Server-side only: it decrypts without authorization, so `tenant` must be a slug
-  the caller has already established.
+  the caller has already established. Use `fetch_secret/3` when the caller has
+  to tell an empty slot from a filled one it cannot decrypt.
   """
   def secret(tenant, provider, key) do
+    case fetch_secret(tenant, provider, key) do
+      {:ok, value} -> {:ok, value}
+      {:error, _reason} -> :error
+    end
+  end
+
+  @doc """
+  The plaintext in one tenant's slot, or why it is not available.
+
+  `{:error, :missing}` is an empty slot - nobody has stored anything. That is
+  the ordinary state of a fresh install and the answer an operator needs when an
+  integration is silently unconfigured.
+
+  `{:error, :unreadable}` is the dangerous one: a row exists but its ciphertext
+  did not come back as plaintext, which is what a `CLOAK_KEY` that no longer
+  matches the key the row was written with looks like. Rotating a credential in
+  the portal fixes one row; `docs/credentials.md` covers the vault key itself.
+  Re-saving a secret repairs that slot under the current key; it does not
+  recover other rows encrypted under a lost vault key.
+
+  Server-side only, on the same terms as `secret/3`.
+  """
+  @spec fetch_secret(term(), String.t(), String.t()) ::
+          {:ok, String.t()} | {:error, :missing | :unreadable}
+  def fetch_secret(tenant, provider, key) do
+    slug = FirstmatePort.Tenancy.slug(tenant)
+
     Credential
     |> Ash.Query.for_read(:by_slot, %{provider: provider, key: key},
       authorize?: false,
-      tenant: FirstmatePort.Tenancy.slug(tenant)
+      tenant: slug
     )
     |> Ash.Query.set_context(DecryptGuard.context())
     |> Ash.Query.load([:value])
     |> Ash.read_one()
     |> case do
-      {:ok, %Credential{value: value}} when is_binary(value) -> {:ok, value}
-      _ -> :error
+      {:ok, %Credential{value: value}} when is_binary(value) ->
+        {:ok, value}
+
+      {:ok, nil} ->
+        {:error, :missing}
+
+      other ->
+        # A row that will not give up its plaintext is a vault problem, not an
+        # empty slot, and it is invisible from the outside - every integration
+        # just stops working. Say so once, by tenant and slot, never by value.
+        Logger.warning(
+          "tenant #{slug} has a #{provider}/#{key} credential that could not be decrypted: " <>
+            reason(other)
+        )
+
+        {:error, :unreadable}
     end
   end
+
+  defp reason({:ok, %Credential{}}), do: "no plaintext returned"
+  defp reason({:error, %{__struct__: struct}}), do: inspect(struct)
+  defp reason(_other), do: "unknown"
 end

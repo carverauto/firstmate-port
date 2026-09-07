@@ -12,12 +12,22 @@ defmodule FirstmatePortWeb.Plugs.DiscordHostGuard do
   Inert until `:discord_interactions_host` is configured, because without it no
   hostname is published for Discord and the single-origin localhost default
   serves everything from one host. See `FirstmatePortWeb.DiscordHosts`.
+
+  What it turns away is recorded on `FirstmatePort.Discord.Attempts`. This
+  hostname exists for one path, so a request arriving at another one is nearly
+  always an endpoint URL with a trailing slash or a typo in it - and Discord
+  reports that with the same "could not be verified" as a request that never
+  arrived at all. The attempt is filed against the default tenant because
+  nothing here has parsed a payload to select one; the path is what the
+  operator needs, not the tenant.
   """
 
   @behaviour Plug
 
   import Plug.Conn
 
+  alias FirstmatePort.Discord.Attempts
+  alias FirstmatePort.Tenancy
   alias FirstmatePortWeb.DiscordHosts
 
   @impl Plug
@@ -29,6 +39,10 @@ defmodule FirstmatePortWeb.Plugs.DiscordHostGuard do
   @impl Plug
   def call(conn, _opts) do
     if DiscordHosts.interactions_host?(conn.host) do
+      Attempts.record(Tenancy.default_slug(), :wrong_path, %{
+        path: "#{conn.method} #{conn.request_path}"
+      })
+
       conn
       |> put_resp_content_type("text/plain")
       |> send_resp(:not_found, "not found")

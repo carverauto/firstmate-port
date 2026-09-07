@@ -25,7 +25,8 @@ defmodule FirstmatePort.Credentials.Slots do
       key: "bot_token",
       label: "Discord bot token",
       format: :opaque,
-      about: "Used for outbound Discord calls. Never sent to the browser once stored."
+      about:
+        "Read per message when the portal posts a captain call to Discord, so rotating it here takes effect immediately. Never sent to the browser once stored."
     },
     %{
       provider: "github",
@@ -71,6 +72,14 @@ defmodule FirstmatePort.Credentials.Slots do
       label: "Outbound webhook signing secret",
       format: :opaque,
       about: "Secret this tenant's webhook receivers use to verify our signatures."
+    },
+    %{
+      provider: "discord",
+      key: "captain_user_id",
+      label: "Discord captain user ID",
+      format: :opaque,
+      about:
+        "Only this Discord user may answer captain calls or open their modal. Without a stored ID, nobody may answer."
     }
   ]
 

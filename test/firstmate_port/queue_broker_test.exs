@@ -30,9 +30,12 @@ defmodule FirstmatePort.QueueBrokerTest do
     end)
 
     await_ready(broker)
+
     start_supervised!(%{
       id: Gnat,
-      start: {Gnat, :start_link, [%{host: "127.0.0.1", port: port}, [name: Connection.connection_name()]]}
+      start:
+        {Gnat, :start_link,
+         [%{host: "127.0.0.1", port: port}, [name: Connection.connection_name()]]}
     })
 
     unless Process.whereis(FirstmatePort.PubSub) do
@@ -60,7 +63,9 @@ defmodule FirstmatePort.QueueBrokerTest do
                consumer_name: "queue-regression"
              )
 
-    assert {:ok, entry} = Queues.record("local", %{"task" => "broker-task", "status" => "working"})
+    assert {:ok, entry} =
+             Queues.record("local", %{"task" => "broker-task", "status" => "working"})
+
     assert {:ok, %{subject: "local.steer.queue", data: body}} = stored_message(conn, 100)
     assert Jason.decode!(body) == Jason.decode!(Jason.encode!(Queues.Entry.to_report(entry)))
   end

@@ -79,34 +79,69 @@ defmodule FirstmatePort.Credentials.Discord do
   raw request body exactly as received. A tenant with no key, or an unusable
   one, verifies nothing.
   """
-  def verify?(tenant, signature, timestamp, body)
+  def verify?(tenant, signature, timestamp, body) do
+    verify(tenant, signature, timestamp, body) == :ok
+  end
+
+  @doc """
+  `:ok`, or why `tenant` could not be shown to have signed this request.
+
+  These verification failures reach the HTTP caller only as a bare 401. The
+  internal reason distinguishes failures that need different fixes:
+
+  * `:no_key` - the tenant has not stored a Discord public key. Paste it.
+  * `:unreadable_key` - a key is stored but the vault would not decrypt it.
+  * `:unusable_key` - the stored value is not 32 bytes of hex.
+  * `:malformed_signature` - the header is not 64 bytes of hex.
+  * `:bad_signature` - a real key said no. Usually the wrong application's key.
+
+  An endpoint Discord "could not verify" is nearly always the first of those,
+  and an operator has no way to learn that from the 401. See `docs/credentials.md`, "When Discord will not verify the URL".
+  """
+  @spec verify(term(), term(), term(), term()) :: :ok | {:error, atom()}
+  def verify(tenant, signature, timestamp, body)
       when is_binary(signature) and is_binary(timestamp) and is_binary(body) do
-    with {:ok, raw} <- decode_hex(signature),
-         @signature_bytes <- byte_size(raw),
+    with {:ok, raw} <- signature_bytes(signature),
          {:ok, public_key} <- public_key(tenant) do
-      :crypto.verify(:eddsa, :none, timestamp <> body, raw, [public_key, :ed25519])
-    else
-      _ -> false
+      if :crypto.verify(:eddsa, :none, timestamp <> body, raw, [public_key, :ed25519]) do
+        :ok
+      else
+        {:error, :bad_signature}
+      end
     end
   end
 
-  def verify?(_tenant, _signature, _timestamp, _body), do: false
+  def verify(_tenant, signature, _timestamp, _body) when not is_binary(signature) do
+    {:error, :malformed_signature}
+  end
+
+  def verify(_tenant, _signature, _timestamp, _body), do: {:error, :bad_signature}
 
   @doc """
-  The tenant's stored Discord public key as raw bytes.
+  The tenant's stored Discord public key as raw bytes, or why not.
 
-  `:error` when the tenant has not filled the slot or the stored value is not a
-  32-byte hex key. A malformed key is logged by tenant and slot, never by value.
+  `{:error, :no_key}` when the slot is empty, `{:error, :unreadable_key}` when a
+  row exists that the vault will not decrypt, and `{:error, :unusable_key}` when
+  the stored value is not a 32-byte hex key. A malformed key is logged by tenant
+  and slot, never by value.
   """
   def public_key(tenant) do
-    case FirstmatePort.Credentials.secret(tenant, @provider, @key) do
+    case FirstmatePort.Credentials.fetch_secret(tenant, @provider, @key) do
       {:ok, hex} -> decode_public_key(tenant, hex)
-      _ -> :error
+      {:error, :missing} -> {:error, :no_key}
+      {:error, :unreadable} -> {:error, :unreadable_key}
     end
   end
 
   @doc "Whether `tenant` has stored a usable Discord public key."
   def configured?(tenant), do: match?({:ok, _}, public_key(tenant))
+
+  defp signature_bytes(signature) do
+    case decode_hex(signature) do
+      {:ok, raw} when byte_size(raw) == @signature_bytes -> {:ok, raw}
+      _ -> {:error, :malformed_signature}
+    end
+  end
 
   defp decode_public_key(tenant, hex) do
     case decode_hex(hex) do
@@ -118,7 +153,7 @@ defmodule FirstmatePort.Credentials.Discord do
           "tenant #{tenant} has an unusable #{@provider}/#{@key} credential; ignoring it"
         )
 
-        :error
+        {:error, :unusable_key}
     end
   end
 
