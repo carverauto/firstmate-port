@@ -186,7 +186,7 @@ defmodule FirstmatePort.Portal.CaptainCall do
       allow_nil?(false)
       public?(true)
       description("The chosen option's value, or the captain's typed text on an 'other' answer.")
-      constraints(max_length: 1000, allow_empty?: true)
+      constraints(max_length: 1000, allow_empty?: true, trim?: false)
     end
 
     attribute :answer_label, :string do

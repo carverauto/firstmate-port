@@ -2,7 +2,6 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
   use FirstmatePortWeb.ConnCase, async: false
 
   alias FirstmatePort.Accounts.{Tenant, User}
-  alias FirstmatePort.CaptainCalls
   alias FirstmatePort.Credentials.Credential
   alias FirstmatePort.Discord.Ask
   alias FirstmatePort.Discord.Attempts
@@ -611,28 +610,53 @@ defmodule FirstmatePortWeb.DiscordInteractionsControllerTest do
 
     test "the write, not the read, is what decides a double click" do
       call = call("local")
+      assert call.status == :open
+      actor = agent("local")
+      opts = [actor: actor, tenant: "local", return_notifications?: true]
 
-      answer = %{
-        call_id: call.id,
-        kind: :select,
-        value: "ship",
-        text: nil,
-        by: "Captain",
-        user_id: "123456789012345678"
-      }
+      submit = fn value ->
+        FirstmatePort.Repo.transaction(fn ->
+          with {:ok, answered, _notifications} <-
+                 CaptainCall.answer(call, %{answer: value, answer_label: value}, opts),
+               {:ok, message, _notifications} <-
+                 Inbox.put_in_transaction(actor, %{
+                   task: answered.task,
+                   body: "Value: #{answered.answer}",
+                   delivery: "discord"
+                 }) do
+            {answered, message}
+          else
+            {:error, error} -> FirstmatePort.Repo.rollback(error)
+          end
+        end)
+      end
 
-      # Answer the call behind CaptainCalls' back, so the second call reaches
-      # the UPDATE holding a record that still says :open - which is what two
-      # clicks a millisecond apart both hold. A read-then-write would file the
-      # order twice here.
-      {:ok, _} =
-        CaptainCall.answer(call, %{answer: "ship", answer_label: "Ship it"},
-          actor: agent("local"),
-          tenant: "local"
-        )
+      assert {:ok, {%CaptainCall{answer: "ship", status: :answered}, message}} = submit.("ship")
+      assert {:error, %{errors: errors}} = submit.("hold")
+      assert Enum.any?(errors, &match?(%Ash.Error.Changes.StaleRecord{}, &1))
+      assert reload(call, "local").answer == "ship"
+      assert [%{"ack" => id, "body" => "Value: ship"}] = orders("local", "fm-port")
+      assert id == message.id
+    end
 
-      assert {:error, {:already_answered, _}} = CaptainCalls.answer("local", answer)
-      assert orders("local", "fm-port") == []
+    test "a selected option preserves surrounding whitespace", %{conn: conn, local: local} do
+      call =
+        call("local", %{
+          options: [
+            %{"value" => "hold", "label" => "Hold"},
+            %{"value" => " hold ", "label" => "Hold with spaces"}
+          ]
+        })
+
+      response =
+        conn
+        |> signed(local, component(@oss_app, Ask.custom_id(call.id), [" hold "]))
+        |> json_response(200)
+
+      assert response["type"] == 7
+      assert reload(call, "local").answer == " hold "
+      assert [%{"body" => body}] = orders("local", "fm-port")
+      assert body =~ "Value:  hold \n"
     end
 
     test "a value that was never on the menu is refused", %{conn: conn, local: local} do
