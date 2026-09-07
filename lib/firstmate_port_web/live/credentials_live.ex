@@ -308,8 +308,9 @@ defmodule FirstmatePortWeb.CredentialsLive do
         <p class="hint">
           Discord verifies this URL by sending it a signed PING, and reports any failure
           only as "the specified interactions endpoint url could not be verified". The
-          endpoint answers every refusal with the same bare 401, so the reason is here
-          instead.
+          endpoint returns 401 for missing or invalid signatures, 400 for unreadable bodies,
+          and 413 for oversized bodies. Captain-user refusals return 200 with an ephemeral
+          Discord reply. Check the diagnostics here for the reason.
         </p>
 
         <dl class="facts">
