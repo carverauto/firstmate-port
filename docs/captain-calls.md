@@ -60,15 +60,18 @@ curl -X POST -H "Authorization: Bearer $TOKEN" -H 'content-type: application/jso
 | --- | --- | --- |
 | `question` | yes | The message body. At most 2000 characters, which is Discord's own limit. |
 | `channel_id` | yes | The Discord channel to post in. Public routing data, not a credential - the caller supplies it. |
-| `options` | yes | 1-25 choices (at most 24 with `allow_other`) of `value`, `label`, and optional `description`. Values must be unique. |
+| `options` | yes | 1-25 choices (at most 24 with `allow_other`) of `value`, `label`, and optional `description`. Values must be unique; `__other__` is reserved. Each value, label, and supplied description must be nonblank and at most 100 characters. |
 | `task` | no | The inbox task the answer is filed under. Defaults to `firstmate`. |
 | `allow_other` | no | Adds a "Something else..." choice that opens a modal. Default false. |
 
-`201` returns the call, including the `message_id` Discord gave it. `422` means
-the question was refused before anything was posted - the choices did not fit
-what Discord will render, or what an answer can be matched against. `502` means
-Discord would not take the message; the call comes back with
-`status: "failed"` and a `delivery_error` naming what to fix.
+`201` returns the call, including the `message_id` when Discord returned one.
+If an answer commits before a delivery failure is handled, the response is
+still `201` with the answered call; its message ID may be empty.
+`422` reports validation or persistence errors. Invalid choices are refused
+before posting. `502` returns an `error` and a nested `call` with
+`status: "failed"` and a `delivery_error` naming what to fix. A transport
+timeout does not prove Discord failed to display the message.
+There is no call-history GET API; read answers through the inbox.
 
 ### The bot token
 
@@ -97,9 +100,9 @@ same way.
 * **"Something else..."** opens a modal. Nothing is recorded until it is
   submitted; the answer is then the captain's own text, labelled
   `Something else`.
-* **A value that was not one of the options** is refused. The options on the row
-  are the whole of what an answer may be, so a crafted payload cannot file an
-  order the captain was never shown.
+* **A select value that was not one of the options** is refused. Selected
+  values are stored exactly, including surrounding whitespace. Free text is
+  accepted only when `allow_other` is set; modal text is trimmed.
 * **A call belonging to another tenant** is not found. The endpoint has already
   resolved the signature to one tenant, and only that tenant's calls are
   reachable.
@@ -139,5 +142,8 @@ Answering is a one-way door, and what enforces it is a `status == :open` filter
 carried into the UPDATE itself rather than a read followed by a write. Two
 clicks a millisecond apart both read an open call; only one of them updates one,
 and the other is told it was already answered.
+
+Delivery failure also updates only an open row; it cannot overwrite a committed
+answer. The delivery path re-reads and returns that answered call as success.
 
 The answer transition and inbox order commit in one transaction. A failed insertion leaves the call open for retry. The Discord update shortens the question as needed to preserve the answer within 2000 characters; modal answers are limited to 1000 characters.

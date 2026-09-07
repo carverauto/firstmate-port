@@ -3,12 +3,8 @@ defmodule FirstmatePortWeb.Api.CaptainCallController do
   `POST /api/captain/calls` - firstmate asking the captain a bounded question in
   Discord.
 
-  Posting to Discord happens on this request rather than behind a job, because
-  the caller's next move depends on whether the captain can actually see the
-  question: a 201 means the message is in the channel with a select on it, and a
-  502 means it is not, with the reason on the returned call. Nothing is retried
-  here - a queue of questions the captain never asked for is worse than one that
-  failed where the crew could see it.
+  Posting runs on the request so the caller receives the delivery result.
+  Status codes and delivery-race semantics live in `docs/captain-calls.md`.
 
   The answer does not come back through this endpoint. It arrives on
   `POST /interactions` as a signed Discord interaction and is filed into the

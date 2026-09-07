@@ -89,8 +89,8 @@ defmodule FirstmatePort.Credentials do
   did not come back as plaintext, which is what a `CLOAK_KEY` that no longer
   matches the key the row was written with looks like. Rotating a credential in
   the portal fixes one row; `docs/credentials.md` covers the vault key itself.
-  The two are worth telling apart because pasting the secret again fixes the
-  first and cannot fix the second.
+  Re-saving a secret repairs that slot under the current key; it does not
+  recover other rows encrypted under a lost vault key.
 
   Server-side only, on the same terms as `secret/3`.
   """

@@ -104,10 +104,19 @@ defmodule FirstmatePortWeb.DiscordEndpointPanelTest do
 
   test "a verified PING reads as success", %{conn: conn, tenant: tenant} do
     {:ok, view, _html} = live(conn, ~p"/settings/credentials")
+    view |> form("form[phx-submit=save]", %{"value" => @key}) |> render_submit()
 
     :ok = record(tenant, :pong, %{type: 1, application_id: "111111111111111111"})
 
-    assert render(view) =~ "answered PONG"
+    html = render(view)
+    assert html =~ "answered PONG"
+
+    if evidence_dir = System.get_env("CAPTAIN_CALL_EVIDENCE_DIR") do
+      File.mkdir_p!(evidence_dir)
+      File.write!(Path.join(evidence_dir, "discord-diagnostics.html"),
+        "<!doctype html><html><head><meta charset=\"utf-8\"><link rel=\"stylesheet\" href=\"app.css\"></head><body>" <>
+          html <> "</body></html>")
+    end
   end
 
   test "one tenant never sees another tenant's traffic", %{conn: conn, tenant: tenant} do

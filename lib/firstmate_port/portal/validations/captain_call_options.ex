@@ -6,11 +6,10 @@ defmodule FirstmatePort.Portal.Validations.CaptainCallOptions do
   Two jobs, and the second is the one that matters. Discord's own limits (at
   most 25 options, 100 characters per label, value, and description) are
   checked here so a question is refused when it is asked rather than at the
-  POST to Discord, where the caller is long gone and all that is left is a row
-  nobody can answer.
+  POST to Discord. The caller waits for the delivery result.
 
-  Beyond that, the options are the *whole* of what an answer may be. A returned
-  interaction is verified as coming from the tenant's Discord application, but
+  Beyond that, the options bound select answers; `allow_other` permits modal
+  text. A returned interaction is verified as coming from the tenant's Discord application, but
   its `values` array is still just bytes on the wire, and matching them against
   this list is what stops a crafted payload from filing an order the captain was
   never shown. Duplicate values would make that match ambiguous, so they are

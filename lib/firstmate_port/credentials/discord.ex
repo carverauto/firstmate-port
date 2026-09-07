@@ -86,9 +86,8 @@ defmodule FirstmatePort.Credentials.Discord do
   @doc """
   `:ok`, or why `tenant` could not be shown to have signed this request.
 
-  The reason never reaches the caller of the HTTP endpoint - every refusal there
-  is the same bare 401. It exists because these failures need different fixes
-  and from outside they are indistinguishable:
+  These verification failures reach the HTTP caller only as a bare 401. The
+  internal reason distinguishes failures that need different fixes:
 
   * `:no_key` - the tenant has not stored a Discord public key. Paste it.
   * `:unreadable_key` - a key is stored but the vault would not decrypt it.

@@ -332,12 +332,11 @@ defmodule FirstmatePortWeb.CredentialsLive do
         <h3>Recent inbound interactions</h3>
         <p :if={@attempts == []} class="empty-copy">
           Nothing has reached <span class="kind">/interactions</span>
-          for this tenant in the last hour. Unclaimed applications route to the default tenant.
-          {if @tenant != Tenancy.default_slug(),
-            do: "Claim your Discord application ID below and confirm Discord is sending that application's ID."}
-          Confirm the application routing before checking DNS and the HTTP route. Requests
+          for this tenant in the last hour. Unclaimed applications route to the default tenant. {if @tenant !=
+                                                                                                      Tenancy.default_slug(),
+                                                                                                    do:
+                                                                                                      "Claim your Discord application ID below and confirm Discord is sending that application's ID."} Confirm the application routing before checking DNS and the HTTP route. Requests
           rejected before an application can be identified may appear only for the default tenant.
-
         </p>
         <table :if={@attempts != []} class="data-table">
           <thead>

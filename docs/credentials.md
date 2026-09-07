@@ -105,14 +105,13 @@ schema change. The ones the portal knows by name are in
 live (a `discord`/`public_key` that is not 64 hex characters is refused at the
 form, not at the next inbound interaction).
 
-`discord`/`public_key`, `discord`/`bot_token`, `embeddings`/`api_key`, and the
-two GitHub slots are consumed by integrations. The rest are storage only, and
-portal sign-in remains configured from the deployment environment - it does not
+`discord`/`public_key`, `discord`/`bot_token`, `discord`/`captain_user_id`,
+`embeddings`/`api_key`, and the two GitHub slots are consumed by integrations.
+The rest are storage only, and portal sign-in remains configured from the deployment environment - it does not
 read `oidc`/`client_secret`.
 
-- `discord`/`bot_token` is what the portal posts with when firstmate asks the
-  captain a question in Discord. It is read fresh on every message, so rotating
-  it here takes effect immediately. See [captain-calls.md](captain-calls.md).
+- For outbound Discord credentials and captain authorization, see
+  [captain-calls.md](captain-calls.md).
 
 - `embeddings`/`api_key` is the provider key for optional fleet-log semantic
   search. It is read server-side and passed per request, never written into
@@ -186,8 +185,9 @@ below.
 
 Keys are read fresh on each interaction, so storing, rotating, or deleting one
 takes effect immediately, with no cache to invalidate and no restart. A
-verified interaction is published on that tenant's `<tenant>.discord.inbound`
-subject.
+verified PING receives PONG. Interactive [captain calls](captain-calls.md) are
+handled locally; other verified interactions are published on that tenant's
+`<tenant>.discord.inbound` subject.
 
 Beyond the signature, an interaction must also arrive with a timestamp within
 300 seconds of now, and a body no larger than 64
@@ -230,10 +230,12 @@ environment variable, and never appears in a chat message or an HTTP response.
 ### When Discord will not verify the URL
 
 Discord reports every failure the same way - *"the specified interactions
-endpoint url could not be verified"* - and the endpoint answers every refusal
-with the same bare `401`, because saying more would report on a tenant to
-someone who has not proved they speak for it. So the reason is published where
-the tenant's own operators can see it: the **Discord interactions endpoint**
+endpoint url could not be verified"*. Signature, timestamp, and key failures
+return the same bare `401 unauthorized`, without exposing the selected tenant
+or its key state. An unreadable body returns `400`; an oversized body returns
+`413`. After verification, captain-call refusals return HTTP `200` with an
+ephemeral Discord reply (see [captain-calls.md](captain-calls.md#answering)).
+Diagnostic reasons are published where the tenant's own operators can see them: the **Discord interactions endpoint**
 panel on `/settings/credentials`.
 
 The panel shows the URL to paste, whether a key is stored, whether an
@@ -244,7 +246,7 @@ that failed named:
 
 | What the panel says | What to do |
 | --- | --- |
-| Nothing has reached `/interactions` | The request never reached the app. Check DNS and the HTTPRoute. |
+| Nothing has reached `/interactions` | First confirm the application claim selects this tenant. Unclaimed applications and requests rejected before application routing appear under the default tenant. Then check DNS and the HTTPRoute. |
 | reached the interactions hostname at another path | A request did arrive, at the path named beside it. Almost always a trailing slash on the endpoint URL. |
 | no Discord public key stored | Paste the application's **Public Key** into `discord`/`public_key` below. This is the ordinary state of a fresh install and by far the most common cause. |
 | a key is stored but the vault would not decrypt it | `CLOAK_KEY` no longer matches the key that wrote the row. See "Rotating the vault key". |
@@ -254,8 +256,9 @@ that failed named:
 | request body was never read | Something posted to `/interactions` without `content-type: application/json`. Discord always sends JSON, so this is a hand-rolled request, not Discord. |
 
 Attempts are held in memory for an hour, capped per tenant, and are not a store
-of record - they age out and do not survive a restart. Every refusal is also
-logged, with the same wording, by tenant.
+of record - they age out and do not survive a restart. Controller refusals are
+also logged, with the same wording, by tenant. Wrong-path requests are recorded for
+the default tenant by the host guard and return `404`.
 
 ### Publishing the interactions hostname
 

@@ -104,8 +104,8 @@ defmodule FirstmatePort.Discord.Client do
   @doc """
   A short, storable sentence for a `post_message/4` failure.
 
-  Written for the operator reading `/api/captain/calls` after a question did not
-  appear in Discord, so it names the thing they can go and change.
+  Written for the operator reading the `POST /api/captain/calls` response, so it
+  names the thing they can go and change.
   """
   def describe({:error, reason}), do: describe(reason)
   def describe(:no_bot_token), do: "no discord/bot_token stored for this tenant"

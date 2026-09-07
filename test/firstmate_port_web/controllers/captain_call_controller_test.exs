@@ -85,6 +85,77 @@ defmodule FirstmatePortWeb.Api.CaptainCallControllerTest do
     end)
   end
 
+  test "HTTP question round trip verifies Discord and delivers select and modal answers to the inbox", %{local: local} do
+    store_bot_token("local")
+    accepts()
+    {public, private} = :crypto.generate_key(:eddsa, :ed25519)
+
+    for {key, value} <- [{"public_key", Base.encode16(public, case: :lower)},
+                         {"captain_user_id", "123456789012345678"}] do
+      {:ok, _} = Credential.create(%{provider: "discord", key: key, value: value},
+        authorize?: false, tenant: "local")
+    end
+
+    interact = fn payload ->
+      body = Jason.encode!(payload)
+      timestamp = Integer.to_string(System.system_time(:second))
+      signature = :crypto.sign(:eddsa, :none, timestamp <> body, [private, :ed25519])
+      build_conn()
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("x-signature-timestamp", timestamp)
+      |> put_req_header("x-signature-ed25519", Base.encode16(signature, case: :lower))
+      |> post("/interactions", body)
+      |> json_response(200)
+    end
+
+    assert %{"type" => 1} = pong = interact.(%{"type" => 1})
+    captain = %{"user" => %{"id" => "123456789012345678", "global_name" => "Captain"}}
+
+    rounds = for kind <- [:select, :modal] do
+      created = build_conn() |> as(local)
+        |> post("/api/captain/calls", Map.put(@question, "allow_other", true))
+        |> json_response(201)
+      assert created["status"] == "open"
+      assert_received {:discord, "POST", path, sent}
+      assert [%{"components" => [%{"type" => 3, "custom_id" => custom_id}]}] = sent["components"]
+      assert custom_id == Ask.custom_id(created["id"])
+      select = %{"type" => 3, "member" => captain,
+        "data" => %{"component_type" => 3, "custom_id" => custom_id,
+          "values" => [if(kind == :select, do: "hold", else: Ask.other_value())]}}
+      first = interact.(select)
+
+      answer = if kind == :modal do
+        assert %{"type" => 9, "data" => %{"custom_id" => modal_id}} = first
+        interact.(%{"type" => 5, "member" => captain,
+          "data" => %{"custom_id" => modal_id, "components" => [
+            %{"type" => 1, "components" => [
+              %{"type" => 4, "custom_id" => "answer", "value" => "Wait for the canary"}]}]}})
+      else
+        first
+      end
+      assert %{"type" => 7, "data" => %{"components" => []}} = answer
+      {:ok, stored} = FirstmatePort.Portal.CaptainCall.get(created["id"], actor: local, tenant: "local")
+      assert stored.status == :answered
+      assert stored.answer == if(kind == :select, do: "hold", else: "Wait for the canary")
+      %{"kind" => kind, "created" => created, "discord_path" => path,
+        "discord_message" => sent, "first_response" => first, "answer_response" => answer,
+        "persisted" => FirstmatePort.CaptainCalls.wire(stored)}
+    end
+
+    %{"data" => orders} = build_conn() |> as(local)
+      |> get("/api/cli/inbox", %{"task" => "fm-port"}) |> json_response(200)
+    assert [_, _] = orders
+    assert Enum.any?(orders, &String.contains?(&1["body"], "Value: hold"))
+    assert Enum.any?(orders, &String.contains?(&1["body"], "Wait for the canary"))
+
+    if evidence_dir = System.get_env("CAPTAIN_CALL_EVIDENCE_DIR") do
+      File.mkdir_p!(evidence_dir)
+      File.write!(Path.join(evidence_dir, "discord-round-trip.json"), Jason.encode!(
+        %{transport: "Phoenix endpoint with stubbed outbound Discord HTTP; real Postgres sandbox",
+          pong: pong, rounds: rounds, inbox: orders}, pretty: true))
+    end
+  end
+
   describe "POST /api/captain/calls" do
     test "posts a select to Discord and returns the open call", %{conn: conn, local: local} do
       store_bot_token("local")

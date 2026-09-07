@@ -207,8 +207,8 @@ defmodule FirstmatePort.Discord.Ask do
 
   A recorded answer edits the question in place - `UPDATE_MESSAGE`, no
   components - so the message becomes the record of what was chosen and cannot
-  be answered twice by clicking again. Everything else is an ephemeral note back
-  to whoever clicked, because it concerns them and not the channel.
+  be answered twice by clicking again. Opening the optional modal returns a
+  modal response; refusals return an ephemeral note to whoever clicked.
 
   `UPDATE_MESSAGE` on a modal submit is allowed precisely because the modal was
   opened from a component; that is the only way ours are ever opened.

@@ -2,14 +2,8 @@ defmodule FirstmatePort.Discord.Attempts do
   @moduledoc """
   The last few inbound Discord interactions and what the endpoint did with them.
 
-  `POST /interactions` answers every refusal with the same bare 401 on purpose -
-  telling a caller *why* would tell them which tenant was selected and whether
-  it holds a key. That is right for the response and useless for the operator
-  standing in the Discord developer portal reading "the specified interactions
-  endpoint url could not be verified", who cannot tell a missing key from a
-  wrong one from a request that never arrived. This is where the reason goes
-  instead: server-side, tenant-scoped, and rendered on `/settings/credentials`
-  for the tenant it belongs to.
+  Tenant-scoped diagnostics for `/settings/credentials`. Response semantics and
+  operator guidance live in `docs/credentials.md`, "Discord inbound".
 
   Deliberately not a resource, on the same terms as `FirstmatePort.Queues.Tracker`:
   it is a look-in at the last few minutes of an endpoint being set up, it is

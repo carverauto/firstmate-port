@@ -15,10 +15,9 @@ defmodule FirstmatePortWeb.DiscordInteractionsController do
   Tenants store their key through the portal UI or API; environment keys are not
   accepted.
 
-  Every refusal is also recorded, with its reason, on
-  `FirstmatePort.Discord.Attempts`. The response stays uniform; the operator
-  setting the endpoint up gets to see which check failed on
-  `/settings/credentials` instead of guessing at a 401. See `docs/credentials.md`, "When Discord will not verify the URL".
+  Controller outcomes are recorded on `FirstmatePort.Discord.Attempts`.
+  Response semantics and operator guidance live in `docs/credentials.md`,
+  "When Discord will not verify the URL".
   """
 
   use FirstmatePortWeb, :controller
@@ -164,9 +163,8 @@ defmodule FirstmatePortWeb.DiscordInteractionsController do
 
   defp publish(_tenant, _body), do: :ok
 
-  # One uniform answer, one recorded reason. The response may not say which of
-  # these happened - that would report on a tenant to someone who has not proven
-  # they speak for it - so the reason goes to the tenant's own operators.
+  # Authentication failures must not expose the selected tenant or key state.
+  # Record the reason for operators; only body errors override the bare 401.
   defp refuse(conn, tenant, params, outcome, opts \\ []) do
     record(tenant, params, outcome, Keyword.get(opts, :meta, []))
 

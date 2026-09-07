@@ -30,8 +30,9 @@ defmodule FirstmatePort.CaptainCalls do
   The row is written before the message goes out, so a question the captain can
   see is always a question this database can answer - the other order leaves a
   window where a fast click arrives before the row it names exists. A post that
-  Discord refuses leaves the call `:failed` with the reason on it, and the
-  caller gets `{:error, {:undeliverable, call}}` rather than a silent success.
+  Discord refuses marks an open call `:failed` and returns
+  `{:error, {:undeliverable, call}}`. If an answer already committed, the
+  guarded failure update loses and the answered call is returned successfully.
 
   `opts[:req_options]` is passed through to `FirstmatePort.Discord.Client` so
   tests can stub the HTTP call.
