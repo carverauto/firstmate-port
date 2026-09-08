@@ -9,7 +9,6 @@ defmodule FirstmatePortWeb.AuthRuntimeTest do
   alias FirstmatePort.Accounts.Bootstrap
   alias FirstmatePort.Accounts.Password
   alias FirstmatePort.Accounts.User
-  alias FirstmatePort.Auth.DeviceCode
   alias FirstmatePort.Auth.OIDC
 
   import Phoenix.LiveViewTest
@@ -83,8 +82,9 @@ defmodule FirstmatePortWeb.AuthRuntimeTest do
     end
 
     test "a device approval survives login on the first try", %{conn: conn} do
-      {:ok, code} = DeviceCode.issue(%{}, authorize?: false)
-      device_url = "/login/device?user_code=#{code.user_code}"
+      issued = post(build_conn(), ~p"/api/cli/auth/device", %{}) |> json_response(200)
+      uri = URI.parse(issued["verification_uri_complete"])
+      device_url = uri.path <> "?" <> uri.query
 
       conn = get(conn, device_url)
       assert redirected_to(conn) == "/login"
@@ -97,6 +97,22 @@ defmodule FirstmatePortWeb.AuthRuntimeTest do
       {:ok, view, _html} = live(conn, device_url)
       html = view |> element("button", "Approve") |> render_click()
       assert html =~ "Approved"
+
+      token_response =
+        post(build_conn(), ~p"/api/cli/auth/token", %{
+          "grant_type" => "urn:ietf:params:oauth:grant-type:device_code",
+          "device_code" => issued["device_code"]
+        })
+        |> json_response(200)
+
+      assert token_response["tenant"] == "local"
+
+      assert {:ok, claims} =
+               FirstmatePort.Auth.Guardian.decode_and_verify(token_response["access_token"])
+
+      assert claims["typ"] == "cli"
+      {:ok, admin} = User.get_by_email("admin@localhost", authorize?: false)
+      assert claims["sub"] == "user:#{admin.id}"
     end
 
     test "an email with no password does not sign in", %{conn: conn} do
