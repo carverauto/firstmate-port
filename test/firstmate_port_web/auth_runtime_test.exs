@@ -71,6 +71,17 @@ defmodule FirstmatePortWeb.AuthRuntimeTest do
       assert get_session(conn, :guardian_token)
     end
 
+    test "other protected routes return to the path alone after login", %{conn: conn} do
+      conn = get(conn, "/?filter=pending")
+      assert redirected_to(conn) == "/login"
+      assert get_session(conn, :return_to) == "/"
+
+      conn =
+        post(conn, ~p"/auth/local", %{"email" => "admin@localhost", "password" => @password})
+
+      assert redirected_to(conn) == "/"
+    end
+
     test "a device approval survives login on the first try", %{conn: conn} do
       {:ok, code} = DeviceCode.issue(%{}, authorize?: false)
       device_url = "/login/device?user_code=#{code.user_code}"

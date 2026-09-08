@@ -30,6 +30,9 @@ defmodule FirstmatePortWeb.Plugs.RequireUser do
   # (`/login/device?user_code=...`), so the path alone is not enough to get
   # the visitor back to approving after sign-in. Stays a relative path, so the
   # post-login redirect cannot leave this host.
-  defp return_to(%{request_path: path, query_string: ""}), do: path
-  defp return_to(%{request_path: path, query_string: query}), do: path <> "?" <> query
+  defp return_to(%{request_path: "/login/device" = path, query_string: query})
+       when query != "",
+       do: path <> "?" <> query
+
+  defp return_to(%{request_path: path}), do: path
 end
