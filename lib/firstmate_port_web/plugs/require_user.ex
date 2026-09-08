@@ -16,7 +16,7 @@ defmodule FirstmatePortWeb.Plugs.RequireUser do
           |> halt()
         else
           conn
-          |> put_session(:return_to, conn.request_path)
+          |> put_session(:return_to, return_to(conn))
           |> redirect(to: "/login")
           |> halt()
         end
@@ -25,4 +25,11 @@ defmodule FirstmatePortWeb.Plugs.RequireUser do
         conn
     end
   end
+
+  # The device-approval URL carries its code in the query string
+  # (`/login/device?user_code=...`), so the path alone is not enough to get
+  # the visitor back to approving after sign-in. Stays a relative path, so the
+  # post-login redirect cannot leave this host.
+  defp return_to(%{request_path: path, query_string: ""}), do: path
+  defp return_to(%{request_path: path, query_string: query}), do: path <> "?" <> query
 end

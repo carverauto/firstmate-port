@@ -9,7 +9,10 @@ defmodule FirstmatePortWeb.AuthRuntimeTest do
   alias FirstmatePort.Accounts.Bootstrap
   alias FirstmatePort.Accounts.Password
   alias FirstmatePort.Accounts.User
+  alias FirstmatePort.Auth.DeviceCode
   alias FirstmatePort.Auth.OIDC
+
+  import Phoenix.LiveViewTest
 
   @password "correct-horse-battery-staple"
 
@@ -66,6 +69,23 @@ defmodule FirstmatePortWeb.AuthRuntimeTest do
 
       assert redirected_to(conn) == "/"
       assert get_session(conn, :guardian_token)
+    end
+
+    test "a device approval survives login on the first try", %{conn: conn} do
+      {:ok, code} = DeviceCode.issue(%{}, authorize?: false)
+      device_url = "/login/device?user_code=#{code.user_code}"
+
+      conn = get(conn, device_url)
+      assert redirected_to(conn) == "/login"
+
+      conn =
+        post(conn, ~p"/auth/local", %{"email" => "admin@localhost", "password" => @password})
+
+      assert redirected_to(conn) == device_url
+
+      {:ok, view, _html} = live(conn, device_url)
+      html = view |> element("button", "Approve") |> render_click()
+      assert html =~ "Approved"
     end
 
     test "an email with no password does not sign in", %{conn: conn} do
