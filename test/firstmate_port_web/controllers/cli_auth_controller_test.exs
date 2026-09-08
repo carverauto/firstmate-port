@@ -90,6 +90,15 @@ defmodule FirstmatePortWeb.CliAuthControllerTest do
     assert json_response(conn, 404)["error"] == "not_found"
   end
 
+  test "a signed-out device URL keeps its code for after login", %{conn: conn} do
+    {:ok, code} = DeviceCode.issue(%{}, authorize?: false)
+
+    conn = get(conn, "/login/device?user_code=#{code.user_code}")
+
+    assert redirected_to(conn) == "/login"
+    assert get_session(conn, :return_to) == "/login/device?user_code=#{code.user_code}"
+  end
+
   test "inbox is tenant-scoped", %{conn: conn} do
     {:ok, a} =
       User.upsert_oidc(%{email: "a@localhost", name: "A", tenant_slug: "local"},

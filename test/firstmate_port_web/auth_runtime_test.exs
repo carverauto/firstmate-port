@@ -11,6 +11,8 @@ defmodule FirstmatePortWeb.AuthRuntimeTest do
   alias FirstmatePort.Accounts.User
   alias FirstmatePort.Auth.OIDC
 
+  import Phoenix.LiveViewTest
+
   @password "correct-horse-battery-staple"
 
   setup do
@@ -66,6 +68,51 @@ defmodule FirstmatePortWeb.AuthRuntimeTest do
 
       assert redirected_to(conn) == "/"
       assert get_session(conn, :guardian_token)
+    end
+
+    test "other protected routes return to the path alone after login", %{conn: conn} do
+      conn = get(conn, "/?filter=pending")
+      assert redirected_to(conn) == "/login"
+      assert get_session(conn, :return_to) == "/"
+
+      conn =
+        post(conn, ~p"/auth/local", %{"email" => "admin@localhost", "password" => @password})
+
+      assert redirected_to(conn) == "/"
+    end
+
+    test "a device approval survives login on the first try", %{conn: conn} do
+      issued = post(build_conn(), ~p"/api/cli/auth/device", %{}) |> json_response(200)
+      uri = URI.parse(issued["verification_uri_complete"])
+      device_url = uri.path <> "?" <> uri.query
+
+      conn = get(conn, device_url)
+      assert redirected_to(conn) == "/login"
+
+      conn =
+        post(conn, ~p"/auth/local", %{"email" => "admin@localhost", "password" => @password})
+
+      assert redirected_to(conn) == device_url
+
+      {:ok, view, _html} = live(conn, device_url)
+      html = view |> element("button", "Approve") |> render_click()
+      assert html =~ "Approved"
+
+      token_response =
+        post(build_conn(), ~p"/api/cli/auth/token", %{
+          "grant_type" => "urn:ietf:params:oauth:grant-type:device_code",
+          "device_code" => issued["device_code"]
+        })
+        |> json_response(200)
+
+      assert token_response["tenant"] == "local"
+
+      assert {:ok, claims} =
+               FirstmatePort.Auth.Guardian.decode_and_verify(token_response["access_token"])
+
+      assert claims["typ"] == "cli"
+      {:ok, admin} = User.get_by_email("admin@localhost", authorize?: false)
+      assert claims["sub"] == "user:#{admin.id}"
     end
 
     test "an email with no password does not sign in", %{conn: conn} do
